@@ -79,7 +79,7 @@ body {
 .conteudo {
   flex: 1;
   width: 100%;
-  max-width: 560px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -215,56 +215,49 @@ body {
 .novo-gasto button:active { transform: scale(.97); }
 .novo-gasto button:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ---------- Lista ---------- */
+/* ---------- Tabela ---------- */
 
-.lista { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-
-.lista li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.tabela-wrap {
+  overflow-x: auto;
   background: var(--cartao);
   border: 1px solid var(--borda);
   border-radius: var(--raio);
-  padding: 13px 14px;
   box-shadow: var(--sombra);
-  animation: entrar .18s ease-out;
+  margin-bottom: 12px;
 }
 
-@keyframes entrar {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lista li { animation: none; }
-}
-
-.gasto-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.gasto-local {
-  font-size: 0.98rem;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.gasto-data {
-  font-size: 0.8rem;
-  color: var(--tinta-fraca);
-}
-
-.gasto-valor {
-  font-weight: 600;
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
   white-space: nowrap;
 }
 
-.lista .remover {
+.tabela th,
+.tabela td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--borda);
+}
+
+.tabela thead th {
+  position: sticky;
+  top: 0;
+  background: var(--fundo);
+  color: var(--tinta-fraca);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.tabela tbody tr:hover { background: var(--acento-suave); }
+.tabela tbody tr:last-child td { border-bottom: none; }
+
+.tabela .col-valor { text-align: right; font-weight: 600; }
+.tabela .col-acao  { width: 1%; }
+
+.tabela .remover {
   border: none;
   background: none;
   color: var(--tinta-fraca);
@@ -275,7 +268,7 @@ body {
   transition: background .15s, color .15s;
 }
 
-.lista .remover:hover { background: #FBE9E9; color: #C0392B; }
+.tabela .remover:hover { background: #FBE9E9; color: #C0392B; }
 
 .vazio {
   text-align: center;

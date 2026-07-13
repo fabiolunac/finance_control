@@ -25,7 +25,7 @@ const campoLocal = document.getElementById('campo-local');
 const campoValor = document.getElementById('campo-valor');
 const botaoAdicionar = document.getElementById('botao-adicionar');
 
-const lista = document.getElementById('lista');
+const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
 
@@ -82,38 +82,40 @@ function formatarData(dataIso) {
 }
 
 function renderizar(gastos, total) {
-  lista.innerHTML = '';
+  corpoTabela.innerHTML = '';
   vazio.style.display = gastos.length ? 'none' : 'block';
   valorTotal.textContent = formatarMoeda(total);
 
   gastos.forEach((gasto) => {
-    const li = document.createElement('li');
+    const tr = document.createElement('tr');
 
-    const info = document.createElement('div');
-    info.className = 'gasto-info';
+    const tdData = document.createElement('td');
+    tdData.textContent = formatarData(gasto.Data);
 
-    const local = document.createElement('span');
-    local.className = 'gasto-local';
-    local.textContent = gasto.Local;
+    const tdLocal = document.createElement('td');
+    tdLocal.textContent = gasto.Local;
 
-    const data = document.createElement('span');
-    data.className = 'gasto-data';
-    data.textContent = formatarData(gasto.Data);
+    const tdBanco = document.createElement('td');
+    tdBanco.textContent = gasto.banco;
 
-    info.append(local, data);
+    const tdTipo = document.createElement('td');
+    tdTipo.textContent = gasto.tipo;
 
-    const valor = document.createElement('span');
-    valor.className = 'gasto-valor';
-    valor.textContent = formatarMoeda(gasto.Valor);
+    const tdValor = document.createElement('td');
+    tdValor.className = 'col-valor';
+    tdValor.textContent = formatarMoeda(gasto.Valor);
 
+    const tdAcao = document.createElement('td');
+    tdAcao.className = 'col-acao';
     const remover = document.createElement('button');
     remover.className = 'remover';
     remover.textContent = '✕';
     remover.setAttribute('aria-label', 'Remover gasto');
     remover.addEventListener('click', () => excluir(gasto.rowid));
+    tdAcao.appendChild(remover);
 
-    li.append(info, valor, remover);
-    lista.appendChild(li);
+    tr.append(tdData, tdLocal, tdBanco, tdTipo, tdValor, tdAcao);
+    corpoTabela.appendChild(tr);
   });
 }
 

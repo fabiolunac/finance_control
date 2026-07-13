@@ -50,7 +50,21 @@
 
     <p id="erro" class="erro" hidden></p>
 
-    <ul id="lista" class="lista" aria-live="polite"></ul>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Local</th>
+            <th>Banco</th>
+            <th>Tipo</th>
+            <th class="col-valor">Valor</th>
+            <th class="col-acao"></th>
+          </tr>
+        </thead>
+        <tbody id="corpo-tabela" aria-live="polite"></tbody>
+      </table>
+    </div>
 
     <p id="vazio" class="vazio">
       Nenhum gasto neste mês ainda. Adicione o primeiro acima.
