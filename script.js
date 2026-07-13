@@ -10,9 +10,13 @@ const API_URL = 'https://finance-control-99hx.onrender.com';
 const statusRede = document.getElementById('status-rede');
 const botaoInstalar = document.getElementById('botao-instalar');
 
+const abaMes = document.getElementById('aba-mes');
+const abaTudo = document.getElementById('aba-tudo');
+const barraMes = document.getElementById('barra-mes');
 const campoMes = document.getElementById('campo-mes');
 const mesAnterior = document.getElementById('mes-anterior');
 const mesSeguinte = document.getElementById('mes-seguinte');
+const rotuloTotal = document.getElementById('rotulo-total');
 const valorTotal = document.getElementById('valor-total');
 
 const formGasto = document.getElementById('form-gasto');
@@ -64,6 +68,7 @@ function mesFormatado(data) {
 }
 
 let mesSelecionado = mesFormatado(new Date());
+let modoTudo = false;
 
 // ---------- Renderização ----------
 
@@ -122,7 +127,11 @@ function mostrarErro(mensagem) {
 async function carregar() {
   mostrarErro('');
   try {
-    const dados = await chamarApi(`/api/gastos?mes=${mesSelecionado}`);
+    const caminho = modoTudo ? '/api/gastos?todos=1' : `/api/gastos?mes=${mesSelecionado}`;
+    const dados = await chamarApi(caminho);
+    vazio.textContent = modoTudo
+      ? 'Nenhum gasto registrado ainda.'
+      : 'Nenhum gasto neste mês ainda. Adicione o primeiro acima.';
     renderizar(dados.gastos, dados.total);
   } catch (e) {
     mostrarErro(e.message);
@@ -148,7 +157,7 @@ async function adicionar(evento) {
     campoLocal.focus();
 
     const mesDoLancamento = Data.slice(0, 7);
-    if (mesDoLancamento === mesSelecionado) {
+    if (modoTudo || mesDoLancamento === mesSelecionado) {
       await carregar();
     }
   } catch (e) {
@@ -185,6 +194,20 @@ campoMes.addEventListener('change', () => {
 
 mesAnterior.addEventListener('click', () => irParaMes(-1));
 mesSeguinte.addEventListener('click', () => irParaMes(1));
+
+// ---------- Abas: por mês / tudo ----------
+
+function selecionarAba(tudo) {
+  modoTudo = tudo;
+  abaMes.classList.toggle('aba-ativa', !tudo);
+  abaTudo.classList.toggle('aba-ativa', tudo);
+  barraMes.style.display = tudo ? 'none' : 'flex';
+  rotuloTotal.textContent = tudo ? 'Total geral:' : 'Total do mês:';
+  carregar();
+}
+
+abaMes.addEventListener('click', () => selecionarAba(false));
+abaTudo.addEventListener('click', () => selecionarAba(true));
 
 formGasto.addEventListener('submit', adicionar);
 

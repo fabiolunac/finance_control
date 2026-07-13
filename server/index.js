@@ -36,23 +36,26 @@ function mesAtual() {
 // GET /api/gastos?mes=YYYY-MM — lista os lançamentos do mês + total
 app.get('/api/gastos', async (req, res) => {
   try {
+    const verTudo = req.query.todos === '1';
     const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : mesAtual();
+    const where = verTudo ? '' : `WHERE strftime('%Y-%m', Data) = ?`;
+    const args = verTudo ? [] : [mes];
 
     const [linhas, total] = await Promise.all([
       db.execute({
         sql: `SELECT rowid, Data, Local, Valor, banco, tipo FROM gastos
-              WHERE strftime('%Y-%m', Data) = ?
+              ${where}
               ORDER BY Data DESC, rowid DESC`,
-        args: [mes],
+        args,
       }),
       db.execute({
-        sql: `SELECT COALESCE(SUM(Valor), 0) AS total FROM gastos WHERE strftime('%Y-%m', Data) = ?`,
-        args: [mes],
+        sql: `SELECT COALESCE(SUM(Valor), 0) AS total FROM gastos ${where}`,
+        args,
       }),
     ]);
 
     res.json({
-      mes,
+      mes: verTudo ? null : mes,
       total: total.rows[0].total,
       gastos: linhas.rows,
     });

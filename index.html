@@ -26,14 +26,19 @@
 
   <main class="conteudo">
 
-    <div class="barra-mes">
+    <div class="abas">
+      <button id="aba-mes" class="aba aba-ativa" type="button">Por mês</button>
+      <button id="aba-tudo" class="aba" type="button">Tudo</button>
+    </div>
+
+    <div id="barra-mes" class="barra-mes">
       <button id="mes-anterior" class="botao-mes" aria-label="Mês anterior">‹</button>
       <input id="campo-mes" type="month" aria-label="Selecionar mês">
       <button id="mes-seguinte" class="botao-mes" aria-label="Próximo mês">›</button>
     </div>
 
     <div class="total-mes">
-      Total do mês: <strong id="valor-total">R$ 0,00</strong>
+      <span id="rotulo-total">Total do mês:</span> <strong id="valor-total">R$ 0,00</strong>
     </div>
 
     <form id="form-gasto" class="novo-gasto">
