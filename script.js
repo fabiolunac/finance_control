@@ -5,7 +5,7 @@
    ============================================================ */
 
 // Preencha com a URL do seu backend depois do deploy (ver README.md)
-const API_URL = 'https://SEU-BACKEND.onrender.com';
+const API_URL = 'https://finance-control-99hx.onrender.com';
 
 const statusRede = document.getElementById('status-rede');
 const botaoInstalar = document.getElementById('botao-instalar');
