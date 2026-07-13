@@ -26,49 +26,60 @@
 
   <main class="conteudo">
 
-    <div class="abas">
-      <button id="aba-mes" class="aba aba-ativa" type="button">Por mês</button>
-      <button id="aba-tudo" class="aba" type="button">Tudo</button>
+    <div class="abas abas-principais">
+      <button id="aba-adicionar" class="aba aba-ativa" type="button">Adicionar</button>
+      <button id="aba-visualizar" class="aba" type="button">Visualizar</button>
     </div>
-
-    <div id="barra-mes" class="barra-mes">
-      <button id="mes-anterior" class="botao-mes" aria-label="Mês anterior">‹</button>
-      <input id="campo-mes" type="month" aria-label="Selecionar mês">
-      <button id="mes-seguinte" class="botao-mes" aria-label="Próximo mês">›</button>
-    </div>
-
-    <div class="total-mes">
-      <span id="rotulo-total">Total do mês:</span> <strong id="valor-total">R$ 0,00</strong>
-    </div>
-
-    <form id="form-gasto" class="novo-gasto">
-      <input id="campo-data" type="date" required>
-      <input id="campo-local" type="text" placeholder="Onde foi o gasto?" autocomplete="off" maxlength="120" required>
-      <input id="campo-valor" type="number" step="0.01" min="0" placeholder="Valor" required>
-      <button id="botao-adicionar" type="submit" title="Adicionar gasto">Adicionar</button>
-    </form>
 
     <p id="erro" class="erro" hidden></p>
 
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Local</th>
-            <th>Banco</th>
-            <th>Tipo</th>
-            <th class="col-valor">Valor</th>
-            <th class="col-acao"></th>
-          </tr>
-        </thead>
-        <tbody id="corpo-tabela" aria-live="polite"></tbody>
-      </table>
-    </div>
+    <section id="secao-adicionar">
+      <form id="form-gasto" class="novo-gasto">
+        <input id="campo-data" type="date" required>
+        <input id="campo-local" type="text" placeholder="Onde foi o gasto?" autocomplete="off" maxlength="120" required>
+        <input id="campo-valor" type="number" step="0.01" min="0" placeholder="Valor" required>
+        <button id="botao-adicionar" type="submit" title="Adicionar gasto">Adicionar</button>
+      </form>
+    </section>
 
-    <p id="vazio" class="vazio">
-      Nenhum gasto neste mês ainda. Adicione o primeiro acima.
-    </p>
+    <section id="secao-visualizar" hidden>
+
+      <div class="abas">
+        <button id="aba-mes" class="aba aba-ativa" type="button">Por mês</button>
+        <button id="aba-tudo" class="aba" type="button">Tudo</button>
+      </div>
+
+      <div id="barra-mes" class="barra-mes">
+        <button id="mes-anterior" class="botao-mes" aria-label="Mês anterior">‹</button>
+        <input id="campo-mes" type="month" aria-label="Selecionar mês">
+        <button id="mes-seguinte" class="botao-mes" aria-label="Próximo mês">›</button>
+      </div>
+
+      <div class="total-mes">
+        <span id="rotulo-total">Total do mês:</span> <strong id="valor-total">R$ 0,00</strong>
+      </div>
+
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Local</th>
+              <th>Banco</th>
+              <th>Tipo</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-acao"></th>
+            </tr>
+          </thead>
+          <tbody id="corpo-tabela" aria-live="polite"></tbody>
+        </table>
+      </div>
+
+      <p id="vazio" class="vazio">
+        Nenhum gasto neste mês ainda. Adicione o primeiro acima.
+      </p>
+
+    </section>
 
   </main>
 

@@ -10,6 +10,11 @@ const API_URL = 'https://finance-control-99hx.onrender.com';
 const statusRede = document.getElementById('status-rede');
 const botaoInstalar = document.getElementById('botao-instalar');
 
+const abaAdicionar = document.getElementById('aba-adicionar');
+const abaVisualizar = document.getElementById('aba-visualizar');
+const secaoAdicionar = document.getElementById('secao-adicionar');
+const secaoVisualizar = document.getElementById('secao-visualizar');
+
 const abaMes = document.getElementById('aba-mes');
 const abaTudo = document.getElementById('aba-tudo');
 const barraMes = document.getElementById('barra-mes');
@@ -157,11 +162,6 @@ async function adicionar(evento) {
     campoLocal.value = '';
     campoValor.value = '';
     campoLocal.focus();
-
-    const mesDoLancamento = Data.slice(0, 7);
-    if (modoTudo || mesDoLancamento === mesSelecionado) {
-      await carregar();
-    }
   } catch (e) {
     mostrarErro(e.message);
   }
@@ -211,6 +211,20 @@ function selecionarAba(tudo) {
 abaMes.addEventListener('click', () => selecionarAba(false));
 abaTudo.addEventListener('click', () => selecionarAba(true));
 
+// ---------- Abas principais: adicionar / visualizar ----------
+
+function selecionarAbaPrincipal(visualizar) {
+  abaAdicionar.classList.toggle('aba-ativa', !visualizar);
+  abaVisualizar.classList.toggle('aba-ativa', visualizar);
+  secaoAdicionar.hidden = visualizar;
+  secaoVisualizar.hidden = !visualizar;
+  mostrarErro('');
+  if (visualizar) carregar();
+}
+
+abaAdicionar.addEventListener('click', () => selecionarAbaPrincipal(false));
+abaVisualizar.addEventListener('click', () => selecionarAbaPrincipal(true));
+
 formGasto.addEventListener('submit', adicionar);
 
 // ---------- Indicador online/offline ----------
@@ -223,7 +237,10 @@ function atualizarRede() {
   if (!online) mostrarErro('Sem conexão — não é possível ler ou gravar gastos agora.');
 }
 
-window.addEventListener('online', () => { atualizarRede(); carregar(); });
+window.addEventListener('online', () => {
+  atualizarRede();
+  if (!secaoVisualizar.hidden) carregar();
+});
 window.addEventListener('offline', atualizarRede);
 
 // ---------- Botão "Instalar como aplicativo" ----------
@@ -253,4 +270,3 @@ window.addEventListener('appinstalled', () => {
 campoData.value = new Date().toISOString().slice(0, 10);
 campoMes.value = mesSelecionado;
 atualizarRede();
-if (navigator.onLine) carregar();
