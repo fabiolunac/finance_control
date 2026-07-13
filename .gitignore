@@ -1,3 +1,4 @@
-# Contém dados financeiros reais — não deve ir para o repositório público.
-# Usado só localmente como fonte pra importar no Turso (ver README.md).
+# Contém dados financeiros/pessoais reais — não deve ir para o repositório público.
+# Usados só localmente como fonte pra importar no Turso (ver README.md).
 finance_control.db
+local_param.db

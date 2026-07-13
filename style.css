@@ -254,6 +254,9 @@ body {
 .tabela tbody tr:hover { background: var(--acento-suave); }
 .tabela tbody tr:last-child td { border-bottom: none; }
 
+.tabela tbody tr.linha-pagamento { background: rgba(14, 159, 110, .08); }
+.tabela tbody tr.linha-pagamento:hover { background: rgba(14, 159, 110, .16); }
+
 .tabela .col-valor { text-align: right; font-weight: 600; }
 .tabela .col-acao  { width: 1%; }
 

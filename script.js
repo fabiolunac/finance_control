@@ -100,6 +100,9 @@ function renderizar(gastos, total) {
     const tdLocal = document.createElement('td');
     tdLocal.textContent = gasto.Local;
 
+    const tdCategoria = document.createElement('td');
+    tdCategoria.textContent = gasto.Categoria;
+
     const tdBanco = document.createElement('td');
     tdBanco.textContent = gasto.banco;
 
@@ -110,6 +113,10 @@ function renderizar(gastos, total) {
     tdValor.className = 'col-valor';
     tdValor.textContent = formatarMoeda(gasto.Valor);
 
+    const tdSaldo = document.createElement('td');
+    tdSaldo.className = 'col-valor';
+    tdSaldo.textContent = formatarMoeda(gasto.Saldo);
+
     const tdAcao = document.createElement('td');
     tdAcao.className = 'col-acao';
     const remover = document.createElement('button');
@@ -119,7 +126,9 @@ function renderizar(gastos, total) {
     remover.addEventListener('click', () => excluir(gasto.rowid));
     tdAcao.appendChild(remover);
 
-    tr.append(tdData, tdLocal, tdBanco, tdTipo, tdValor, tdAcao);
+    if (gasto['Pagamento?'] === 'Sim') tr.classList.add('linha-pagamento');
+
+    tr.append(tdData, tdLocal, tdCategoria, tdBanco, tdTipo, tdValor, tdSaldo, tdAcao);
     corpoTabela.appendChild(tr);
   });
 }
