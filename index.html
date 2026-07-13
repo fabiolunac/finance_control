@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Lista</title>
+  <meta name="description" content="Lista de tarefas que funciona offline e pode ser instalada como aplicativo.">
+
+  <!-- PWA: manifesto e cor do tema (barra do navegador/celular) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#101418">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topo">
+    <div class="topo-inner">
+      <span class="marca-ponto" aria-hidden="true"></span>
+      <h1>Minha Lista</h1>
+      <span id="status-rede" class="badge badge-online">online</span>
+    </div>
+  </header>
+
+  <main class="conteudo">
+
+    <!-- Formulário de nova tarefa (sem <form> pra manter simples) -->
+    <div class="nova-tarefa">
+      <input id="campo-tarefa" type="text" placeholder="O que você precisa fazer?"
+             autocomplete="off" maxlength="120">
+      <button id="botao-adicionar" title="Adicionar tarefa">Adicionar</button>
+    </div>
+
+    <ul id="lista" class="lista" aria-live="polite"></ul>
+
+    <p id="vazio" class="vazio">
+      Nenhuma tarefa ainda. Adicione a primeira acima —
+      tudo fica salvo no seu dispositivo, mesmo sem internet.
+    </p>
+
+  </main>
+
+  <!-- Botão de instalar: só aparece quando o navegador permite -->
+  <button id="botao-instalar" class="instalar" hidden>
+    ⬇ Instalar como aplicativo
+  </button>
+
+  <footer class="rodape">
+    Feito com HTML, CSS e JS · hospedado no GitHub Pages · funciona offline
+  </footer>
+
+  <script src="script.js"></script>
+
+  <!-- Registro do Service Worker: é isso que torna o site um PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('Service Worker registrado ✔'))
+        .catch((erro) => console.error('Falha no Service Worker:', erro));
+    }
+  </script>
+</body>
+</html>
