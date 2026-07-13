@@ -35,57 +35,72 @@ function mesAtual() {
 
 // GET /api/gastos?mes=YYYY-MM — lista os lançamentos do mês + total
 app.get('/api/gastos', async (req, res) => {
-  const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : mesAtual();
+  try {
+    const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : mesAtual();
 
-  const [linhas, total] = await Promise.all([
-    db.execute({
-      sql: `SELECT rowid, Data, Local, Valor, banco, tipo FROM gastos
-            WHERE strftime('%Y-%m', Data) = ?
-            ORDER BY Data DESC, rowid DESC`,
-      args: [mes],
-    }),
-    db.execute({
-      sql: `SELECT COALESCE(SUM(Valor), 0) AS total FROM gastos WHERE strftime('%Y-%m', Data) = ?`,
-      args: [mes],
-    }),
-  ]);
+    const [linhas, total] = await Promise.all([
+      db.execute({
+        sql: `SELECT rowid, Data, Local, Valor, banco, tipo FROM gastos
+              WHERE strftime('%Y-%m', Data) = ?
+              ORDER BY Data DESC, rowid DESC`,
+        args: [mes],
+      }),
+      db.execute({
+        sql: `SELECT COALESCE(SUM(Valor), 0) AS total FROM gastos WHERE strftime('%Y-%m', Data) = ?`,
+        args: [mes],
+      }),
+    ]);
 
-  res.json({
-    mes,
-    total: total.rows[0].total,
-    gastos: linhas.rows,
-  });
+    res.json({
+      mes,
+      total: total.rows[0].total,
+      gastos: linhas.rows,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao consultar o banco de dados.' });
+  }
 });
 
 // POST /api/gastos — adiciona um lançamento { Data, Local, Valor }
 app.post('/api/gastos', async (req, res) => {
-  const { Data, Local, Valor } = req.body || {};
+  try {
+    const { Data, Local, Valor } = req.body || {};
 
-  if (!Data || !Local || typeof Valor !== 'number' || Number.isNaN(Valor)) {
-    return res.status(400).json({ erro: 'Campos obrigatórios: Data (YYYY-MM-DD), Local (texto), Valor (número).' });
+    if (!Data || !Local || typeof Valor !== 'number' || Number.isNaN(Valor)) {
+      return res.status(400).json({ erro: 'Campos obrigatórios: Data (YYYY-MM-DD), Local (texto), Valor (número).' });
+    }
+
+    await db.execute({
+      sql: `INSERT INTO gastos (Data, Local, Valor) VALUES (?, ?, ?)`,
+      args: [`${Data} 00:00:00`, Local, Valor],
+    });
+
+    res.status(201).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao gravar no banco de dados.' });
   }
-
-  await db.execute({
-    sql: `INSERT INTO gastos (Data, Local, Valor) VALUES (?, ?, ?)`,
-    args: [`${Data} 00:00:00`, Local, Valor],
-  });
-
-  res.status(201).json({ ok: true });
 });
 
 // DELETE /api/gastos/:rowid — remove um lançamento
 app.delete('/api/gastos/:rowid', async (req, res) => {
-  const rowid = Number(req.params.rowid);
-  if (!Number.isInteger(rowid)) {
-    return res.status(400).json({ erro: 'rowid inválido.' });
+  try {
+    const rowid = Number(req.params.rowid);
+    if (!Number.isInteger(rowid)) {
+      return res.status(400).json({ erro: 'rowid inválido.' });
+    }
+
+    await db.execute({
+      sql: `DELETE FROM gastos WHERE rowid = ?`,
+      args: [rowid],
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao gravar no banco de dados.' });
   }
-
-  await db.execute({
-    sql: `DELETE FROM gastos WHERE rowid = ?`,
-    args: [rowid],
-  });
-
-  res.json({ ok: true });
 });
 
 const porta = PORT || 3000;
