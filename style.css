@@ -1,20 +1,54 @@
 /* ============================================================
    Controle de Gastos — folha de estilo
-   Fontes do sistema (carregam instantâneo e funcionam offline)
+   Paleta e tipografia inspiradas em nipscern.com (dark, Inter +
+   DM Serif Display + JetBrains Mono, cantos e sombras em camadas)
    ============================================================ */
 
 :root {
-  --fundo: #14171C;
-  --cartao: #1B1F26;
-  --tinta: #EDEFF3;
-  --tinta-fraca: #9AA4B2;
-  --acento: #5B82FF;       /* azul-cobalto: cor da marca */
-  --acento-suave: rgba(91, 130, 255, .18);
-  --sucesso: #22C58B;
-  --borda: #2A2F38;
-  --raio: 14px;
-  --sombra: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px rgba(0, 0, 0, .45);
-  --topo-fundo: #0B0D10;
+  /* Fundo (escala escura) */
+  --fundo: #0B0F1C;
+  --topo-fundo: #070A12;
+  --cartao: #131826;
+  --cartao-alto: #1A2035;
+
+  /* Bordas */
+  --borda: rgba(255, 255, 255, .10);
+  --borda-forte: rgba(255, 255, 255, .18);
+
+  /* Texto */
+  --tinta: #E4E8F2;
+  --tinta-fraca: #8B95AD;
+  --tinta-muda: #7A86A6;
+  --tinta-inversa: #0B0F1C;
+
+  /* Marca */
+  --acento: #5B9CF6;
+  --acento-claro: #7CB5FF;
+  --acento-suave: rgba(91, 156, 246, .15);
+  --acento-media: rgba(91, 156, 246, .25);
+  --acento-brilho: rgba(91, 156, 246, .18);
+
+  --sucesso: #34D399;
+  --sucesso-suave: rgba(52, 211, 153, .15);
+  --erro: #FB7185;
+  --erro-suave: rgba(251, 113, 133, .15);
+
+  /* Tipografia */
+  --fonte: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --fonte-serif: 'DM Serif Display', Georgia, serif;
+  --fonte-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Cantos */
+  --raio-sm: 8px;
+  --raio: 12px;
+  --raio-lg: 16px;
+
+  /* Sombras */
+  --sombra: 0 4px 20px rgba(0, 0, 0, .45), 0 1px 2px rgba(0, 0, 0, .4);
+  --sombra-brilho: 0 4px 20px var(--acento-brilho);
+
+  --t-rapida: 120ms ease;
+  --t-base: 200ms ease;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,14 +56,34 @@
 html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-               "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--fonte);
   background: var(--fundo);
   color: var(--tinta);
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Textura sutil de grão sobre toda a página */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: var(--raio-sm);
+}
+
+::selection { background: var(--acento-media); color: var(--tinta); }
 
 /* ---------- Topo ---------- */
 
@@ -57,9 +111,10 @@ body {
 }
 
 .topo h1 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: var(--fonte-serif);
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
   flex: 1;
 }
 
@@ -72,8 +127,8 @@ body {
   border-radius: 99px;
 }
 
-.badge-online  { background: rgba(14, 159, 110, .25); color: #7EE2BC; }
-.badge-offline { background: rgba(255, 255, 255, .14); color: #C6CCD6; }
+.badge-online  { background: var(--sucesso-suave); color: #7EE2BC; }
+.badge-offline { background: rgba(255, 255, 255, .10); color: #C6CCD6; }
 
 /* ---------- Conteúdo ---------- */
 
@@ -99,19 +154,23 @@ body {
   font-weight: 600;
   font-size: 0.9rem;
   padding: 10px;
-  border: 1.5px solid var(--borda);
-  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-sm);
   background: var(--cartao);
   color: var(--tinta-fraca);
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background var(--t-rapida), color var(--t-rapida), border-color var(--t-rapida);
 }
 
+.aba:hover { color: var(--tinta); border-color: var(--borda-forte); }
+
 .aba-ativa {
-  background: var(--acento);
-  border-color: var(--acento);
-  color: #fff;
+  background: var(--acento-suave);
+  border-color: transparent;
+  color: var(--acento);
 }
+
+.aba-ativa:hover { color: var(--acento); }
 
 /* ---------- Filtros ---------- */
 
@@ -136,12 +195,13 @@ body {
   font: inherit;
   font-size: 0.9rem;
   padding: 10px 12px;
-  border: 1.5px solid var(--borda);
+  border: 1px solid var(--borda);
   border-radius: var(--raio);
   background: var(--cartao);
   color: var(--tinta);
   cursor: pointer;
   text-align: left;
+  transition: border-color var(--t-rapida);
 }
 
 .multiselect-botao:focus,
@@ -166,8 +226,8 @@ body {
   min-width: 100%;
   max-height: 260px;
   overflow-y: auto;
-  background: var(--cartao);
-  border: 1px solid var(--borda);
+  background: var(--cartao-alto);
+  border: 1px solid var(--borda-forte);
   border-radius: var(--raio);
   box-shadow: var(--sombra);
   padding: 6px;
@@ -179,13 +239,13 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--raio-sm);
   font-size: 0.88rem;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.multiselect-item:hover { background: var(--fundo); }
+.multiselect-item:hover { background: var(--borda); }
 
 .multiselect-item input {
   accent-color: var(--acento);
@@ -197,8 +257,8 @@ body {
 /* ---------- Erro / sucesso ---------- */
 
 .erro {
-  background: rgba(192, 57, 43, .18);
-  color: #FF8A80;
+  background: var(--erro-suave);
+  color: var(--erro);
   border-radius: var(--raio);
   padding: 10px 14px;
   margin-bottom: 16px;
@@ -206,7 +266,7 @@ body {
 }
 
 .sucesso {
-  background: rgba(14, 159, 110, .12);
+  background: var(--sucesso-suave);
   color: var(--sucesso);
   border-radius: var(--raio);
   padding: 10px 14px;
@@ -226,12 +286,12 @@ body {
   font: inherit;
   font-size: 1rem;
   padding: 13px 16px;
-  border: 1.5px solid var(--borda);
+  border: 1px solid var(--borda);
   border-radius: var(--raio);
   background: var(--cartao);
   color: var(--tinta);
   outline: none;
-  transition: border-color .15s;
+  transition: border-color var(--t-rapida);
 }
 
 .novo-gasto input:focus { border-color: var(--acento); }
@@ -240,13 +300,13 @@ body {
   font: inherit;
   font-size: 1rem;
   padding: 13px 16px;
-  border: 1.5px solid var(--borda);
+  border: 1px solid var(--borda);
   border-radius: var(--raio);
   background: var(--cartao);
   color: var(--tinta);
   cursor: pointer;
   outline: none;
-  transition: border-color .15s;
+  transition: border-color var(--t-rapida);
 }
 
 .novo-gasto select:focus { border-color: var(--acento); }
@@ -262,15 +322,20 @@ body {
   font: inherit;
   font-weight: 600;
   padding: 13px 20px;
-  border: none;
+  border: 1.5px solid var(--acento);
   border-radius: var(--raio);
   background: var(--acento);
-  color: #fff;
+  color: var(--tinta-inversa);
   cursor: pointer;
-  transition: transform .1s, opacity .15s;
+  transition: background var(--t-base), border-color var(--t-base), box-shadow var(--t-base), transform var(--t-base);
 }
 
-.novo-gasto button:hover  { opacity: .92; }
+.novo-gasto button:hover  {
+  background: var(--acento-claro);
+  border-color: var(--acento-claro);
+  box-shadow: var(--sombra-brilho);
+  transform: translateY(-1px);
+}
 .novo-gasto button:active { transform: scale(.97); }
 
 /* ---------- Tabela ---------- */
@@ -279,7 +344,7 @@ body {
   overflow-x: auto;
   background: var(--cartao);
   border: 1px solid var(--borda);
-  border-radius: var(--raio);
+  border-radius: var(--raio-lg);
   box-shadow: var(--sombra);
 }
 
@@ -300,7 +365,7 @@ body {
 .tabela thead th {
   position: sticky;
   top: 0;
-  background: var(--fundo);
+  background: var(--cartao-alto);
   color: var(--tinta-fraca);
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -311,10 +376,10 @@ body {
 .tabela tbody tr:hover { background: var(--acento-suave); }
 .tabela tbody tr:last-child td { border-bottom: none; }
 
-.tabela tbody tr.linha-pagamento { background: rgba(14, 159, 110, .08); }
-.tabela tbody tr.linha-pagamento:hover { background: rgba(14, 159, 110, .16); }
+.tabela tbody tr.linha-pagamento { background: rgba(52, 211, 153, .08); }
+.tabela tbody tr.linha-pagamento:hover { background: rgba(52, 211, 153, .16); }
 
-.tabela .col-valor { text-align: right; font-weight: 600; }
+.tabela .col-valor { text-align: right; font-weight: 600; font-family: var(--fonte-mono); }
 
 .vazio {
   text-align: center;
@@ -329,7 +394,7 @@ body {
 .cartao-grafico {
   background: var(--cartao);
   border: 1px solid var(--borda);
-  border-radius: var(--raio);
+  border-radius: var(--raio-lg);
   box-shadow: var(--sombra);
   padding: 20px;
 }
@@ -340,11 +405,12 @@ body {
   font: inherit;
   font-size: 0.9rem;
   padding: 10px 12px;
-  border: 1.5px solid var(--borda);
+  border: 1px solid var(--borda);
   border-radius: var(--raio);
-  background: var(--fundo);
+  background: var(--cartao-alto);
   color: var(--tinta);
   cursor: pointer;
+  transition: border-color var(--t-rapida);
 }
 
 .select-basico:focus { border-color: var(--acento); outline: none; }
@@ -355,8 +421,9 @@ body {
 }
 
 .titulo-grafico {
-  font-size: 1rem;
-  font-weight: 700;
+  font-family: var(--fonte-serif);
+  font-weight: 400;
+  font-size: 1.2rem;
   margin-bottom: 16px;
 }
 
@@ -374,7 +441,8 @@ body {
 
 .barra-rotulo {
   flex: 0 0 64px;
-  font-size: 0.82rem;
+  font-family: var(--fonte-mono);
+  font-size: 0.8rem;
   color: var(--tinta-fraca);
   font-variant-numeric: tabular-nums;
 }
@@ -391,12 +459,14 @@ body {
   height: 100%;
   background: var(--acento);
   border-radius: 6px;
+  box-shadow: 0 0 12px var(--acento-brilho);
   transition: width .25s ease-out;
 }
 
 .barra-valor {
   flex: 0 0 110px;
   text-align: right;
+  font-family: var(--fonte-mono);
   font-size: 0.85rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
