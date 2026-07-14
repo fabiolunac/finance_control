@@ -121,8 +121,17 @@ body {
   margin-bottom: 12px;
 }
 
-.filtros select {
+.multiselect {
+  position: relative;
   flex: 1 1 160px;
+}
+
+.multiselect-botao {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font: inherit;
   font-size: 0.9rem;
   padding: 10px 12px;
@@ -131,9 +140,58 @@ body {
   background: var(--cartao);
   color: var(--tinta);
   cursor: pointer;
+  text-align: left;
 }
 
-.filtros select:focus { border-color: var(--acento); outline: none; }
+.multiselect-botao:focus,
+.multiselect-botao.multiselect-aberto { border-color: var(--acento); outline: none; }
+
+.multiselect-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiselect-seta {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: var(--tinta-fraca);
+}
+
+.multiselect-painel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 6px;
+  z-index: 10;
+}
+
+.multiselect-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.multiselect-item:hover { background: var(--fundo); }
+
+.multiselect-item input {
+  accent-color: var(--acento);
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
 
 /* ---------- Erro / sucesso ---------- */
 
@@ -267,43 +325,48 @@ body {
 
 .grafico {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-end;
+  gap: 16px;
+  min-height: 220px;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
-.barra-linha {
+.barra-coluna {
   display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .barra-rotulo {
-  flex: 0 0 64px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--tinta-fraca);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .barra-trilha {
-  flex: 1;
+  width: 32px;
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
   background: var(--fundo);
   border-radius: 6px;
-  height: 22px;
   overflow: hidden;
 }
 
 .barra {
-  height: 100%;
+  width: 100%;
   background: var(--acento);
   border-radius: 6px;
-  transition: width .25s ease-out;
+  transition: height .25s ease-out;
 }
 
 .barra-valor {
-  flex: 0 0 110px;
-  text-align: right;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }

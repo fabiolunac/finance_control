@@ -99,46 +99,120 @@ function valoresUnicos(campo) {
   return [...new Set(todosGastos.map((g) => g[campo]))];
 }
 
-function preencherSelect(select, valores, rotuloTodos) {
-  const valorAtual = select.value;
-  select.innerHTML = '';
+// ---------- Multiselect (checkboxes) ----------
 
-  const todos = document.createElement('option');
-  todos.value = '';
-  todos.textContent = rotuloTodos;
-  select.appendChild(todos);
+const todosMultiSelects = [];
 
-  valores.forEach((valor) => {
-    const opcao = document.createElement('option');
-    opcao.value = valor;
-    opcao.textContent = valor;
-    select.appendChild(opcao);
-  });
-
-  select.value = valorAtual;
-  if (select.selectedIndex === -1) select.value = '';
+function multiSelectCombina(root, valor) {
+  return root.selecionados.size === 0 || root.selecionados.has(valor);
 }
 
+function fecharMultiSelects(exceto) {
+  todosMultiSelects.forEach((root) => {
+    if (root === exceto) return;
+    root._painel.hidden = true;
+    root._botao.classList.remove('multiselect-aberto');
+  });
+}
+
+document.addEventListener('click', () => fecharMultiSelects());
+
+function atualizarTextoMultiSelect(root, campo, rotuloTodos) {
+  const n = root.selecionados.size;
+  root._texto.textContent = n === 0
+    ? rotuloTodos
+    : n === 1
+      ? [...root.selecionados][0]
+      : `${campo} (${n})`;
+}
+
+function criarMultiSelect(root) {
+  const rotulo = root.getAttribute('aria-label') || '';
+  root.classList.add('multiselect');
+  root.selecionados = new Set();
+  root.innerHTML = '';
+
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.className = 'multiselect-botao';
+  if (rotulo) botao.setAttribute('aria-label', rotulo);
+
+  const texto = document.createElement('span');
+  texto.className = 'multiselect-texto';
+  const seta = document.createElement('span');
+  seta.className = 'multiselect-seta';
+  seta.setAttribute('aria-hidden', 'true');
+  seta.textContent = '▾';
+  botao.append(texto, seta);
+
+  const painel = document.createElement('div');
+  painel.className = 'multiselect-painel';
+  painel.hidden = true;
+
+  botao.addEventListener('click', (evento) => {
+    evento.stopPropagation();
+    const vaiAbrir = painel.hidden;
+    fecharMultiSelects(root);
+    painel.hidden = !vaiAbrir;
+    botao.classList.toggle('multiselect-aberto', vaiAbrir);
+  });
+  painel.addEventListener('click', (evento) => evento.stopPropagation());
+
+  root.append(botao, painel);
+  root._botao = botao;
+  root._texto = texto;
+  root._painel = painel;
+  todosMultiSelects.push(root);
+}
+
+function popularMultiSelect(root, valores, rotuloTodos, campo, aoMudar) {
+  root.selecionados = new Set([...root.selecionados].filter((v) => valores.includes(v)));
+  root._painel.innerHTML = '';
+
+  valores.forEach((valor) => {
+    const item = document.createElement('label');
+    item.className = 'multiselect-item';
+
+    const caixa = document.createElement('input');
+    caixa.type = 'checkbox';
+    caixa.value = valor;
+    caixa.checked = root.selecionados.has(valor);
+    caixa.addEventListener('change', () => {
+      if (caixa.checked) root.selecionados.add(valor);
+      else root.selecionados.delete(valor);
+      atualizarTextoMultiSelect(root, campo, rotuloTodos);
+      aoMudar();
+    });
+
+    const span = document.createElement('span');
+    span.textContent = valor;
+
+    item.append(caixa, span);
+    root._painel.appendChild(item);
+  });
+
+  atualizarTextoMultiSelect(root, campo, rotuloTodos);
+}
+
+[filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal,
+  graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach(criarMultiSelect);
+
 function preencherFiltros() {
-  preencherSelect(filtroMes, valoresUnicos('Mês Pagamento').sort().reverse(), 'Mês: todos');
-  preencherSelect(filtroCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas');
-  preencherSelect(filtroCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas');
-  preencherSelect(filtroLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos');
+  popularMultiSelect(filtroMes, valoresUnicos('Mês Pagamento').sort().reverse(), 'Mês: todos', 'Mês', aplicarFiltros);
+  popularMultiSelect(filtroCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', aplicarFiltros);
+  popularMultiSelect(filtroCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', aplicarFiltros);
+  popularMultiSelect(filtroLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', aplicarFiltros);
 }
 
 function aplicarFiltros() {
   const filtrados = todosGastos.filter((g) =>
-    (!filtroMes.value || g['Mês Pagamento'] === filtroMes.value) &&
-    (!filtroCategoria.value || g.Categoria === filtroCategoria.value) &&
-    (!filtroCategoriaGeral.value || g['Categoria Geral'] === filtroCategoriaGeral.value) &&
-    (!filtroLocal.value || g.Local === filtroLocal.value)
+    multiSelectCombina(filtroMes, g['Mês Pagamento']) &&
+    multiSelectCombina(filtroCategoria, g.Categoria) &&
+    multiSelectCombina(filtroCategoriaGeral, g['Categoria Geral']) &&
+    multiSelectCombina(filtroLocal, g.Local)
   );
   renderizar(filtrados);
 }
-
-[filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal].forEach((select) => {
-  select.addEventListener('change', aplicarFiltros);
-});
 
 // ---------- Abas ----------
 
@@ -163,18 +237,18 @@ abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)))
 // ---------- Gráficos ----------
 
 function preencherFiltrosGrafico() {
-  preencherSelect(graficoCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas');
-  preencherSelect(graficoCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas');
-  preencherSelect(graficoLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos');
+  popularMultiSelect(graficoCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', renderizarGrafico);
+  popularMultiSelect(graficoCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', renderizarGrafico);
+  popularMultiSelect(graficoLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', renderizarGrafico);
 }
 
 function renderizarGrafico() {
   // Só gastos de verdade: pagamentos (salário CERN) ficam fora da soma.
   const filtrados = todosGastos.filter((g) =>
     g['Pagamento?'] !== 'Sim' &&
-    (!graficoCategoria.value || g.Categoria === graficoCategoria.value) &&
-    (!graficoCategoriaGeral.value || g['Categoria Geral'] === graficoCategoriaGeral.value) &&
-    (!graficoLocal.value || g.Local === graficoLocal.value)
+    multiSelectCombina(graficoCategoria, g.Categoria) &&
+    multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
+    multiSelectCombina(graficoLocal, g.Local)
   );
 
   const totais = {};
@@ -189,32 +263,28 @@ function renderizarGrafico() {
   graficoVazio.hidden = meses.length > 0;
 
   meses.forEach((mes) => {
-    const linha = document.createElement('div');
-    linha.className = 'barra-linha';
-
-    const rotulo = document.createElement('span');
-    rotulo.className = 'barra-rotulo';
-    rotulo.textContent = mes;
-
-    const trilha = document.createElement('div');
-    trilha.className = 'barra-trilha';
-    const barra = document.createElement('div');
-    barra.className = 'barra';
-    barra.style.width = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
-    trilha.appendChild(barra);
+    const coluna = document.createElement('div');
+    coluna.className = 'barra-coluna';
 
     const valor = document.createElement('span');
     valor.className = 'barra-valor';
     valor.textContent = formatarMoeda(totais[mes]);
 
-    linha.append(rotulo, trilha, valor);
-    graficoMensal.appendChild(linha);
+    const trilha = document.createElement('div');
+    trilha.className = 'barra-trilha';
+    const barra = document.createElement('div');
+    barra.className = 'barra';
+    barra.style.height = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
+    trilha.appendChild(barra);
+
+    const rotulo = document.createElement('span');
+    rotulo.className = 'barra-rotulo';
+    rotulo.textContent = mes;
+
+    coluna.append(valor, trilha, rotulo);
+    graficoMensal.appendChild(coluna);
   });
 }
-
-[graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach((select) => {
-  select.addEventListener('change', renderizarGrafico);
-});
 
 // ---------- Adicionar gasto ----------
 
