@@ -12,7 +12,15 @@ from transform_db import prepare_data
 
 load_dotenv()
 
-TURSO_DATABASE_URL = os.environ["TURSO_DATABASE_URL"]
+def _forcar_http(url: str) -> str:
+    # O esquema libsql:// usa WebSocket (wss://), que falha em alguns hosts
+    # (ex: Render). https:// usa o mesmo protocolo Hrana só que sobre HTTP puro.
+    if url.startswith("libsql://"):
+        return "https://" + url[len("libsql://"):]
+    return url
+
+
+TURSO_DATABASE_URL = _forcar_http(os.environ["TURSO_DATABASE_URL"])
 TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
 API_TOKEN = os.environ["API_TOKEN"]
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
