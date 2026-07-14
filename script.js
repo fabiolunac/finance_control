@@ -363,11 +363,11 @@ function renderizar(gastos) {
     const celulas = [
       formatarData(gasto.Data),
       gasto.Local,
+      formatarMoeda(gasto.Valor),
       gasto.Categoria,
       gasto['Categoria Geral'],
       // gasto.banco,
       // gasto.tipo,
-      formatarMoeda(gasto.Valor),
       // formatarMoeda(gasto.Saldo),
       gasto['Mês Pagamento'],
     ];
