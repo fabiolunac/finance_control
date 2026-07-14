@@ -236,11 +236,27 @@ body {
 
 .novo-gasto input:focus { border-color: var(--acento); }
 
-#campo-data  { flex: 1 1 140px; }
-#campo-local { flex: 2 1 200px; }
-#campo-valor { flex: 1 1 110px; }
-#campo-tipo  { flex: 1 1 120px; }
-#campo-banco { flex: 1 1 120px; }
+.novo-gasto select {
+  font: inherit;
+  font-size: 1rem;
+  padding: 13px 16px;
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  color: var(--tinta);
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.novo-gasto select:focus { border-color: var(--acento); }
+
+#campo-data   { flex: 1 1 140px; }
+#campo-local  { flex: 2 1 200px; }
+#campo-valor  { flex: 1 1 110px; }
+#campo-moeda  { flex: 0 1 90px; }
+#campo-tipo   { flex: 1 1 120px; }
+#campo-banco  { flex: 1 1 120px; }
 
 .novo-gasto button {
   font: inherit;

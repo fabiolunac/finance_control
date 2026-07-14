@@ -33,6 +33,7 @@ const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
 const campoLocal = document.getElementById('campo-local');
 const campoValor = document.getElementById('campo-valor');
+const campoMoeda = document.getElementById('campo-moeda');
 const campoTipo = document.getElementById('campo-tipo');
 const campoBanco = document.getElementById('campo-banco');
 const opcoesTipo = document.getElementById('opcoes-tipo');
@@ -302,22 +303,34 @@ function preencherSugestoes() {
   preencherDatalist(opcoesBanco, valoresUnicos('banco').sort((a, b) => a.localeCompare(b)));
 }
 
+async function converterEurParaChf(valorEur) {
+  const resposta = await fetch('https://api.frankfurter.app/latest?from=EUR&to=CHF');
+  if (!resposta.ok) throw new Error('Não foi possível obter a cotação EUR → CHF.');
+  const { rates } = await resposta.json();
+  if (!rates || !rates.CHF) throw new Error('Não foi possível obter a cotação EUR → CHF.');
+  return valorEur * rates.CHF;
+}
+
 async function adicionar(evento) {
   evento.preventDefault();
   erro.hidden = true;
   sucesso.hidden = true;
 
+  const valorDigitado = parseFloat(campoValor.value);
+  const moeda = campoMoeda.value;
+
   const gasto = {
     Data: campoData.value,
     Local: campoLocal.value.trim(),
-    Valor: parseFloat(campoValor.value),
     tipo: campoTipo.value.trim(),
     banco: campoBanco.value.trim(),
   };
 
-  if (!gasto.Data || !gasto.Local || Number.isNaN(gasto.Valor) || !gasto.tipo || !gasto.banco) return;
+  if (!gasto.Data || !gasto.Local || Number.isNaN(valorDigitado) || !gasto.tipo || !gasto.banco) return;
 
   try {
+    gasto.Valor = moeda === 'EUR' ? await converterEurParaChf(valorDigitado) : valorDigitado;
+
     const resposta = await fetch(`${API_URL}/api/gastos`, {
       method: 'POST',
       headers: {
@@ -339,6 +352,7 @@ async function adicionar(evento) {
     sucesso.hidden = false;
     campoLocal.value = '';
     campoValor.value = '';
+    campoMoeda.value = 'CHF';
     campoLocal.focus();
 
     await carregar();
