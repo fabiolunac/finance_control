@@ -88,3 +88,12 @@ def adicionar_gasto(gasto: NovoGasto, _=Depends(checar_token)):
         client.close()
 
     return {"ok": True}
+
+
+@app.delete("/api/gastos/{rowid}", status_code=204)
+def remover_gasto(rowid: int, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute("DELETE FROM gastos WHERE rowid = ?", [rowid])
+    finally:
+        client.close()

@@ -446,8 +446,44 @@ function renderizar(gastos) {
       tr.appendChild(td);
     });
 
+    const tdAcoes = document.createElement('td');
+    tdAcoes.className = 'col-acoes';
+    const botaoRemover = document.createElement('button');
+    botaoRemover.type = 'button';
+    botaoRemover.className = 'botao-remover';
+    botaoRemover.textContent = '×';
+    botaoRemover.setAttribute('aria-label', `Remover gasto de ${gasto.Local}`);
+    botaoRemover.addEventListener('click', () => removerGasto(gasto.rowid, gasto.Local));
+    tdAcoes.appendChild(botaoRemover);
+    tr.appendChild(tdAcoes);
+
     corpoTabela.appendChild(tr);
   });
+}
+
+async function removerGasto(rowid, local) {
+  if (!confirm(`Remover o gasto "${local}"? Essa ação não pode ser desfeita.`)) return;
+
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/gastos/${rowid}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${obterToken()}` },
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao remover no servidor.');
+    }
+
+    await carregar();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
 }
 
 // ---------- Indicador online/offline ----------
