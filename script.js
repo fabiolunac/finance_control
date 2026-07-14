@@ -357,7 +357,7 @@ function preencherSugestoes() {
 }
 
 async function converterEurParaChf(valorEur) {
-  const resposta = await fetch('https://api.frankfurter.app/latest?from=EUR&to=CHF');
+  const resposta = await fetch('https://api.frankfurter.dev/v1/latest?from=EUR&to=CHF');
   if (!resposta.ok) throw new Error('Não foi possível obter a cotação EUR → CHF.');
   const { rates } = await resposta.json();
   if (!rates || !rates.CHF) throw new Error('Não foi possível obter a cotação EUR → CHF.');
