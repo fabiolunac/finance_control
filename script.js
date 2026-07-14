@@ -253,11 +253,11 @@ function preencherFiltrosGrafico() {
   preencherFiltroDiario();
 }
 
-function renderizarBarras(container, totais, rotulos) {
-  const maximo = Math.max(...rotulos.map((r) => totais[r]), 0);
+function renderizarBarras(container, entradas) {
+  const maximo = Math.max(...entradas.map(([, valorTotal]) => valorTotal), 0);
   container.innerHTML = '';
 
-  rotulos.forEach((rotuloTexto) => {
+  entradas.forEach(([rotuloTexto, valorTotal]) => {
     const linha = document.createElement('div');
     linha.className = 'barra-linha';
 
@@ -269,12 +269,12 @@ function renderizarBarras(container, totais, rotulos) {
     trilha.className = 'barra-trilha';
     const barra = document.createElement('div');
     barra.className = 'barra';
-    barra.style.width = maximo ? `${(totais[rotuloTexto] / maximo) * 100}%` : '0%';
+    barra.style.width = maximo ? `${(valorTotal / maximo) * 100}%` : '0%';
     trilha.appendChild(barra);
 
     const valor = document.createElement('span');
     valor.className = 'barra-valor';
-    valor.textContent = formatarMoeda(totais[rotuloTexto]);
+    valor.textContent = formatarMoeda(valorTotal);
 
     linha.append(rotulo, trilha, valor);
     container.appendChild(linha);
@@ -301,7 +301,7 @@ function renderizarGrafico() {
 
   const meses = Object.keys(totais).sort();
   graficoVazio.hidden = meses.length > 0;
-  renderizarBarras(graficoMensal, totais, meses);
+  renderizarBarras(graficoMensal, meses.map((mes) => [mes, totais[mes]]));
 }
 
 function preencherFiltroDiario() {
@@ -324,13 +324,18 @@ function renderizarGraficoDiario() {
 
   const totais = {};
   filtrados.forEach((g) => {
-    const dia = g.Data.slice(8, 10);
-    totais[dia] = (totais[dia] || 0) + g.Valor;
+    const data = g.Data.slice(0, 10);
+    totais[data] = (totais[data] || 0) + g.Valor;
   });
 
-  const dias = Object.keys(totais).sort();
-  graficoDiarioVazio.hidden = dias.length > 0;
-  renderizarBarras(graficoDiario, totais, dias);
+  const datas = Object.keys(totais).sort();
+  graficoDiarioVazio.hidden = datas.length > 0;
+
+  const entradas = datas.map((data) => {
+    const [, mes, dia] = data.split('-');
+    return [`${dia}/${mes}`, totais[data]];
+  });
+  renderizarBarras(graficoDiario, entradas);
 }
 
 graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
