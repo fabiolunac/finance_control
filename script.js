@@ -1,6 +1,7 @@
 /* ============================================================
    Controle de Gastos — só visualização.
-   Busca a tabela final já tratada (pandas no backend) e exibe.
+   Busca a tabela final já tratada (pandas no backend) e exibe,
+   com filtros por mês de pagamento, categoria e local.
    ============================================================ */
 
 const API_URL = 'https://finance-control-99hx.onrender.com';
@@ -9,6 +10,13 @@ const statusRede = document.getElementById('status-rede');
 const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
+
+const filtroMes = document.getElementById('filtro-mes');
+const filtroCategoria = document.getElementById('filtro-categoria');
+const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
+const filtroLocal = document.getElementById('filtro-local');
+
+let todosGastos = [];
 
 // ---------- Token de acesso ----------
 
@@ -32,7 +40,7 @@ function formatarData(dataIso) {
   return `${dia}/${mes}/${ano}`;
 }
 
-// ---------- Carregamento e renderização ----------
+// ---------- Carregamento ----------
 
 async function carregar() {
   erro.hidden = true;
@@ -50,12 +58,63 @@ async function carregar() {
     }
 
     const { gastos } = await resposta.json();
-    renderizar(gastos);
+    todosGastos = gastos;
+    preencherFiltros();
+    aplicarFiltros();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
   }
 }
+
+// ---------- Filtros ----------
+
+function valoresUnicos(campo) {
+  return [...new Set(todosGastos.map((g) => g[campo]))];
+}
+
+function preencherSelect(select, valores, rotuloTodos) {
+  const valorAtual = select.value;
+  select.innerHTML = '';
+
+  const todos = document.createElement('option');
+  todos.value = '';
+  todos.textContent = rotuloTodos;
+  select.appendChild(todos);
+
+  valores.forEach((valor) => {
+    const opcao = document.createElement('option');
+    opcao.value = valor;
+    opcao.textContent = valor;
+    select.appendChild(opcao);
+  });
+
+  select.value = valorAtual;
+  if (select.selectedIndex === -1) select.value = '';
+}
+
+function preencherFiltros() {
+  preencherSelect(filtroMes, valoresUnicos('Mês Pagamento').sort().reverse(), 'Mês: todos');
+  preencherSelect(filtroCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas');
+  preencherSelect(filtroCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas');
+  preencherSelect(filtroLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos');
+}
+
+function aplicarFiltros() {
+  const filtrados = todosGastos.filter((g) =>
+    (!filtroMes.value || g['Mês Pagamento'] === filtroMes.value) &&
+    (!filtroCategoria.value || g.Categoria === filtroCategoria.value) &&
+    (!filtroCategoriaGeral.value || g['Categoria Geral'] === filtroCategoriaGeral.value) &&
+    (!filtroLocal.value || g.Local === filtroLocal.value)
+  );
+  renderizar(filtrados);
+}
+
+[filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal].forEach((select) => {
+  select.addEventListener('change', aplicarFiltros);
+});
+
+// ---------- Renderização ----------
 
 function renderizar(gastos) {
   corpoTabela.innerHTML = '';

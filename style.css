@@ -84,6 +84,57 @@ body {
   padding: 20px;
 }
 
+/* ---------- Abas ---------- */
+
+.abas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.aba {
+  flex: 1;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 10px;
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  color: var(--tinta-fraca);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.aba-ativa {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+
+/* ---------- Filtros ---------- */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filtros select {
+  flex: 1 1 160px;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.filtros select:focus { border-color: var(--acento); outline: none; }
+
 /* ---------- Erro ---------- */
 
 .erro {
