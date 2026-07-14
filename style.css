@@ -135,7 +135,7 @@ body {
 
 .filtros select:focus { border-color: var(--acento); outline: none; }
 
-/* ---------- Erro ---------- */
+/* ---------- Erro / sucesso ---------- */
 
 .erro {
   background: #FBE9E9;
@@ -145,6 +145,58 @@ body {
   margin-bottom: 16px;
   font-size: 0.9rem;
 }
+
+.sucesso {
+  background: rgba(14, 159, 110, .12);
+  color: var(--sucesso);
+  border-radius: var(--raio);
+  padding: 10px 14px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+}
+
+/* ---------- Formulário de novo gasto ---------- */
+
+.novo-gasto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.novo-gasto input {
+  font: inherit;
+  font-size: 1rem;
+  padding: 13px 16px;
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  color: var(--tinta);
+  outline: none;
+  transition: border-color .15s;
+}
+
+.novo-gasto input:focus { border-color: var(--acento); }
+
+#campo-data  { flex: 1 1 140px; }
+#campo-local { flex: 2 1 200px; }
+#campo-valor { flex: 1 1 110px; }
+#campo-tipo  { flex: 1 1 120px; }
+#campo-banco { flex: 1 1 120px; }
+
+.novo-gasto button {
+  font: inherit;
+  font-weight: 600;
+  padding: 13px 20px;
+  border: none;
+  border-radius: var(--raio);
+  background: var(--acento);
+  color: #fff;
+  cursor: pointer;
+  transition: transform .1s, opacity .15s;
+}
+
+.novo-gasto button:hover  { opacity: .92; }
+.novo-gasto button:active { transform: scale(.97); }
 
 /* ---------- Tabela ---------- */
 

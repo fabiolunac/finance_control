@@ -5,6 +5,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from transform_db import prepare_data
 
@@ -65,3 +66,25 @@ def listar_gastos(_=Depends(checar_token)):
     df["Mês Pagamento"] = df["Mês Pagamento"].astype(str)
 
     return {"gastos": df.to_dict(orient="records")}
+
+
+class NovoGasto(BaseModel):
+    Data: str
+    Local: str
+    Valor: float
+    tipo: str = "Gasto"
+    banco: str = "yuh"
+
+
+@app.post("/api/gastos", status_code=201)
+def adicionar_gasto(gasto: NovoGasto, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute(
+            "INSERT INTO gastos (Data, Local, Valor, banco, tipo) VALUES (?, ?, ?, ?, ?)",
+            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo],
+        )
+    finally:
+        client.close()
+
+    return {"ok": True}

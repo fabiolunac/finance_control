@@ -28,37 +28,59 @@
 
     <div class="abas">
       <button id="aba-tabela" class="aba aba-ativa" type="button">Tabela</button>
+      <button id="aba-adicionar" class="aba" type="button">Adicionar</button>
     </div>
 
     <p id="erro" class="erro" hidden></p>
 
-    <div class="filtros">
-      <select id="filtro-mes" aria-label="Filtrar por mês de pagamento"></select>
-      <select id="filtro-categoria" aria-label="Filtrar por categoria"></select>
-      <select id="filtro-categoria-geral" aria-label="Filtrar por categoria geral"></select>
-      <select id="filtro-local" aria-label="Filtrar por local"></select>
-    </div>
+    <section id="secao-tabela">
 
-    <div class="tabela-wrap">
-      <table class="tabela">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Local</th>
-            <th>Categoria</th>
-            <th>Categoria Geral</th>
-            <th>Banco</th>
-            <th>Tipo</th>
-            <th class="col-valor">Valor</th>
-            <th class="col-valor">Saldo</th>
-            <th>Mês Pagamento</th>
-          </tr>
-        </thead>
-        <tbody id="corpo-tabela" aria-live="polite"></tbody>
-      </table>
-    </div>
+      <div class="filtros">
+        <select id="filtro-mes" aria-label="Filtrar por mês de pagamento"></select>
+        <select id="filtro-categoria" aria-label="Filtrar por categoria"></select>
+        <select id="filtro-categoria-geral" aria-label="Filtrar por categoria geral"></select>
+        <select id="filtro-local" aria-label="Filtrar por local"></select>
+      </div>
 
-    <p id="vazio" class="vazio" hidden>Nenhum gasto registrado.</p>
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Local</th>
+              <th>Categoria</th>
+              <th>Categoria Geral</th>
+              <th>Banco</th>
+              <th>Tipo</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-valor">Saldo</th>
+              <th>Mês Pagamento</th>
+            </tr>
+          </thead>
+          <tbody id="corpo-tabela" aria-live="polite"></tbody>
+        </table>
+      </div>
+
+      <p id="vazio" class="vazio" hidden>Nenhum gasto registrado.</p>
+
+    </section>
+
+    <section id="secao-adicionar" hidden>
+
+      <form id="form-gasto" class="novo-gasto">
+        <input id="campo-data" type="date" required>
+        <input id="campo-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" required>
+        <input id="campo-valor" type="number" step="0.01" min="0" placeholder="Valor" required>
+        <input id="campo-tipo" list="opcoes-tipo" value="Gasto" placeholder="Tipo" required>
+        <datalist id="opcoes-tipo"></datalist>
+        <input id="campo-banco" list="opcoes-banco" value="yuh" placeholder="Banco" required>
+        <datalist id="opcoes-banco"></datalist>
+        <button type="submit">Adicionar</button>
+      </form>
+
+      <p id="sucesso" class="sucesso" hidden></p>
+
+    </section>
 
   </main>
 

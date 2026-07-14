@@ -11,10 +11,25 @@ const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
 
+const abaTabela = document.getElementById('aba-tabela');
+const abaAdicionar = document.getElementById('aba-adicionar');
+const secaoTabela = document.getElementById('secao-tabela');
+const secaoAdicionar = document.getElementById('secao-adicionar');
+
 const filtroMes = document.getElementById('filtro-mes');
 const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
 const filtroLocal = document.getElementById('filtro-local');
+
+const formGasto = document.getElementById('form-gasto');
+const campoData = document.getElementById('campo-data');
+const campoLocal = document.getElementById('campo-local');
+const campoValor = document.getElementById('campo-valor');
+const campoTipo = document.getElementById('campo-tipo');
+const campoBanco = document.getElementById('campo-banco');
+const opcoesTipo = document.getElementById('opcoes-tipo');
+const opcoesBanco = document.getElementById('opcoes-banco');
+const sucesso = document.getElementById('sucesso');
 
 let todosGastos = [];
 
@@ -60,6 +75,7 @@ async function carregar() {
     const { gastos } = await resposta.json();
     todosGastos = gastos;
     preencherFiltros();
+    preencherSugestoes();
     aplicarFiltros();
   } catch (e) {
     erro.textContent = e.message;
@@ -114,6 +130,84 @@ function aplicarFiltros() {
   select.addEventListener('change', aplicarFiltros);
 });
 
+// ---------- Abas ----------
+
+function selecionarAba(adicionar) {
+  abaTabela.classList.toggle('aba-ativa', !adicionar);
+  abaAdicionar.classList.toggle('aba-ativa', adicionar);
+  secaoTabela.hidden = adicionar;
+  secaoAdicionar.hidden = !adicionar;
+  erro.hidden = true;
+  sucesso.hidden = true;
+}
+
+abaTabela.addEventListener('click', () => selecionarAba(false));
+abaAdicionar.addEventListener('click', () => selecionarAba(true));
+
+// ---------- Adicionar gasto ----------
+
+function preencherDatalist(datalist, valores) {
+  datalist.innerHTML = '';
+  valores.forEach((valor) => {
+    const opcao = document.createElement('option');
+    opcao.value = valor;
+    datalist.appendChild(opcao);
+  });
+}
+
+function preencherSugestoes() {
+  preencherDatalist(opcoesTipo, valoresUnicos('tipo').sort((a, b) => a.localeCompare(b)));
+  preencherDatalist(opcoesBanco, valoresUnicos('banco').sort((a, b) => a.localeCompare(b)));
+}
+
+async function adicionar(evento) {
+  evento.preventDefault();
+  erro.hidden = true;
+  sucesso.hidden = true;
+
+  const gasto = {
+    Data: campoData.value,
+    Local: campoLocal.value.trim(),
+    Valor: parseFloat(campoValor.value),
+    tipo: campoTipo.value.trim(),
+    banco: campoBanco.value.trim(),
+  };
+
+  if (!gasto.Data || !gasto.Local || Number.isNaN(gasto.Valor) || !gasto.tipo || !gasto.banco) return;
+
+  try {
+    const resposta = await fetch(`${API_URL}/api/gastos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${obterToken()}`,
+      },
+      body: JSON.stringify(gasto),
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao gravar no servidor.');
+    }
+
+    sucesso.textContent = `Adicionado: ${gasto.Local} — ${formatarMoeda(gasto.Valor)} (${formatarData(gasto.Data)})`;
+    sucesso.hidden = false;
+    campoLocal.value = '';
+    campoValor.value = '';
+    campoLocal.focus();
+
+    await carregar();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+formGasto.addEventListener('submit', adicionar);
+
 // ---------- Renderização ----------
 
 function renderizar(gastos) {
@@ -160,5 +254,6 @@ window.addEventListener('offline', atualizarRede);
 
 // ---------- Início ----------
 
+campoData.value = new Date().toISOString().slice(0, 10);
 atualizarRede();
 carregar();
