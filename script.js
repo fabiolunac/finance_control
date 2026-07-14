@@ -367,7 +367,7 @@ function renderizar(gastos) {
       gasto.Categoria,
       gasto['Categoria Geral'],
       // gasto.banco,
-      // gasto.tipo,
+      gasto.tipo,
       // formatarMoeda(gasto.Saldo),
       gasto['Mês Pagamento'],
     ];
@@ -375,7 +375,7 @@ function renderizar(gastos) {
     celulas.forEach((texto, i) => {
       const td = document.createElement('td');
       td.textContent = texto;
-      if (i === 6 || i === 7) td.className = 'col-valor';
+      if (i === 2) td.className = 'col-valor';
       tr.appendChild(td);
     });
 
