@@ -39,7 +39,7 @@ body {
 }
 
 .topo-inner {
-  max-width: 560px;
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -79,87 +79,10 @@ body {
 .conteudo {
   flex: 1;
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
 }
-
-/* ---------- Abas ---------- */
-
-.abas {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.aba {
-  flex: 1;
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 10px;
-  border: 1.5px solid var(--borda);
-  border-radius: var(--raio);
-  background: var(--cartao);
-  color: var(--tinta-fraca);
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-
-.aba-ativa {
-  background: var(--acento);
-  border-color: var(--acento);
-  color: #fff;
-}
-
-/* ---------- Seletor de mês ---------- */
-
-.barra-mes {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.barra-mes input[type="month"] {
-  flex: 1;
-  font: inherit;
-  font-size: 0.95rem;
-  padding: 10px 14px;
-  border: 1.5px solid var(--borda);
-  border-radius: var(--raio);
-  background: var(--cartao);
-  color: var(--tinta);
-}
-
-.botao-mes {
-  font: inherit;
-  font-size: 1.1rem;
-  width: 40px;
-  height: 40px;
-  border: 1.5px solid var(--borda);
-  border-radius: var(--raio);
-  background: var(--cartao);
-  color: var(--tinta);
-  cursor: pointer;
-}
-
-.botao-mes:hover { background: var(--acento-suave); }
-
-/* ---------- Total do mês ---------- */
-
-.total-mes {
-  font-size: 0.95rem;
-  color: var(--tinta-fraca);
-  background: var(--cartao);
-  border: 1px solid var(--borda);
-  border-radius: var(--raio);
-  padding: 13px 16px;
-  margin-bottom: 20px;
-  box-shadow: var(--sombra);
-}
-
-.total-mes strong { color: var(--tinta); font-size: 1.1rem; }
 
 /* ---------- Erro ---------- */
 
@@ -172,49 +95,6 @@ body {
   font-size: 0.9rem;
 }
 
-/* ---------- Formulário de novo gasto ---------- */
-
-.novo-gasto {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.novo-gasto input {
-  font: inherit;
-  font-size: 1rem;
-  padding: 13px 16px;
-  border: 1.5px solid var(--borda);
-  border-radius: var(--raio);
-  background: var(--cartao);
-  color: var(--tinta);
-  outline: none;
-  transition: border-color .15s;
-}
-
-.novo-gasto input:focus { border-color: var(--acento); }
-
-#campo-data   { flex: 1 1 140px; }
-#campo-local  { flex: 2 1 200px; }
-#campo-valor  { flex: 1 1 110px; }
-
-.novo-gasto button {
-  font: inherit;
-  font-weight: 600;
-  padding: 0 20px;
-  border: none;
-  border-radius: var(--raio);
-  background: var(--acento);
-  color: #fff;
-  cursor: pointer;
-  transition: transform .1s, opacity .15s;
-}
-
-.novo-gasto button:hover  { opacity: .92; }
-.novo-gasto button:active { transform: scale(.97); }
-.novo-gasto button:disabled { opacity: .5; cursor: not-allowed; }
-
 /* ---------- Tabela ---------- */
 
 .tabela-wrap {
@@ -223,7 +103,6 @@ body {
   border: 1px solid var(--borda);
   border-radius: var(--raio);
   box-shadow: var(--sombra);
-  margin-bottom: 12px;
 }
 
 .tabela {
@@ -258,20 +137,6 @@ body {
 .tabela tbody tr.linha-pagamento:hover { background: rgba(14, 159, 110, .16); }
 
 .tabela .col-valor { text-align: right; font-weight: 600; }
-.tabela .col-acao  { width: 1%; }
-
-.tabela .remover {
-  border: none;
-  background: none;
-  color: var(--tinta-fraca);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 8px;
-  transition: background .15s, color .15s;
-}
-
-.tabela .remover:hover { background: #FBE9E9; color: #C0392B; }
 
 .vazio {
   text-align: center;
@@ -280,34 +145,3 @@ body {
   line-height: 1.5;
   padding: 40px 24px;
 }
-
-/* ---------- Botão de instalar ---------- */
-
-.instalar {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-  left: 50%;
-  transform: translateX(-50%);
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 13px 22px;
-  border: none;
-  border-radius: 99px;
-  background: var(--acento);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(36, 71, 249, .35);
-  cursor: pointer;
-}
-
-/* ---------- Rodapé ---------- */
-
-.rodape {
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--tinta-fraca);
-  padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
-}
-
-/* Foco visível para navegação por teclado */
-:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }

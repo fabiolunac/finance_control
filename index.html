@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Gastos</title>
-  <meta name="description" content="Controle de gastos pessoal, sincronizado entre dispositivos, instalável como aplicativo.">
+  <meta name="description" content="Tabela de gastos tratada, sincronizada entre dispositivos.">
 
   <!-- PWA: manifesto e cor do tema (barra do navegador/celular) -->
   <link rel="manifest" href="manifest.json">
@@ -26,73 +26,30 @@
 
   <main class="conteudo">
 
-    <div class="abas abas-principais">
-      <button id="aba-adicionar" class="aba aba-ativa" type="button">Adicionar</button>
-      <button id="aba-visualizar" class="aba" type="button">Visualizar</button>
-    </div>
-
     <p id="erro" class="erro" hidden></p>
 
-    <section id="secao-adicionar">
-      <form id="form-gasto" class="novo-gasto">
-        <input id="campo-data" type="date" required>
-        <input id="campo-local" type="text" placeholder="Onde foi o gasto?" autocomplete="off" maxlength="120" required>
-        <input id="campo-valor" type="number" step="0.01" min="0" placeholder="Valor" required>
-        <button id="botao-adicionar" type="submit" title="Adicionar gasto">Adicionar</button>
-      </form>
-    </section>
+    <div class="tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Local</th>
+            <th>Categoria</th>
+            <th>Categoria Geral</th>
+            <th>Banco</th>
+            <th>Tipo</th>
+            <th class="col-valor">Valor</th>
+            <th class="col-valor">Saldo</th>
+            <th>Mês Pagamento</th>
+          </tr>
+        </thead>
+        <tbody id="corpo-tabela" aria-live="polite"></tbody>
+      </table>
+    </div>
 
-    <section id="secao-visualizar" hidden>
-
-      <div class="abas">
-        <button id="aba-mes" class="aba aba-ativa" type="button">Por mês</button>
-        <button id="aba-tudo" class="aba" type="button">Tudo</button>
-      </div>
-
-      <div id="barra-mes" class="barra-mes">
-        <button id="mes-anterior" class="botao-mes" aria-label="Mês anterior">‹</button>
-        <input id="campo-mes" type="month" aria-label="Selecionar mês">
-        <button id="mes-seguinte" class="botao-mes" aria-label="Próximo mês">›</button>
-      </div>
-
-      <div class="total-mes">
-        <span id="rotulo-total">Total do mês:</span> <strong id="valor-total">R$ 0,00</strong>
-      </div>
-
-      <div class="tabela-wrap">
-        <table class="tabela">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Local</th>
-              <th>Categoria</th>
-              <th>Banco</th>
-              <th>Tipo</th>
-              <th class="col-valor">Valor</th>
-              <th class="col-valor">Saldo</th>
-              <th class="col-acao"></th>
-            </tr>
-          </thead>
-          <tbody id="corpo-tabela" aria-live="polite"></tbody>
-        </table>
-      </div>
-
-      <p id="vazio" class="vazio">
-        Nenhum gasto neste mês ainda. Adicione o primeiro acima.
-      </p>
-
-    </section>
+    <p id="vazio" class="vazio" hidden>Nenhum gasto registrado.</p>
 
   </main>
-
-  <!-- Botão de instalar: só aparece quando o navegador permite -->
-  <button id="botao-instalar" class="instalar" hidden>
-    ⬇ Instalar como aplicativo
-  </button>
-
-  <footer class="rodape">
-    Feito com HTML, CSS e JS · hospedado no GitHub Pages · dados sincronizados via API
-  </footer>
 
   <script src="script.js"></script>
 

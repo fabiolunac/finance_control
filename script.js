@@ -1,35 +1,11 @@
 /* ============================================================
-   Controle de Gastos — lógica do aplicativo
-   Os dados ficam num backend (API + banco na nuvem), sincronizados
-   entre dispositivos. Precisa de rede para ler/gravar.
+   Controle de Gastos — só visualização.
+   Busca a tabela final já tratada (pandas no backend) e exibe.
    ============================================================ */
 
-// Preencha com a URL do seu backend depois do deploy (ver README.md)
 const API_URL = 'https://finance-control-99hx.onrender.com';
 
 const statusRede = document.getElementById('status-rede');
-const botaoInstalar = document.getElementById('botao-instalar');
-
-const abaAdicionar = document.getElementById('aba-adicionar');
-const abaVisualizar = document.getElementById('aba-visualizar');
-const secaoAdicionar = document.getElementById('secao-adicionar');
-const secaoVisualizar = document.getElementById('secao-visualizar');
-
-const abaMes = document.getElementById('aba-mes');
-const abaTudo = document.getElementById('aba-tudo');
-const barraMes = document.getElementById('barra-mes');
-const campoMes = document.getElementById('campo-mes');
-const mesAnterior = document.getElementById('mes-anterior');
-const mesSeguinte = document.getElementById('mes-seguinte');
-const rotuloTotal = document.getElementById('rotulo-total');
-const valorTotal = document.getElementById('valor-total');
-
-const formGasto = document.getElementById('form-gasto');
-const campoData = document.getElementById('campo-data');
-const campoLocal = document.getElementById('campo-local');
-const campoValor = document.getElementById('campo-valor');
-const botaoAdicionar = document.getElementById('botao-adicionar');
-
 const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
@@ -45,37 +21,7 @@ function obterToken() {
   return token;
 }
 
-async function chamarApi(caminho, opcoes = {}) {
-  const resposta = await fetch(`${API_URL}${caminho}`, {
-    ...opcoes,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${obterToken()}`,
-      ...(opcoes.headers || {}),
-    },
-  });
-
-  if (resposta.status === 401) {
-    localStorage.removeItem('apiToken');
-    throw new Error('Código de acesso inválido.');
-  }
-  if (!resposta.ok) {
-    const corpo = await resposta.json().catch(() => ({}));
-    throw new Error(corpo.erro || 'Erro ao falar com o servidor.');
-  }
-  return resposta.json();
-}
-
-// ---------- Estado ----------
-
-function mesFormatado(data) {
-  return data.toISOString().slice(0, 7); // YYYY-MM
-}
-
-let mesSelecionado = mesFormatado(new Date());
-let modoTudo = false;
-
-// ---------- Renderização ----------
+// ---------- Formatação ----------
 
 function formatarMoeda(valor) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'CHF' });
@@ -86,155 +32,61 @@ function formatarData(dataIso) {
   return `${dia}/${mes}/${ano}`;
 }
 
-function renderizar(gastos, total) {
+// ---------- Carregamento e renderização ----------
+
+async function carregar() {
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/gastos`, {
+      headers: { Authorization: `Bearer ${obterToken()}` },
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao falar com o servidor.');
+    }
+
+    const { gastos } = await resposta.json();
+    renderizar(gastos);
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+function renderizar(gastos) {
   corpoTabela.innerHTML = '';
-  vazio.style.display = gastos.length ? 'none' : 'block';
-  valorTotal.textContent = formatarMoeda(total);
+  vazio.hidden = gastos.length > 0;
 
   gastos.forEach((gasto) => {
     const tr = document.createElement('tr');
-
-    const tdData = document.createElement('td');
-    tdData.textContent = formatarData(gasto.Data);
-
-    const tdLocal = document.createElement('td');
-    tdLocal.textContent = gasto.Local;
-
-    const tdCategoria = document.createElement('td');
-    tdCategoria.textContent = gasto.Categoria;
-
-    const tdBanco = document.createElement('td');
-    tdBanco.textContent = gasto.banco;
-
-    const tdTipo = document.createElement('td');
-    tdTipo.textContent = gasto.tipo;
-
-    const tdValor = document.createElement('td');
-    tdValor.className = 'col-valor';
-    tdValor.textContent = formatarMoeda(gasto.Valor);
-
-    const tdSaldo = document.createElement('td');
-    tdSaldo.className = 'col-valor';
-    tdSaldo.textContent = formatarMoeda(gasto.Saldo);
-
-    const tdAcao = document.createElement('td');
-    tdAcao.className = 'col-acao';
-    const remover = document.createElement('button');
-    remover.className = 'remover';
-    remover.textContent = '✕';
-    remover.setAttribute('aria-label', 'Remover gasto');
-    remover.addEventListener('click', () => excluir(gasto.rowid));
-    tdAcao.appendChild(remover);
-
     if (gasto['Pagamento?'] === 'Sim') tr.classList.add('linha-pagamento');
 
-    tr.append(tdData, tdLocal, tdCategoria, tdBanco, tdTipo, tdValor, tdSaldo, tdAcao);
+    const celulas = [
+      formatarData(gasto.Data),
+      gasto.Local,
+      gasto.Categoria,
+      gasto['Categoria Geral'],
+      gasto.banco,
+      gasto.tipo,
+      formatarMoeda(gasto.Valor),
+      formatarMoeda(gasto.Saldo),
+      gasto['Mês Pagamento'],
+    ];
+
+    celulas.forEach((texto, i) => {
+      const td = document.createElement('td');
+      td.textContent = texto;
+      if (i === 6 || i === 7) td.className = 'col-valor';
+      tr.appendChild(td);
+    });
+
     corpoTabela.appendChild(tr);
   });
 }
-
-function mostrarErro(mensagem) {
-  erro.textContent = mensagem;
-  erro.hidden = !mensagem;
-}
-
-// ---------- Ações ----------
-
-async function carregar() {
-  mostrarErro('');
-  try {
-    const caminho = modoTudo ? '/api/gastos?todos=1' : `/api/gastos?mes=${mesSelecionado}`;
-    const dados = await chamarApi(caminho);
-    vazio.textContent = modoTudo
-      ? 'Nenhum gasto registrado ainda.'
-      : 'Nenhum gasto neste mês ainda. Adicione o primeiro acima.';
-    renderizar(dados.gastos, dados.total);
-  } catch (e) {
-    mostrarErro(e.message);
-  }
-}
-
-async function adicionar(evento) {
-  evento.preventDefault();
-  const Data = campoData.value;
-  const Local = campoLocal.value.trim();
-  const Valor = parseFloat(campoValor.value);
-
-  if (!Data || !Local || Number.isNaN(Valor)) return;
-
-  mostrarErro('');
-  try {
-    await chamarApi('/api/gastos', {
-      method: 'POST',
-      body: JSON.stringify({ Data, Local, Valor }),
-    });
-    campoLocal.value = '';
-    campoValor.value = '';
-    campoLocal.focus();
-  } catch (e) {
-    mostrarErro(e.message);
-  }
-}
-
-async function excluir(rowid) {
-  mostrarErro('');
-  try {
-    await chamarApi(`/api/gastos/${rowid}`, { method: 'DELETE' });
-    await carregar();
-  } catch (e) {
-    mostrarErro(e.message);
-  }
-}
-
-// ---------- Seletor de mês ----------
-
-function irParaMes(delta) {
-  const [ano, mes] = mesSelecionado.split('-').map(Number);
-  const data = new Date(ano, mes - 1 + delta, 1);
-  mesSelecionado = mesFormatado(data);
-  campoMes.value = mesSelecionado;
-  carregar();
-}
-
-campoMes.addEventListener('change', () => {
-  if (campoMes.value) {
-    mesSelecionado = campoMes.value;
-    carregar();
-  }
-});
-
-mesAnterior.addEventListener('click', () => irParaMes(-1));
-mesSeguinte.addEventListener('click', () => irParaMes(1));
-
-// ---------- Abas: por mês / tudo ----------
-
-function selecionarAba(tudo) {
-  modoTudo = tudo;
-  abaMes.classList.toggle('aba-ativa', !tudo);
-  abaTudo.classList.toggle('aba-ativa', tudo);
-  barraMes.style.display = tudo ? 'none' : 'flex';
-  rotuloTotal.textContent = tudo ? 'Total geral:' : 'Total do mês:';
-  carregar();
-}
-
-abaMes.addEventListener('click', () => selecionarAba(false));
-abaTudo.addEventListener('click', () => selecionarAba(true));
-
-// ---------- Abas principais: adicionar / visualizar ----------
-
-function selecionarAbaPrincipal(visualizar) {
-  abaAdicionar.classList.toggle('aba-ativa', !visualizar);
-  abaVisualizar.classList.toggle('aba-ativa', visualizar);
-  secaoAdicionar.hidden = visualizar;
-  secaoVisualizar.hidden = !visualizar;
-  mostrarErro('');
-  if (visualizar) carregar();
-}
-
-abaAdicionar.addEventListener('click', () => selecionarAbaPrincipal(false));
-abaVisualizar.addEventListener('click', () => selecionarAbaPrincipal(true));
-
-formGasto.addEventListener('submit', adicionar);
 
 // ---------- Indicador online/offline ----------
 
@@ -242,40 +94,12 @@ function atualizarRede() {
   const online = navigator.onLine;
   statusRede.textContent = online ? 'online' : 'offline';
   statusRede.className = 'badge ' + (online ? 'badge-online' : 'badge-offline');
-  botaoAdicionar.disabled = !online;
-  if (!online) mostrarErro('Sem conexão — não é possível ler ou gravar gastos agora.');
 }
 
-window.addEventListener('online', () => {
-  atualizarRede();
-  if (!secaoVisualizar.hidden) carregar();
-});
+window.addEventListener('online', () => { atualizarRede(); carregar(); });
 window.addEventListener('offline', atualizarRede);
-
-// ---------- Botão "Instalar como aplicativo" ----------
-
-let eventoInstalacao = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  eventoInstalacao = e;
-  botaoInstalar.hidden = false;
-});
-
-botaoInstalar.addEventListener('click', async () => {
-  if (!eventoInstalacao) return;
-  eventoInstalacao.prompt();
-  await eventoInstalacao.userChoice;
-  eventoInstalacao = null;
-  botaoInstalar.hidden = true;
-});
-
-window.addEventListener('appinstalled', () => {
-  botaoInstalar.hidden = true;
-});
 
 // ---------- Início ----------
 
-campoData.value = new Date().toISOString().slice(0, 10);
-campoMes.value = mesSelecionado;
 atualizarRede();
+carregar();
