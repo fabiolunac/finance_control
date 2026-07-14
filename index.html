@@ -29,6 +29,7 @@
     <div class="abas">
       <button id="aba-tabela" class="aba aba-ativa" type="button">Tabela</button>
       <button id="aba-adicionar" class="aba" type="button">Adicionar</button>
+      <button id="aba-graficos" class="aba" type="button">Gráficos</button>
     </div>
 
     <p id="erro" class="erro" hidden></p>
@@ -79,6 +80,22 @@
       </form>
 
       <p id="sucesso" class="sucesso" hidden></p>
+
+    </section>
+
+    <section id="secao-graficos" hidden>
+
+      <div class="filtros">
+        <select id="grafico-categoria" aria-label="Filtrar gráfico por categoria"></select>
+        <select id="grafico-categoria-geral" aria-label="Filtrar gráfico por categoria geral"></select>
+        <select id="grafico-local" aria-label="Filtrar gráfico por local"></select>
+      </div>
+
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Total de gastos por mês</h2>
+        <div id="grafico-mensal" class="grafico"></div>
+        <p id="grafico-vazio" class="vazio" hidden>Nenhum gasto para esses filtros.</p>
+      </div>
 
     </section>
 

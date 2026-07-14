@@ -13,8 +13,16 @@ const erro = document.getElementById('erro');
 
 const abaTabela = document.getElementById('aba-tabela');
 const abaAdicionar = document.getElementById('aba-adicionar');
+const abaGraficos = document.getElementById('aba-graficos');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoAdicionar = document.getElementById('secao-adicionar');
+const secaoGraficos = document.getElementById('secao-graficos');
+
+const graficoCategoria = document.getElementById('grafico-categoria');
+const graficoCategoriaGeral = document.getElementById('grafico-categoria-geral');
+const graficoLocal = document.getElementById('grafico-local');
+const graficoMensal = document.getElementById('grafico-mensal');
+const graficoVazio = document.getElementById('grafico-vazio');
 
 const filtroMes = document.getElementById('filtro-mes');
 const filtroCategoria = document.getElementById('filtro-categoria');
@@ -75,8 +83,10 @@ async function carregar() {
     const { gastos } = await resposta.json();
     todosGastos = gastos;
     preencherFiltros();
+    preencherFiltrosGrafico();
     preencherSugestoes();
     aplicarFiltros();
+    if (!secaoGraficos.hidden) renderizarGrafico();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
@@ -132,17 +142,79 @@ function aplicarFiltros() {
 
 // ---------- Abas ----------
 
-function selecionarAba(adicionar) {
-  abaTabela.classList.toggle('aba-ativa', !adicionar);
-  abaAdicionar.classList.toggle('aba-ativa', adicionar);
-  secaoTabela.hidden = adicionar;
-  secaoAdicionar.hidden = !adicionar;
+const abas = [
+  [abaTabela, secaoTabela],
+  [abaAdicionar, secaoAdicionar],
+  [abaGraficos, secaoGraficos],
+];
+
+function selecionarAba(abaEscolhida) {
+  abas.forEach(([aba, secao]) => {
+    aba.classList.toggle('aba-ativa', aba === abaEscolhida);
+    secao.hidden = aba !== abaEscolhida;
+  });
   erro.hidden = true;
   sucesso.hidden = true;
+  if (abaEscolhida === abaGraficos) renderizarGrafico();
 }
 
-abaTabela.addEventListener('click', () => selecionarAba(false));
-abaAdicionar.addEventListener('click', () => selecionarAba(true));
+abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
+
+// ---------- Gráficos ----------
+
+function preencherFiltrosGrafico() {
+  preencherSelect(graficoCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas');
+  preencherSelect(graficoCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas');
+  preencherSelect(graficoLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos');
+}
+
+function renderizarGrafico() {
+  // Só gastos de verdade: pagamentos (salário CERN) ficam fora da soma.
+  const filtrados = todosGastos.filter((g) =>
+    g['Pagamento?'] !== 'Sim' &&
+    (!graficoCategoria.value || g.Categoria === graficoCategoria.value) &&
+    (!graficoCategoriaGeral.value || g['Categoria Geral'] === graficoCategoriaGeral.value) &&
+    (!graficoLocal.value || g.Local === graficoLocal.value)
+  );
+
+  const totais = {};
+  filtrados.forEach((g) => {
+    totais[g['Mês Pagamento']] = (totais[g['Mês Pagamento']] || 0) + g.Valor;
+  });
+
+  const meses = Object.keys(totais).sort();
+  const maximo = Math.max(...meses.map((m) => totais[m]), 0);
+
+  graficoMensal.innerHTML = '';
+  graficoVazio.hidden = meses.length > 0;
+
+  meses.forEach((mes) => {
+    const linha = document.createElement('div');
+    linha.className = 'barra-linha';
+
+    const rotulo = document.createElement('span');
+    rotulo.className = 'barra-rotulo';
+    rotulo.textContent = mes;
+
+    const trilha = document.createElement('div');
+    trilha.className = 'barra-trilha';
+    const barra = document.createElement('div');
+    barra.className = 'barra';
+    barra.style.width = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
+    trilha.appendChild(barra);
+
+    const valor = document.createElement('span');
+    valor.className = 'barra-valor';
+    valor.textContent = formatarMoeda(totais[mes]);
+
+    linha.append(rotulo, trilha, valor);
+    graficoMensal.appendChild(linha);
+  });
+}
+
+[graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach((select) => {
+  select.addEventListener('change', renderizarGrafico);
+});
 
 // ---------- Adicionar gasto ----------
 

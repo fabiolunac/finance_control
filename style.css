@@ -248,3 +248,62 @@ body {
   line-height: 1.5;
   padding: 40px 24px;
 }
+
+/* ---------- Gráficos ---------- */
+
+.cartao-grafico {
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 20px;
+}
+
+.titulo-grafico {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.grafico {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.barra-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.barra-rotulo {
+  flex: 0 0 64px;
+  font-size: 0.82rem;
+  color: var(--tinta-fraca);
+  font-variant-numeric: tabular-nums;
+}
+
+.barra-trilha {
+  flex: 1;
+  background: var(--fundo);
+  border-radius: 6px;
+  height: 22px;
+  overflow: hidden;
+}
+
+.barra {
+  height: 100%;
+  background: var(--acento);
+  border-radius: 6px;
+  transition: width .25s ease-out;
+}
+
+.barra-valor {
+  flex: 0 0 110px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
