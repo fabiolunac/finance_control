@@ -24,6 +24,10 @@ const graficoLocal = document.getElementById('grafico-local');
 const graficoMensal = document.getElementById('grafico-mensal');
 const graficoVazio = document.getElementById('grafico-vazio');
 
+const graficoDiaMes = document.getElementById('grafico-dia-mes');
+const graficoDiario = document.getElementById('grafico-diario');
+const graficoDiarioVazio = document.getElementById('grafico-diario-vazio');
+
 const filtroMes = document.getElementById('filtro-mes');
 const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
@@ -87,7 +91,7 @@ async function carregar() {
     preencherFiltrosGrafico();
     preencherSugestoes();
     aplicarFiltros();
-    if (!secaoGraficos.hidden) renderizarGrafico();
+    if (!secaoGraficos.hidden) atualizarGraficos();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
@@ -230,27 +234,65 @@ function selecionarAba(abaEscolhida) {
   });
   erro.hidden = true;
   sucesso.hidden = true;
-  if (abaEscolhida === abaGraficos) renderizarGrafico();
+  if (abaEscolhida === abaGraficos) atualizarGraficos();
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
 
 // ---------- Gráficos ----------
 
-function preencherFiltrosGrafico() {
-  popularMultiSelect(graficoCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', renderizarGrafico);
-  popularMultiSelect(graficoCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', renderizarGrafico);
-  popularMultiSelect(graficoLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', renderizarGrafico);
+function atualizarGraficos() {
+  renderizarGrafico();
+  renderizarGraficoDiario();
 }
 
-function renderizarGrafico() {
+function preencherFiltrosGrafico() {
+  popularMultiSelect(graficoCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', atualizarGraficos);
+  popularMultiSelect(graficoCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', atualizarGraficos);
+  popularMultiSelect(graficoLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', atualizarGraficos);
+  preencherFiltroDiario();
+}
+
+function renderizarBarras(container, totais, rotulos) {
+  const maximo = Math.max(...rotulos.map((r) => totais[r]), 0);
+  container.innerHTML = '';
+
+  rotulos.forEach((rotuloTexto) => {
+    const linha = document.createElement('div');
+    linha.className = 'barra-linha';
+
+    const rotulo = document.createElement('span');
+    rotulo.className = 'barra-rotulo';
+    rotulo.textContent = rotuloTexto;
+
+    const trilha = document.createElement('div');
+    trilha.className = 'barra-trilha';
+    const barra = document.createElement('div');
+    barra.className = 'barra';
+    barra.style.width = maximo ? `${(totais[rotuloTexto] / maximo) * 100}%` : '0%';
+    trilha.appendChild(barra);
+
+    const valor = document.createElement('span');
+    valor.className = 'barra-valor';
+    valor.textContent = formatarMoeda(totais[rotuloTexto]);
+
+    linha.append(rotulo, trilha, valor);
+    container.appendChild(linha);
+  });
+}
+
+function gastosFiltradosGrafico() {
   // Só gastos de verdade: pagamentos (salário CERN) ficam fora da soma.
-  const filtrados = todosGastos.filter((g) =>
+  return todosGastos.filter((g) =>
     g['Pagamento?'] !== 'Sim' &&
     multiSelectCombina(graficoCategoria, g.Categoria) &&
     multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(graficoLocal, g.Local)
   );
+}
+
+function renderizarGrafico() {
+  const filtrados = gastosFiltradosGrafico();
 
   const totais = {};
   filtrados.forEach((g) => {
@@ -258,34 +300,40 @@ function renderizarGrafico() {
   });
 
   const meses = Object.keys(totais).sort();
-  const maximo = Math.max(...meses.map((m) => totais[m]), 0);
-
-  graficoMensal.innerHTML = '';
   graficoVazio.hidden = meses.length > 0;
-
-  meses.forEach((mes) => {
-    const linha = document.createElement('div');
-    linha.className = 'barra-linha';
-
-    const rotulo = document.createElement('span');
-    rotulo.className = 'barra-rotulo';
-    rotulo.textContent = mes;
-
-    const trilha = document.createElement('div');
-    trilha.className = 'barra-trilha';
-    const barra = document.createElement('div');
-    barra.className = 'barra';
-    barra.style.width = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
-    trilha.appendChild(barra);
-
-    const valor = document.createElement('span');
-    valor.className = 'barra-valor';
-    valor.textContent = formatarMoeda(totais[mes]);
-
-    linha.append(rotulo, trilha, valor);
-    graficoMensal.appendChild(linha);
-  });
+  renderizarBarras(graficoMensal, totais, meses);
 }
+
+function preencherFiltroDiario() {
+  const meses = valoresUnicos('Mês Pagamento').sort().reverse();
+  const atual = graficoDiaMes.value;
+
+  graficoDiaMes.innerHTML = '';
+  meses.forEach((mes) => {
+    const opcao = document.createElement('option');
+    opcao.value = mes;
+    opcao.textContent = mes;
+    graficoDiaMes.appendChild(opcao);
+  });
+
+  if (meses.includes(atual)) graficoDiaMes.value = atual;
+}
+
+function renderizarGraficoDiario() {
+  const filtrados = gastosFiltradosGrafico().filter((g) => g['Mês Pagamento'] === graficoDiaMes.value);
+
+  const totais = {};
+  filtrados.forEach((g) => {
+    const dia = g.Data.slice(8, 10);
+    totais[dia] = (totais[dia] || 0) + g.Valor;
+  });
+
+  const dias = Object.keys(totais).sort();
+  graficoDiarioVazio.hidden = dias.length > 0;
+  renderizarBarras(graficoDiario, totais, dias);
+}
+
+graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
 
 // ---------- Adicionar gasto ----------
 

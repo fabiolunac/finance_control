@@ -334,6 +334,26 @@ body {
   padding: 20px;
 }
 
+.cartao-grafico-dia { margin-top: 16px; }
+
+.select-basico {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+  border: 1.5px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--fundo);
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.select-basico:focus { border-color: var(--acento); outline: none; }
+
+.select-mes-dia {
+  display: block;
+  margin-bottom: 16px;
+}
+
 .titulo-grafico {
   font-size: 1rem;
   font-weight: 700;
