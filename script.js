@@ -295,10 +295,10 @@ function renderizar(gastos) {
       gasto.Local,
       gasto.Categoria,
       gasto['Categoria Geral'],
-      gasto.banco,
-      gasto.tipo,
+      // gasto.banco,
+      // gasto.tipo,
       formatarMoeda(gasto.Valor),
-      formatarMoeda(gasto.Saldo),
+      // formatarMoeda(gasto.Saldo),
       gasto['Mês Pagamento'],
     ];
 
