@@ -263,26 +263,26 @@ function renderizarGrafico() {
   graficoVazio.hidden = meses.length > 0;
 
   meses.forEach((mes) => {
-    const coluna = document.createElement('div');
-    coluna.className = 'barra-coluna';
-
-    const valor = document.createElement('span');
-    valor.className = 'barra-valor';
-    valor.textContent = formatarMoeda(totais[mes]);
-
-    const trilha = document.createElement('div');
-    trilha.className = 'barra-trilha';
-    const barra = document.createElement('div');
-    barra.className = 'barra';
-    barra.style.height = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
-    trilha.appendChild(barra);
+    const linha = document.createElement('div');
+    linha.className = 'barra-linha';
 
     const rotulo = document.createElement('span');
     rotulo.className = 'barra-rotulo';
     rotulo.textContent = mes;
 
-    coluna.append(valor, trilha, rotulo);
-    graficoMensal.appendChild(coluna);
+    const trilha = document.createElement('div');
+    trilha.className = 'barra-trilha';
+    const barra = document.createElement('div');
+    barra.className = 'barra';
+    barra.style.width = maximo ? `${(totais[mes] / maximo) * 100}%` : '0%';
+    trilha.appendChild(barra);
+
+    const valor = document.createElement('span');
+    valor.className = 'barra-valor';
+    valor.textContent = formatarMoeda(totais[mes]);
+
+    linha.append(rotulo, trilha, valor);
+    graficoMensal.appendChild(linha);
   });
 }
 

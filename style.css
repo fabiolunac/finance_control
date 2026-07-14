@@ -4,16 +4,17 @@
    ============================================================ */
 
 :root {
-  --fundo: #F4F6F8;
-  --cartao: #FFFFFF;
-  --tinta: #101418;
-  --tinta-fraca: #5B6472;
-  --acento: #2447F9;       /* azul-cobalto: cor da marca */
-  --acento-suave: #E4E9FF;
-  --sucesso: #0E9F6E;
-  --borda: #E2E6EC;
+  --fundo: #14171C;
+  --cartao: #1B1F26;
+  --tinta: #EDEFF3;
+  --tinta-fraca: #9AA4B2;
+  --acento: #5B82FF;       /* azul-cobalto: cor da marca */
+  --acento-suave: rgba(91, 130, 255, .18);
+  --sucesso: #22C58B;
+  --borda: #2A2F38;
   --raio: 14px;
-  --sombra: 0 1px 2px rgba(16, 20, 24, .06), 0 8px 24px rgba(16, 20, 24, .07);
+  --sombra: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px rgba(0, 0, 0, .45);
+  --topo-fundo: #0B0D10;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,7 +34,7 @@ body {
 /* ---------- Topo ---------- */
 
 .topo {
-  background: var(--tinta);
+  background: var(--topo-fundo);
   color: #fff;
   padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 16px;
 }
@@ -196,8 +197,8 @@ body {
 /* ---------- Erro / sucesso ---------- */
 
 .erro {
-  background: #FBE9E9;
-  color: #C0392B;
+  background: rgba(192, 57, 43, .18);
+  color: #FF8A80;
   border-radius: var(--raio);
   padding: 10px 14px;
   margin-bottom: 16px;
@@ -325,48 +326,43 @@ body {
 
 .grafico {
   display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  min-height: 220px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.barra-coluna {
+.barra-linha {
   display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .barra-rotulo {
-  font-size: 0.78rem;
+  flex: 0 0 64px;
+  font-size: 0.82rem;
   color: var(--tinta-fraca);
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .barra-trilha {
-  width: 32px;
-  height: 160px;
-  display: flex;
-  align-items: flex-end;
+  flex: 1;
   background: var(--fundo);
   border-radius: 6px;
+  height: 22px;
   overflow: hidden;
 }
 
 .barra {
-  width: 100%;
+  height: 100%;
   background: var(--acento);
   border-radius: 6px;
-  transition: height .25s ease-out;
+  transition: width .25s ease-out;
 }
 
 .barra-valor {
-  font-size: 0.78rem;
+  flex: 0 0 110px;
+  text-align: right;
+  font-size: 0.85rem;
   font-weight: 600;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
