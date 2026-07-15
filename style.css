@@ -342,6 +342,18 @@ body::after {
 
 /* ---------- Tabela ---------- */
 
+.cartao-total {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+
 .tabela-wrap {
   overflow-x: auto;
   background: var(--cartao);

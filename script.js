@@ -10,6 +10,7 @@ const statusRede = document.getElementById('status-rede');
 const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
+const totalFiltrado = document.getElementById('total-filtrado');
 
 const abaTabela = document.getElementById('aba-tabela');
 const abaAdicionar = document.getElementById('aba-adicionar');
@@ -112,6 +113,12 @@ async function carregar() {
 
 function valoresUnicos(campo) {
   return [...new Set(todosGastos.map((g) => g[campo]))];
+}
+
+function calcularTotalGasto(gastos) {
+  const semSalario = gastos.filter((g) => g['Pagamento?'] !== 'Sim');
+  const soma = (tipo) => semSalario.filter((g) => g.tipo === tipo).reduce((s, g) => s + g.Valor, 0);
+  return soma('Gasto') - soma('Pagamento');
 }
 
 // ---------- Multiselect (checkboxes) ----------
@@ -227,6 +234,7 @@ function aplicarFiltros() {
     multiSelectCombina(filtroLocal, g.Local)
   );
   renderizar(filtrados);
+  totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
 }
 
 // ---------- Abas ----------
@@ -384,9 +392,7 @@ function renderizarVisaoGeral() {
     g['Mês Pagamento Atual?'] === 'Sim'
   );
 
-  const totalGasto = gastosMes
-    .filter((g) => g.tipo === 'Gasto')
-    .reduce((soma, g) => soma + g.Valor, 0);
+  const totalGasto = calcularTotalGasto(gastosMes);
   const delta = totalGasto - SALARIO;
 
   metricaSalario.textContent = formatarMoeda(SALARIO);
