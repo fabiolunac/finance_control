@@ -407,9 +407,7 @@ function renderizarVisaoGeral() {
 
   ['Fixo', 'Extra', 'Save', 'Mercado'].forEach((categoria) => {
     const meta = METAS_CATEGORIA[categoria];
-    const totalCategoria = gastosMes
-      .filter((g) => g['Categoria Geral'] === categoria)
-      .reduce((soma, g) => soma + g.Valor, 0);
+    const totalCategoria = calcularTotalGasto(gastosMes.filter((g) => g['Categoria Geral'] === categoria));
     const gastos = categoria === 'Save'
       ? totalCategoria - gastosMes.filter((g) => g.banco === 'wise').reduce((soma, g) => soma + g.Valor, 0)
       : totalCategoria;
