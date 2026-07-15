@@ -524,21 +524,25 @@ function renderizar(gastos) {
     if (gasto['Pagamento?'] === 'Sim') tr.classList.add('linha-pagamento');
 
     const celulas = [
-      formatarData(gasto.Data),
-      gasto.Local,
-      formatarMoeda(gasto.Valor),
-      gasto.Categoria,
-      gasto['Categoria Geral'],
-      // gasto.banco,
-      gasto.tipo,
-      // formatarMoeda(gasto.Saldo),
-      gasto['Mês Pagamento'],
+      { texto: formatarData(gasto.Data), campo: 'Data', tipoInput: 'date', valorEdicao: gasto.Data.slice(0, 10) },
+      { texto: gasto.Local, campo: 'Local', tipoInput: 'text', valorEdicao: gasto.Local },
+      { texto: formatarMoeda(gasto.Valor), campo: 'Valor', tipoInput: 'number', valorEdicao: gasto.Valor, classe: 'col-valor' },
+      { texto: gasto.Categoria },
+      { texto: gasto['Categoria Geral'] },
+      { texto: gasto.tipo, campo: 'tipo', tipoInput: 'text', valorEdicao: gasto.tipo },
+      { texto: gasto['Mês Pagamento'] },
     ];
 
-    celulas.forEach((texto, i) => {
+    celulas.forEach((c) => {
       const td = document.createElement('td');
-      td.textContent = texto;
-      if (i === 2) td.className = 'col-valor';
+      td.textContent = c.texto;
+      if (c.classe) td.className = c.classe;
+      if (c.campo) {
+        td.classList.add('editavel');
+        td.tabIndex = 0;
+        td.title = 'Clique para editar';
+        td.addEventListener('click', () => editarCelula(td, gasto, c.campo, c.tipoInput, c.valorEdicao));
+      }
       tr.appendChild(td);
     });
 
@@ -577,6 +581,100 @@ async function removerGasto(rowid, local) {
 
     await carregar();
   } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+function editarCelula(td, gasto, campo, tipoInput, valorAtual) {
+  if (td.classList.contains('editando')) return;
+  td.classList.add('editando');
+
+  const valorOriginalTexto = td.textContent;
+  td.textContent = '';
+
+  const input = document.createElement('input');
+  input.type = tipoInput;
+  input.value = valorAtual;
+  input.className = 'input-celula';
+  if (tipoInput === 'number') {
+    input.step = '0.01';
+    input.style.textAlign = 'right';
+  }
+  if (campo === 'tipo') input.setAttribute('list', 'opcoes-tipo');
+  input.addEventListener('click', (evento) => evento.stopPropagation());
+
+  let finalizado = false;
+  const finalizar = (salvar) => {
+    if (finalizado) return;
+    finalizado = true;
+    if (salvar) {
+      salvarEdicao(td, gasto, campo, input.value, valorOriginalTexto);
+    } else {
+      td.textContent = valorOriginalTexto;
+      td.classList.remove('editando');
+    }
+  };
+
+  input.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') { evento.preventDefault(); input.blur(); }
+    if (evento.key === 'Escape') { evento.preventDefault(); finalizar(false); }
+  });
+  input.addEventListener('blur', () => finalizar(true));
+
+  td.appendChild(input);
+  input.focus();
+  if (tipoInput === 'text') input.select();
+}
+
+async function salvarEdicao(td, gasto, campo, novoValorBruto, valorOriginalTexto) {
+  const cancelar = () => {
+    td.textContent = valorOriginalTexto;
+    td.classList.remove('editando');
+  };
+
+  let novoValor;
+  if (campo === 'Valor') {
+    novoValor = parseFloat(novoValorBruto);
+    if (Number.isNaN(novoValor)) return cancelar();
+  } else {
+    novoValor = novoValorBruto.trim();
+    if (!novoValor) return cancelar();
+  }
+
+  if (novoValor === gasto[campo]) return cancelar();
+
+  const payload = {
+    Data: gasto.Data.slice(0, 10),
+    Local: gasto.Local,
+    Valor: gasto.Valor,
+    tipo: gasto.tipo,
+    banco: gasto.banco,
+  };
+  payload[campo] = novoValor;
+
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/gastos/${gasto.rowid}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${obterToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao salvar no servidor.');
+    }
+
+    await carregar();
+  } catch (e) {
+    cancelar();
     erro.textContent = e.message;
     erro.hidden = false;
   }

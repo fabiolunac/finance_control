@@ -97,3 +97,17 @@ def remover_gasto(rowid: int, _=Depends(checar_token)):
         client.execute("DELETE FROM gastos WHERE rowid = ?", [rowid])
     finally:
         client.close()
+
+
+@app.put("/api/gastos/{rowid}")
+def atualizar_gasto(rowid: int, gasto: NovoGasto, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute(
+            "UPDATE gastos SET Data = ?, Local = ?, Valor = ?, banco = ?, tipo = ? WHERE rowid = ?",
+            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo, rowid],
+        )
+    finally:
+        client.close()
+
+    return {"ok": True}
