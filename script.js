@@ -14,9 +14,18 @@ const erro = document.getElementById('erro');
 const abaTabela = document.getElementById('aba-tabela');
 const abaAdicionar = document.getElementById('aba-adicionar');
 const abaGraficos = document.getElementById('aba-graficos');
+const abaVisaoGeral = document.getElementById('aba-visao-geral');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoAdicionar = document.getElementById('secao-adicionar');
 const secaoGraficos = document.getElementById('secao-graficos');
+const secaoVisaoGeral = document.getElementById('secao-visao-geral');
+
+const metricaSalario = document.getElementById('metrica-salario');
+const metricaTotalGasto = document.getElementById('metrica-total-gasto');
+const metricaDelta = document.getElementById('metrica-delta');
+const metricaSaldo = document.getElementById('metrica-saldo');
+const metricaDias = document.getElementById('metrica-dias');
+const progressoCategorias = document.getElementById('progresso-categorias');
 
 const graficoCategoria = document.getElementById('grafico-categoria');
 const graficoCategoriaGeral = document.getElementById('grafico-categoria-geral');
@@ -92,6 +101,7 @@ async function carregar() {
     preencherSugestoes();
     aplicarFiltros();
     if (!secaoGraficos.hidden) atualizarGraficos();
+    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
@@ -225,6 +235,7 @@ const abas = [
   [abaTabela, secaoTabela],
   [abaAdicionar, secaoAdicionar],
   [abaGraficos, secaoGraficos],
+  [abaVisaoGeral, secaoVisaoGeral],
 ];
 
 function selecionarAba(abaEscolhida) {
@@ -235,6 +246,7 @@ function selecionarAba(abaEscolhida) {
   erro.hidden = true;
   sucesso.hidden = true;
   if (abaEscolhida === abaGraficos) atualizarGraficos();
+  if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
@@ -339,6 +351,90 @@ function renderizarGraficoDiario() {
 }
 
 graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
+
+// ---------- Visão geral ----------
+
+const SALARIO = 3486;
+const METAS_CATEGORIA = { Fixo: 1256, Extra: 880, Save: 800, Mercado: 550 };
+
+function diasAtePagamento() {
+  const pagamentos = todosGastos.filter((g) => g['Pagamento?'] === 'Sim');
+  let diaPag = 25;
+  if (pagamentos.length) {
+    const maisRecente = pagamentos.reduce((a, b) => (a.Data > b.Data ? a : b));
+    diaPag = parseInt(maisRecente.Data.slice(8, 10), 10);
+  }
+
+  const hoje = new Date();
+  const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  let ano = hoje.getFullYear();
+  let mes = hoje.getMonth();
+  if (hoje.getDate() >= diaPag) {
+    mes += 1;
+    if (mes > 11) { mes = 0; ano += 1; }
+  }
+  const proximoPagamento = new Date(ano, mes, diaPag);
+  return Math.round((proximoPagamento - hojeSemHora) / 86400000);
+}
+
+function renderizarVisaoGeral() {
+  const gastosMes = todosGastos.filter((g) =>
+    g['Pagamento?'] !== 'Sim' &&
+    g.Local !== 'Wise Save' &&
+    g['Mês Pagamento Atual?'] === 'Sim'
+  );
+
+  const totalGasto = gastosMes
+    .filter((g) => g.tipo === 'Gasto')
+    .reduce((soma, g) => soma + g.Valor, 0);
+  const delta = totalGasto - SALARIO;
+
+  metricaSalario.textContent = formatarMoeda(SALARIO);
+  metricaTotalGasto.textContent = formatarMoeda(totalGasto);
+  metricaDelta.textContent = `${delta > 0 ? '+' : ''}${formatarMoeda(delta)}`;
+  metricaDelta.classList.toggle('metrica-delta-negativa', delta > 0);
+  metricaDelta.classList.toggle('metrica-delta-positiva', delta <= 0);
+  metricaSaldo.textContent = formatarMoeda(-delta);
+  metricaDias.textContent = `${diasAtePagamento()} dias`;
+
+  progressoCategorias.innerHTML = '';
+
+  ['Fixo', 'Extra', 'Save', 'Mercado'].forEach((categoria) => {
+    const meta = METAS_CATEGORIA[categoria];
+    const totalCategoria = gastosMes
+      .filter((g) => g['Categoria Geral'] === categoria)
+      .reduce((soma, g) => soma + g.Valor, 0);
+    const gastos = categoria === 'Save'
+      ? totalCategoria - gastosMes.filter((g) => g.banco === 'wise').reduce((soma, g) => soma + g.Valor, 0)
+      : totalCategoria;
+
+    const pct = meta ? gastos / meta : 0;
+    const restante = meta - gastos;
+
+    const item = document.createElement('div');
+    item.className = 'progresso-item';
+
+    const cabecalho = document.createElement('div');
+    cabecalho.className = 'progresso-cabecalho';
+    cabecalho.textContent = categoria;
+
+    const trilha = document.createElement('div');
+    trilha.className = 'progresso-trilha';
+    const barra = document.createElement('div');
+    barra.className = `progresso-barra ${pct >= 1 ? 'progresso-critico' : pct >= 0.8 ? 'progresso-alerta' : 'progresso-ok'}`;
+    barra.style.width = `${Math.min(Math.max(pct, 0), 1) * 100}%`;
+    trilha.appendChild(barra);
+
+    const legenda = document.createElement('p');
+    legenda.className = 'progresso-legenda';
+    legenda.textContent = restante >= 0
+      ? `${formatarMoeda(gastos)} / ${formatarMoeda(meta)} (${(pct * 100).toFixed(1)}%) — Sobram ${formatarMoeda(restante)}`
+      : `${formatarMoeda(gastos)} / ${formatarMoeda(meta)} (${(pct * 100).toFixed(1)}%) — Ultrapassou ${formatarMoeda(Math.abs(restante))}`;
+
+    item.append(cabecalho, trilha, legenda);
+    progressoCategorias.appendChild(item);
+  });
+}
 
 // ---------- Adicionar gasto ----------
 

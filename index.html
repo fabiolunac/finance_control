@@ -34,6 +34,7 @@
       <button id="aba-tabela" class="aba aba-ativa" type="button">Tabela</button>
       <button id="aba-adicionar" class="aba" type="button">Adicionar</button>
       <button id="aba-graficos" class="aba" type="button">Gráficos</button>
+      <button id="aba-visao-geral" class="aba" type="button">Visão Geral</button>
     </div>
 
     <p id="erro" class="erro" hidden></p>
@@ -111,6 +112,35 @@
         <select id="grafico-dia-mes" class="select-basico select-mes-dia" aria-label="Selecionar mês"></select>
         <div id="grafico-diario" class="grafico"></div>
         <p id="grafico-diario-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
+      </div>
+
+    </section>
+
+    <section id="secao-visao-geral" hidden>
+
+      <div class="metricas-grid">
+        <div class="metrica">
+          <span class="metrica-rotulo">Salário</span>
+          <span class="metrica-valor" id="metrica-salario"></span>
+        </div>
+        <div class="metrica">
+          <span class="metrica-rotulo">Total gasto</span>
+          <span class="metrica-valor" id="metrica-total-gasto"></span>
+          <span class="metrica-delta" id="metrica-delta"></span>
+        </div>
+        <div class="metrica">
+          <span class="metrica-rotulo">Saldo</span>
+          <span class="metrica-valor" id="metrica-saldo"></span>
+        </div>
+        <div class="metrica">
+          <span class="metrica-rotulo">Dias até pagamento</span>
+          <span class="metrica-valor" id="metrica-dias"></span>
+        </div>
+      </div>
+
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Progresso do mês</h2>
+        <div id="progresso-categorias" class="progresso-lista"></div>
       </div>
 
     </section>
