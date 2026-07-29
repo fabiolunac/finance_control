@@ -63,7 +63,6 @@ def listar_gastos(_=Depends(checar_token)):
 
     df = df.sort_values(["Data", "rowid"], ascending=False)
     df["Data"] = df["Data"].dt.strftime("%Y-%m-%d")
-    df["Mês Pagamento"] = df["Mês Pagamento"].astype(str)
 
     return {"gastos": df.to_dict(orient="records")}
 
@@ -73,7 +72,7 @@ class NovoGasto(BaseModel):
     Local: str
     Valor: float
     tipo: str = "Gasto"
-    banco: str = "yuh"
+    banco: str
 
 
 @app.post("/api/gastos", status_code=201)

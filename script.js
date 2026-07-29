@@ -21,12 +21,10 @@ const secaoAdicionar = document.getElementById('secao-adicionar');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
 
-const metricaSalario = document.getElementById('metrica-salario');
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
-const metricaDelta = document.getElementById('metrica-delta');
-const metricaSaldo = document.getElementById('metrica-saldo');
-const metricaDias = document.getElementById('metrica-dias');
-const progressoCategorias = document.getElementById('progresso-categorias');
+const metricaLancamentos = document.getElementById('metrica-lancamentos');
+const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
+const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 
 const graficoCategoria = document.getElementById('grafico-categoria');
 const graficoCategoriaGeral = document.getElementById('grafico-categoria-geral');
@@ -47,7 +45,6 @@ const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
 const campoLocal = document.getElementById('campo-local');
 const campoValor = document.getElementById('campo-valor');
-const campoMoeda = document.getElementById('campo-moeda');
 const campoTipo = document.getElementById('campo-tipo');
 const campoBanco = document.getElementById('campo-banco');
 const opcoesTipo = document.getElementById('opcoes-tipo');
@@ -70,7 +67,7 @@ function obterToken() {
 // ---------- Formatação ----------
 
 function formatarMoeda(valor) {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'CHF' });
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function formatarData(dataIso) {
@@ -116,8 +113,7 @@ function valoresUnicos(campo) {
 }
 
 function calcularTotalGasto(gastos) {
-  const semSalario = gastos.filter((g) => g['Pagamento?'] !== 'Sim');
-  const soma = (tipo) => semSalario.filter((g) => g.tipo === tipo).reduce((s, g) => s + g.Valor, 0);
+  const soma = (tipo) => gastos.filter((g) => g.tipo === tipo).reduce((s, g) => s + g.Valor, 0);
   return soma('Gasto') - soma('Pagamento');
 }
 
@@ -220,7 +216,7 @@ function popularMultiSelect(root, valores, rotuloTodos, campo, aoMudar) {
   graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach(criarMultiSelect);
 
 function preencherFiltros() {
-  popularMultiSelect(filtroMes, valoresUnicos('Mês Pagamento').sort().reverse(), 'Mês: todos', 'Mês', aplicarFiltros);
+  popularMultiSelect(filtroMes, valoresUnicos('Mês').sort().reverse(), 'Mês: todos', 'Mês', aplicarFiltros);
   popularMultiSelect(filtroCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', aplicarFiltros);
   popularMultiSelect(filtroCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', aplicarFiltros);
   popularMultiSelect(filtroLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', aplicarFiltros);
@@ -228,7 +224,7 @@ function preencherFiltros() {
 
 function aplicarFiltros() {
   const filtrados = todosGastos.filter((g) =>
-    multiSelectCombina(filtroMes, g['Mês Pagamento']) &&
+    multiSelectCombina(filtroMes, g['Mês']) &&
     multiSelectCombina(filtroCategoria, g.Categoria) &&
     multiSelectCombina(filtroCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(filtroLocal, g.Local)
@@ -302,9 +298,7 @@ function renderizarBarras(container, entradas) {
 }
 
 function gastosFiltradosGrafico() {
-  // Só gastos de verdade: pagamentos (salário CERN) ficam fora da soma.
   return todosGastos.filter((g) =>
-    g['Pagamento?'] !== 'Sim' &&
     multiSelectCombina(graficoCategoria, g.Categoria) &&
     multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(graficoLocal, g.Local)
@@ -316,7 +310,7 @@ function renderizarGrafico() {
 
   const totais = {};
   filtrados.forEach((g) => {
-    totais[g['Mês Pagamento']] = (totais[g['Mês Pagamento']] || 0) + g.Valor;
+    totais[g['Mês']] = (totais[g['Mês']] || 0) + g.Valor;
   });
 
   const meses = Object.keys(totais).sort();
@@ -325,7 +319,7 @@ function renderizarGrafico() {
 }
 
 function preencherFiltroDiario() {
-  const meses = valoresUnicos('Mês Pagamento').sort().reverse();
+  const meses = valoresUnicos('Mês').sort().reverse();
   const atual = graficoDiaMes.value;
 
   graficoDiaMes.innerHTML = '';
@@ -340,7 +334,7 @@ function preencherFiltroDiario() {
 }
 
 function renderizarGraficoDiario() {
-  const filtrados = gastosFiltradosGrafico().filter((g) => g['Mês Pagamento'] === graficoDiaMes.value);
+  const filtrados = gastosFiltradosGrafico().filter((g) => g['Mês'] === graficoDiaMes.value);
 
   const totais = {};
   filtrados.forEach((g) => {
@@ -362,82 +356,24 @@ graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
 
 // ---------- Visão geral ----------
 
-const SALARIO = 3486;
-const METAS_CATEGORIA = { Fixo: 1256, Extra: 880, Save: 800, Mercado: 550 };
-
-function diasAtePagamento() {
-  const pagamentos = todosGastos.filter((g) => g['Pagamento?'] === 'Sim');
-  let diaPag = 25;
-  if (pagamentos.length) {
-    const maisRecente = pagamentos.reduce((a, b) => (a.Data > b.Data ? a : b));
-    diaPag = parseInt(maisRecente.Data.slice(8, 10), 10);
-  }
-
-  const hoje = new Date();
-  const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  let ano = hoje.getFullYear();
-  let mes = hoje.getMonth();
-  if (hoje.getDate() >= diaPag) {
-    mes += 1;
-    if (mes > 11) { mes = 0; ano += 1; }
-  }
-  const proximoPagamento = new Date(ano, mes, diaPag);
-  return Math.round((proximoPagamento - hojeSemHora) / 86400000);
+function mesAtual() {
+  return new Date().toISOString().slice(0, 7); // YYYY-MM
 }
 
 function renderizarVisaoGeral() {
-  const gastosMes = todosGastos.filter((g) =>
-    g['Pagamento?'] !== 'Sim' &&
-    g.Local !== 'Wise Save' &&
-    g['Mês Pagamento Atual?'] === 'Sim'
-  );
+  const gastosMes = todosGastos.filter((g) => g['Mês'] === mesAtual());
 
-  const totalGasto = calcularTotalGasto(gastosMes);
-  const delta = totalGasto - SALARIO;
+  metricaTotalGasto.textContent = formatarMoeda(calcularTotalGasto(gastosMes));
+  metricaLancamentos.textContent = String(gastosMes.length);
 
-  metricaSalario.textContent = formatarMoeda(SALARIO);
-  metricaTotalGasto.textContent = formatarMoeda(totalGasto);
-  metricaDelta.textContent = `${delta > 0 ? '+' : ''}${formatarMoeda(delta)}`;
-  metricaDelta.classList.toggle('metrica-delta-negativa', delta > 0);
-  metricaDelta.classList.toggle('metrica-delta-positiva', delta <= 0);
-  metricaSaldo.textContent = formatarMoeda(-delta);
-  metricaDias.textContent = `${diasAtePagamento()} dias`;
-
-  progressoCategorias.innerHTML = '';
-
-  ['Fixo', 'Extra', 'Save', 'Mercado'].forEach((categoria) => {
-    const meta = METAS_CATEGORIA[categoria];
-    const totalCategoria = calcularTotalGasto(gastosMes.filter((g) => g['Categoria Geral'] === categoria));
-    const gastos = categoria === 'Save'
-      ? totalCategoria - gastosMes.filter((g) => g.banco === 'wise').reduce((soma, g) => soma + g.Valor, 0)
-      : totalCategoria;
-
-    const pct = meta ? gastos / meta : 0;
-    const restante = meta - gastos;
-
-    const item = document.createElement('div');
-    item.className = 'progresso-item';
-
-    const cabecalho = document.createElement('div');
-    cabecalho.className = 'progresso-cabecalho';
-    cabecalho.textContent = categoria;
-
-    const trilha = document.createElement('div');
-    trilha.className = 'progresso-trilha';
-    const barra = document.createElement('div');
-    barra.className = `progresso-barra ${pct >= 1 ? 'progresso-critico' : pct >= 0.8 ? 'progresso-alerta' : 'progresso-ok'}`;
-    barra.style.width = `${Math.min(Math.max(pct, 0), 1) * 100}%`;
-    trilha.appendChild(barra);
-
-    const legenda = document.createElement('p');
-    legenda.className = 'progresso-legenda';
-    legenda.textContent = restante >= 0
-      ? `${formatarMoeda(gastos)} / ${formatarMoeda(meta)} (${(pct * 100).toFixed(1)}%) — Sobram ${formatarMoeda(restante)}`
-      : `${formatarMoeda(gastos)} / ${formatarMoeda(meta)} (${(pct * 100).toFixed(1)}%) — Ultrapassou ${formatarMoeda(Math.abs(restante))}`;
-
-    item.append(cabecalho, trilha, legenda);
-    progressoCategorias.appendChild(item);
+  const totais = {};
+  gastosMes.forEach((g) => {
+    totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + g.Valor;
   });
+
+  const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
+  visaoGeralVazio.hidden = categorias.length > 0;
+  renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c]]));
 }
 
 // ---------- Adicionar gasto ----------
@@ -456,34 +392,22 @@ function preencherSugestoes() {
   preencherDatalist(opcoesBanco, valoresUnicos('banco').sort((a, b) => a.localeCompare(b)));
 }
 
-async function converterEurParaChf(valorEur) {
-  const resposta = await fetch('https://api.frankfurter.dev/v1/latest?from=EUR&to=CHF');
-  if (!resposta.ok) throw new Error('Não foi possível obter a cotação EUR → CHF.');
-  const { rates } = await resposta.json();
-  if (!rates || !rates.CHF) throw new Error('Não foi possível obter a cotação EUR → CHF.');
-  return valorEur * rates.CHF;
-}
-
 async function adicionar(evento) {
   evento.preventDefault();
   erro.hidden = true;
   sucesso.hidden = true;
 
-  const valorDigitado = parseFloat(campoValor.value);
-  const moeda = campoMoeda.value;
-
   const gasto = {
     Data: campoData.value,
     Local: campoLocal.value.trim(),
+    Valor: parseFloat(campoValor.value),
     tipo: campoTipo.value.trim(),
     banco: campoBanco.value.trim(),
   };
 
-  if (!gasto.Data || !gasto.Local || Number.isNaN(valorDigitado) || !gasto.tipo || !gasto.banco) return;
+  if (!gasto.Data || !gasto.Local || Number.isNaN(gasto.Valor) || !gasto.tipo || !gasto.banco) return;
 
   try {
-    gasto.Valor = moeda === 'EUR' ? await converterEurParaChf(valorDigitado) : valorDigitado;
-
     const resposta = await fetch(`${API_URL}/api/gastos`, {
       method: 'POST',
       headers: {
@@ -505,7 +429,6 @@ async function adicionar(evento) {
     sucesso.hidden = false;
     campoLocal.value = '';
     campoValor.value = '';
-    campoMoeda.value = 'CHF';
     campoLocal.focus();
 
     await carregar();
@@ -525,7 +448,6 @@ function renderizar(gastos) {
 
   gastos.forEach((gasto) => {
     const tr = document.createElement('tr');
-    if (gasto['Pagamento?'] === 'Sim') tr.classList.add('linha-pagamento');
 
     const celulas = [
       { texto: formatarData(gasto.Data), campo: 'Data', tipoInput: 'date', valorEdicao: gasto.Data.slice(0, 10) },
@@ -534,7 +456,7 @@ function renderizar(gastos) {
       { texto: gasto.Categoria },
       { texto: gasto['Categoria Geral'] },
       { texto: gasto.tipo, campo: 'tipo', tipoInput: 'text', valorEdicao: gasto.tipo },
-      { texto: gasto['Mês Pagamento'] },
+      { texto: gasto['Mês'] },
     ];
 
     celulas.forEach((c) => {

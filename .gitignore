@@ -2,3 +2,7 @@
 # Usados só localmente como fonte pra importar no Turso (ver README.md).
 finance_control.db
 local_param.db
+
+# Extratos bancários e análises locais — dados pessoais, fora do repo público.
+tables/
+.DS_Store

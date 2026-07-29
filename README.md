@@ -14,11 +14,14 @@ GitHub Pages (frontend estático)  --HTTPS-->  Render (API FastAPI + pandas)  --
 | `index.html`, `style.css`, `script.js` | O site: uma página só, com a tabela final |
 | `manifest.json`, `sw.js` | Deixam o app instalável e com cache dos arquivos estáticos |
 | `server/main.py` | API FastAPI: um endpoint (`GET /api/gastos`) que devolve a tabela tratada |
-| `server/transform_db.py` | Pré-processamento com pandas: Categoria, Pagamento?, Mês Pagamento, Saldo |
-| `finance_control.db`, `local_param.db` | Bancos originais locais (fora do git) — fonte para importar no Turso |
+| `server/transform_db.py` | Pré-processamento com pandas: Categoria, Categoria Geral e Mês (calendário) |
+| `finance_control.db`, `local_param.db` | Bancos originais da fase Suíça (fora do git) — hoje preservados no Turso como `gastos_ch`/`param_ch` |
 
 A cada leitura, a API busca `gastos` e `param` no Turso, roda `prepare_data()` e devolve a
-tabela completa. Lançamentos do CERN acima de 3000 são pagamento (linha destacada em verde).
+tabela completa em R$. Locais sem categoria cadastrada na `param` entram como "Extra".
+
+O histórico da fase Suíça (CHF, salário CERN, saldo) ficou nas tabelas `gastos_ch`/`param_ch`
+do mesmo banco Turso — o código dessa fase está no histórico do git, antes desta versão BR.
 
 ## Deploy
 
