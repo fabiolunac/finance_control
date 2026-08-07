@@ -35,6 +35,7 @@
       <button id="aba-adicionar" class="aba" type="button">Adicionar</button>
       <button id="aba-graficos" class="aba" type="button">Gráficos</button>
       <button id="aba-visao-geral" class="aba" type="button">Visão Geral</button>
+      <button id="aba-parametros" class="aba" type="button">Parâmetros</button>
     </div>
 
     <p id="erro" class="erro" hidden></p>
@@ -135,6 +136,37 @@
         <div id="grafico-categorias-mes" class="grafico"></div>
         <p id="visao-geral-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
       </div>
+
+    </section>
+
+    <section id="secao-parametros" hidden>
+
+      <form id="form-param" class="novo-gasto">
+        <input id="campo-param-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" required>
+        <input id="campo-param-categoria" list="opcoes-param-categoria" placeholder="Categoria" autocomplete="off" maxlength="120" required>
+        <datalist id="opcoes-param-categoria"></datalist>
+        <input id="campo-param-categoria-geral" list="opcoes-param-categoria-geral" placeholder="Categoria Geral" autocomplete="off" maxlength="120" required>
+        <datalist id="opcoes-param-categoria-geral"></datalist>
+        <button type="submit">Adicionar</button>
+      </form>
+
+      <p id="param-sucesso" class="sucesso" hidden></p>
+
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Local</th>
+              <th>Categoria</th>
+              <th>Categoria Geral</th>
+              <th class="col-acoes"><span class="sr-only">Remover</span></th>
+            </tr>
+          </thead>
+          <tbody id="corpo-param" aria-live="polite"></tbody>
+        </table>
+      </div>
+
+      <p id="param-vazio" class="vazio" hidden>Nenhum parâmetro cadastrado.</p>
 
     </section>
 

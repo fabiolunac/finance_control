@@ -16,10 +16,12 @@ const abaTabela = document.getElementById('aba-tabela');
 const abaAdicionar = document.getElementById('aba-adicionar');
 const abaGraficos = document.getElementById('aba-graficos');
 const abaVisaoGeral = document.getElementById('aba-visao-geral');
+const abaParametros = document.getElementById('aba-parametros');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoAdicionar = document.getElementById('secao-adicionar');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
+const secaoParametros = document.getElementById('secao-parametros');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
@@ -51,7 +53,19 @@ const opcoesTipo = document.getElementById('opcoes-tipo');
 const opcoesBanco = document.getElementById('opcoes-banco');
 const sucesso = document.getElementById('sucesso');
 
+const formParam = document.getElementById('form-param');
+const campoParamLocal = document.getElementById('campo-param-local');
+const campoParamCategoria = document.getElementById('campo-param-categoria');
+const campoParamCategoriaGeral = document.getElementById('campo-param-categoria-geral');
+const opcoesParamCategoria = document.getElementById('opcoes-param-categoria');
+const opcoesParamCategoriaGeral = document.getElementById('opcoes-param-categoria-geral');
+const corpoParam = document.getElementById('corpo-param');
+const paramVazio = document.getElementById('param-vazio');
+const paramSucesso = document.getElementById('param-sucesso');
+
 let todosGastos = [];
+let todosParam = [];
+let paramCarregado = false;
 
 // ---------- Token de acesso ----------
 
@@ -240,6 +254,7 @@ const abas = [
   [abaAdicionar, secaoAdicionar],
   [abaGraficos, secaoGraficos],
   [abaVisaoGeral, secaoVisaoGeral],
+  [abaParametros, secaoParametros],
 ];
 
 function selecionarAba(abaEscolhida) {
@@ -249,8 +264,10 @@ function selecionarAba(abaEscolhida) {
   });
   erro.hidden = true;
   sucesso.hidden = true;
+  paramSucesso.hidden = true;
   if (abaEscolhida === abaGraficos) atualizarGraficos();
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
+  if (abaEscolhida === abaParametros) carregarParametros();
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
@@ -599,6 +616,229 @@ async function salvarEdicao(td, gasto, campo, novoValorBruto, valorOriginalTexto
     }
 
     await carregar();
+  } catch (e) {
+    cancelar();
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+// ---------- Parâmetros (Local → Categoria / Categoria Geral) ----------
+
+async function carregarParametros() {
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/param`, {
+      headers: { Authorization: `Bearer ${obterToken()}` },
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao falar com o servidor.');
+    }
+
+    const { param } = await resposta.json();
+    todosParam = param;
+    paramCarregado = true;
+    preencherSugestoesParam();
+    renderizarParam();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+function preencherSugestoesParam() {
+  const categorias = [...new Set(todosParam.map((p) => p.Categoria))].sort((a, b) => a.localeCompare(b));
+  const categoriasGerais = [...new Set(todosParam.map((p) => p['Categoria Geral']))].sort((a, b) => a.localeCompare(b));
+  preencherDatalist(opcoesParamCategoria, categorias);
+  preencherDatalist(opcoesParamCategoriaGeral, categoriasGerais);
+}
+
+function renderizarParam() {
+  corpoParam.innerHTML = '';
+  paramVazio.hidden = todosParam.length > 0;
+
+  todosParam.forEach((param) => {
+    const tr = document.createElement('tr');
+
+    const celulas = [
+      { texto: param.Local, campo: 'Local', valorEdicao: param.Local },
+      { texto: param.Categoria, campo: 'Categoria', valorEdicao: param.Categoria },
+      { texto: param['Categoria Geral'], campo: 'Categoria Geral', valorEdicao: param['Categoria Geral'] },
+    ];
+
+    celulas.forEach((c) => {
+      const td = document.createElement('td');
+      td.textContent = c.texto;
+      td.classList.add('editavel');
+      td.tabIndex = 0;
+      td.title = 'Clique para editar';
+      td.addEventListener('click', () => editarCelulaParam(td, param, c.campo, c.valorEdicao));
+      tr.appendChild(td);
+    });
+
+    const tdAcoes = document.createElement('td');
+    tdAcoes.className = 'col-acoes';
+    const botaoRemover = document.createElement('button');
+    botaoRemover.type = 'button';
+    botaoRemover.className = 'botao-remover';
+    botaoRemover.textContent = '×';
+    botaoRemover.setAttribute('aria-label', `Remover parâmetro de ${param.Local}`);
+    botaoRemover.addEventListener('click', () => removerParam(param.rowid, param.Local));
+    tdAcoes.appendChild(botaoRemover);
+    tr.appendChild(tdAcoes);
+
+    corpoParam.appendChild(tr);
+  });
+}
+
+async function adicionarParam(evento) {
+  evento.preventDefault();
+  erro.hidden = true;
+  paramSucesso.hidden = true;
+
+  const local = campoParamLocal.value.trim();
+  const categoria = campoParamCategoria.value.trim();
+  const categoriaGeral = campoParamCategoriaGeral.value.trim();
+  if (!local || !categoria || !categoriaGeral) return;
+
+  try {
+    const resposta = await fetch(`${API_URL}/api/param`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${obterToken()}`,
+      },
+      body: JSON.stringify({ Local: local, Categoria: categoria, CategoriaGeral: categoriaGeral }),
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao gravar no servidor.');
+    }
+
+    paramSucesso.textContent = `Adicionado: ${local} → ${categoria} / ${categoriaGeral}`;
+    paramSucesso.hidden = false;
+    formParam.reset();
+    campoParamLocal.focus();
+
+    await carregarParametros();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+formParam.addEventListener('submit', adicionarParam);
+
+async function removerParam(rowid, local) {
+  if (!confirm(`Remover o parâmetro "${local}"? Essa ação não pode ser desfeita.`)) return;
+
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/param/${rowid}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${obterToken()}` },
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao remover no servidor.');
+    }
+
+    await carregarParametros();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.hidden = false;
+  }
+}
+
+function editarCelulaParam(td, param, campo, valorAtual) {
+  if (td.classList.contains('editando')) return;
+  td.classList.add('editando');
+
+  const valorOriginalTexto = td.textContent;
+  td.textContent = '';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = valorAtual;
+  input.className = 'input-celula';
+  if (campo === 'Categoria') input.setAttribute('list', 'opcoes-param-categoria');
+  if (campo === 'Categoria Geral') input.setAttribute('list', 'opcoes-param-categoria-geral');
+  input.addEventListener('click', (evento) => evento.stopPropagation());
+
+  let finalizado = false;
+  const finalizar = (salvar) => {
+    if (finalizado) return;
+    finalizado = true;
+    if (salvar) {
+      salvarEdicaoParam(td, param, campo, input.value, valorOriginalTexto);
+    } else {
+      td.textContent = valorOriginalTexto;
+      td.classList.remove('editando');
+    }
+  };
+
+  input.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') { evento.preventDefault(); input.blur(); }
+    if (evento.key === 'Escape') { evento.preventDefault(); finalizar(false); }
+  });
+  input.addEventListener('blur', () => finalizar(true));
+
+  td.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+async function salvarEdicaoParam(td, param, campo, novoValorBruto, valorOriginalTexto) {
+  const cancelar = () => {
+    td.textContent = valorOriginalTexto;
+    td.classList.remove('editando');
+  };
+
+  const novoValor = novoValorBruto.trim();
+  if (!novoValor) return cancelar();
+  if (novoValor === param[campo]) return cancelar();
+
+  const payload = {
+    Local: param.Local,
+    Categoria: param.Categoria,
+    CategoriaGeral: param['Categoria Geral'],
+  };
+  if (campo === 'Categoria Geral') payload.CategoriaGeral = novoValor;
+  else payload[campo] = novoValor;
+
+  erro.hidden = true;
+  try {
+    const resposta = await fetch(`${API_URL}/api/param/${param.rowid}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${obterToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (resposta.status === 401) {
+      localStorage.removeItem('apiToken');
+      throw new Error('Código de acesso inválido. Recarregue a página.');
+    }
+    if (!resposta.ok) {
+      throw new Error('Erro ao salvar no servidor.');
+    }
+
+    await carregarParametros();
   } catch (e) {
     cancelar();
     erro.textContent = e.message;

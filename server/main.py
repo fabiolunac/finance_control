@@ -110,3 +110,59 @@ def atualizar_gasto(rowid: int, gasto: NovoGasto, _=Depends(checar_token)):
         client.close()
 
     return {"ok": True}
+
+
+@app.get("/api/param")
+def listar_param(_=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        rs = client.execute(
+            'SELECT rowid, Local, Categoria, "Categoria Geral" FROM param ORDER BY Local ASC'
+        )
+    finally:
+        client.close()
+
+    return {"param": [dict(zip(rs.columns, row)) for row in rs.rows]}
+
+
+class NovoParam(BaseModel):
+    Local: str
+    Categoria: str
+    CategoriaGeral: str
+
+
+@app.post("/api/param", status_code=201)
+def adicionar_param(param: NovoParam, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute(
+            'INSERT INTO param (Local, Categoria, "Categoria Geral") VALUES (?, ?, ?)',
+            [param.Local, param.Categoria, param.CategoriaGeral],
+        )
+    finally:
+        client.close()
+
+    return {"ok": True}
+
+
+@app.put("/api/param/{rowid}")
+def atualizar_param(rowid: int, param: NovoParam, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute(
+            'UPDATE param SET Local = ?, Categoria = ?, "Categoria Geral" = ? WHERE rowid = ?',
+            [param.Local, param.Categoria, param.CategoriaGeral, rowid],
+        )
+    finally:
+        client.close()
+
+    return {"ok": True}
+
+
+@app.delete("/api/param/{rowid}", status_code=204)
+def remover_param(rowid: int, _=Depends(checar_token)):
+    client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
+    try:
+        client.execute("DELETE FROM param WHERE rowid = ?", [rowid])
+    finally:
+        client.close()

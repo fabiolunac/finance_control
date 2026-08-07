@@ -8,7 +8,7 @@
    os arquivos novos em vez de usar os antigos do cache.
    ============================================================ */
 
-const VERSAO = 'controle-gastos-v22';
+const VERSAO = 'controle-gastos-v23';
 
 const ARQUIVOS = [
   './',
