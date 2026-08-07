@@ -496,10 +496,23 @@ body::after {
 
 .select-basico:focus { border-color: var(--acento); outline: none; }
 
-.select-mes-dia {
-  display: block;
-  margin-bottom: 16px;
+.filtros-dia { align-items: center; }
+
+.botao-chip {
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  color: var(--tinta-fraca);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida), border-color var(--t-rapida);
 }
+
+.botao-chip:hover { color: var(--acento); border-color: var(--acento); }
 
 .titulo-grafico {
   font-family: var(--fonte-serif);

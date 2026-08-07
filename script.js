@@ -37,11 +37,13 @@ const graficoVazio = document.getElementById('grafico-vazio');
 const graficoDiaMes = document.getElementById('grafico-dia-mes');
 const graficoDiario = document.getElementById('grafico-diario');
 const graficoDiarioVazio = document.getElementById('grafico-diario-vazio');
+const botaoMesAtualDia = document.getElementById('botao-mes-atual-dia');
 
 const filtroMes = document.getElementById('filtro-mes');
 const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
 const filtroLocal = document.getElementById('filtro-local');
+const botaoMesAtual = document.getElementById('botao-mes-atual');
 
 const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
@@ -226,8 +228,21 @@ function popularMultiSelect(root, valores, rotuloTodos, campo, aoMudar) {
   atualizarTextoMultiSelect(root, campo, rotuloTodos);
 }
 
+function selecionarUnicoNoMultiSelect(root, valor, campo, rotuloTodos) {
+  root.selecionados = new Set([valor]);
+  root._painel.querySelectorAll('input[type="checkbox"]').forEach((caixa) => {
+    caixa.checked = caixa.value === valor;
+  });
+  atualizarTextoMultiSelect(root, campo, rotuloTodos);
+}
+
 [filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal,
   graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach(criarMultiSelect);
+
+botaoMesAtual.addEventListener('click', () => {
+  selecionarUnicoNoMultiSelect(filtroMes, mesAtual(), 'Mês', 'Mês: todos');
+  aplicarFiltros();
+});
 
 function preencherFiltros() {
   popularMultiSelect(filtroMes, valoresUnicos('Mês').sort().reverse(), 'Mês: todos', 'Mês', aplicarFiltros);
@@ -371,6 +386,11 @@ function renderizarGraficoDiario() {
 }
 
 graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
+
+botaoMesAtualDia.addEventListener('click', () => {
+  graficoDiaMes.value = mesAtual();
+  renderizarGraficoDiario();
+});
 
 // ---------- Visão geral ----------
 

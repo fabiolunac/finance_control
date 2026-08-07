@@ -62,6 +62,7 @@
         <div id="filtro-categoria" aria-label="Filtrar por categoria"></div>
         <div id="filtro-categoria-geral" aria-label="Filtrar por categoria geral"></div>
         <div id="filtro-local" aria-label="Filtrar por local"></div>
+        <button id="botao-mes-atual" class="botao-chip" type="button">Mês atual</button>
       </div>
 
       <div class="cartao-total">
@@ -126,7 +127,10 @@
 
       <div class="cartao-grafico cartao-grafico-dia">
         <h2 class="titulo-grafico">Gastos por dia</h2>
-        <select id="grafico-dia-mes" class="select-basico select-mes-dia" aria-label="Selecionar mês"></select>
+        <div class="filtros filtros-dia">
+          <select id="grafico-dia-mes" class="select-basico" aria-label="Selecionar mês"></select>
+          <button id="botao-mes-atual-dia" class="botao-chip" type="button">Mês atual</button>
+        </div>
         <div id="grafico-diario" class="grafico"></div>
         <p id="grafico-diario-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
       </div>
