@@ -316,6 +316,7 @@ function renderizarBarras(container, entradas) {
 
 function gastosFiltradosGrafico() {
   return todosGastos.filter((g) =>
+    g.tipo === 'Gasto' &&
     multiSelectCombina(graficoCategoria, g.Categoria) &&
     multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(graficoLocal, g.Local)
@@ -384,7 +385,7 @@ function renderizarVisaoGeral() {
   metricaLancamentos.textContent = String(gastosMes.length);
 
   const totais = {};
-  gastosMes.forEach((g) => {
+  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
     totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + g.Valor;
   });
 
