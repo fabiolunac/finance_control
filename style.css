@@ -557,6 +557,9 @@ body::after {
   transition: width .25s ease-out;
 }
 
+/* Rótulo mais largo para o intervalo da semana (dd/mm–dd/mm) */
+#grafico-semanal .barra-rotulo { flex-basis: 96px; }
+
 .barra-valor {
   flex: 0 0 110px;
   text-align: right;

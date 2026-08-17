@@ -27,6 +27,10 @@ const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
+const visaoSemanaMes = document.getElementById('visao-semana-mes');
+const graficoSemanal = document.getElementById('grafico-semanal');
+const graficoSemanalVazio = document.getElementById('grafico-semanal-vazio');
+const botaoMesAtualSemana = document.getElementById('botao-mes-atual-semana');
 
 const graficoCategoria = document.getElementById('grafico-categoria');
 const graficoCategoriaGeral = document.getElementById('grafico-categoria-geral');
@@ -112,6 +116,7 @@ async function carregar() {
     todosGastos = gastos;
     preencherFiltros();
     preencherFiltrosGrafico();
+    preencherFiltroSemanal();
     preencherSugestoes();
     aplicarFiltros();
     if (!secaoGraficos.hidden) atualizarGraficos();
@@ -412,7 +417,95 @@ function renderizarVisaoGeral() {
   const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
   visaoGeralVazio.hidden = categorias.length > 0;
   renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c]]));
+
+  renderizarGraficoSemanal();
 }
+
+// ---------- Gastos por semana ----------
+
+function dataLocal(dataIso) {
+  const [ano, mes, dia] = dataIso.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+}
+
+function formatarIso(data) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${data.getFullYear()}-${p(data.getMonth() + 1)}-${p(data.getDate())}`;
+}
+
+// Segunda-feira da semana em que a data cai
+function inicioSemana(data) {
+  const inicio = new Date(data);
+  inicio.setDate(inicio.getDate() - (inicio.getDay() + 6) % 7);
+  return inicio;
+}
+
+// Segundas-feiras das semanas que cruzam o mês (YYYY-MM)
+function semanasDoMes(mes) {
+  const [ano, m] = mes.split('-').map(Number);
+  const fimDoMes = new Date(ano, m, 1);
+  const semanas = [];
+  const cursor = inicioSemana(new Date(ano, m - 1, 1));
+  while (cursor < fimDoMes) {
+    semanas.push(formatarIso(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return semanas;
+}
+
+function preencherFiltroSemanal() {
+  const meses = valoresUnicos('Mês').sort().reverse();
+  const atual = visaoSemanaMes.value;
+
+  visaoSemanaMes.innerHTML = '';
+  meses.forEach((mes) => {
+    const opcao = document.createElement('option');
+    opcao.value = mes;
+    opcao.textContent = mes;
+    visaoSemanaMes.appendChild(opcao);
+  });
+
+  if (meses.includes(atual)) visaoSemanaMes.value = atual;
+  else if (meses.includes(mesAtual())) visaoSemanaMes.value = mesAtual();
+}
+
+function renderizarGraficoSemanal() {
+  const mes = visaoSemanaMes.value;
+  if (!mes) {
+    graficoSemanal.innerHTML = '';
+    graficoSemanalVazio.hidden = false;
+    return;
+  }
+  const gastosMes = todosGastos.filter((g) => g.tipo === 'Gasto' && g['Mês'] === mes);
+
+  const totais = {};
+  gastosMes.forEach((g) => {
+    const chave = formatarIso(inicioSemana(dataLocal(g.Data.slice(0, 10))));
+    totais[chave] = (totais[chave] || 0) + g.Valor;
+  });
+
+  graficoSemanalVazio.hidden = gastosMes.length > 0;
+
+  // Todas as semanas do mês (mesmo sem gasto) + semanas com gasto fora dele
+  const semanas = [...new Set([...semanasDoMes(mes), ...Object.keys(totais)])].sort();
+
+  const entradas = semanas.map((inicio) => {
+    const inicioData = dataLocal(inicio);
+    const fimData = new Date(inicioData);
+    fimData.setDate(fimData.getDate() + 6);
+    const p = (n) => String(n).padStart(2, '0');
+    const rotulo = `${p(inicioData.getDate())}/${p(inicioData.getMonth() + 1)}–${p(fimData.getDate())}/${p(fimData.getMonth() + 1)}`;
+    return [rotulo, totais[inicio] || 0];
+  });
+  renderizarBarras(graficoSemanal, entradas);
+}
+
+visaoSemanaMes.addEventListener('change', renderizarGraficoSemanal);
+
+botaoMesAtualSemana.addEventListener('click', () => {
+  visaoSemanaMes.value = mesAtual();
+  renderizarGraficoSemanal();
+});
 
 // ---------- Adicionar gasto ----------
 
