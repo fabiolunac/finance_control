@@ -1,14 +1,13 @@
 /* ============================================================
    Service Worker — é ele que faz o app funcionar offline.
-   Estratégia: "cache first" — tenta o cache, se não tiver
-   busca na rede e guarda pra próxima vez.
+   Estratégia: "network first" — tenta a rede e atualiza o
+   cache; se estiver offline, responde com o cache.
 
-   IMPORTANTE: sempre que você mudar o site, aumente a VERSAO
-   abaixo (v1 → v2 → v3...). Isso força o navegador a baixar
-   os arquivos novos em vez de usar os antigos do cache.
+   Com network first as atualizações do site aparecem sozinhas.
+   A VERSAO só serve para limpar caches antigos na ativação.
    ============================================================ */
 
-const VERSAO = 'controle-gastos-v28';
+const VERSAO = 'controle-gastos-v29';
 
 const ARQUIVOS = [
   './',
@@ -43,22 +42,20 @@ self.addEventListener('activate', (evento) => {
   self.clients.claim();
 });
 
-// Busca: responde do cache; se não tiver, vai à rede e guarda
+// Busca: tenta a rede e atualiza o cache; offline, usa o cache
 self.addEventListener('fetch', (evento) => {
   if (evento.request.method !== 'GET') return;
 
   evento.respondWith(
-    caches.match(evento.request).then((resposta) => {
-      if (resposta) return resposta;
-
-      return fetch(evento.request).then((respostaRede) => {
+    fetch(evento.request)
+      .then((respostaRede) => {
         // Só guarda respostas válidas do nosso próprio site
         if (respostaRede.ok && evento.request.url.startsWith(self.location.origin)) {
           const copia = respostaRede.clone();
           caches.open(VERSAO).then((cache) => cache.put(evento.request, copia));
         }
         return respostaRede;
-      });
-    })
+      })
+      .catch(() => caches.match(evento.request))
   );
 });
