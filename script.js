@@ -27,6 +27,9 @@ const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
+const metaSemanaTexto = document.getElementById('meta-semana-texto');
+const metaSemanaBarra = document.getElementById('meta-semana-barra');
+const metaSemanaLegenda = document.getElementById('meta-semana-legenda');
 const visaoSemanaMes = document.getElementById('visao-semana-mes');
 const graficoSemanal = document.getElementById('grafico-semanal');
 const graficoSemanalVazio = document.getElementById('grafico-semanal-vazio');
@@ -418,7 +421,42 @@ function renderizarVisaoGeral() {
   visaoGeralVazio.hidden = categorias.length > 0;
   renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c]]));
 
+  renderizarMetaSemanal();
   renderizarGraficoSemanal();
+}
+
+// ---------- Teto de gasto da semana atual ----------
+
+const TETO_SEMANAL = 250;
+
+function renderizarMetaSemanal() {
+  const inicio = inicioSemana(new Date());
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 6);
+  const inicioIso = formatarIso(inicio);
+  const fimIso = formatarIso(fim);
+
+  const gastoSemana = todosGastos
+    .filter((g) => g.tipo === 'Gasto')
+    .filter((g) => {
+      const data = g.Data.slice(0, 10);
+      return data >= inicioIso && data <= fimIso;
+    })
+    .reduce((soma, g) => soma + g.Valor, 0);
+
+  const fracao = gastoSemana / TETO_SEMANAL;
+  metaSemanaBarra.style.width = `${Math.min(fracao, 1) * 100}%`;
+  metaSemanaBarra.className = 'progresso-barra ' +
+    (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
+
+  const p = (n) => String(n).padStart(2, '0');
+  metaSemanaTexto.textContent =
+    `Semana atual (${p(inicio.getDate())}/${p(inicio.getMonth() + 1)} – ${p(fim.getDate())}/${p(fim.getMonth() + 1)})`;
+
+  const restante = TETO_SEMANAL - gastoSemana;
+  metaSemanaLegenda.textContent = restante >= 0
+    ? `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — faltam ${formatarMoeda(restante)}`
+    : `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — ${formatarMoeda(-restante)} acima do teto`;
 }
 
 // ---------- Gastos por semana ----------
