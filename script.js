@@ -454,8 +454,9 @@ function renderizarMetaSemanal() {
     `Semana atual (${p(inicio.getDate())}/${p(inicio.getMonth() + 1)} – ${p(fim.getDate())}/${p(fim.getMonth() + 1)})`;
 
   const restante = TETO_SEMANAL - gastoSemana;
+  const diasRestantes = 7 - (new Date().getDay() + 6) % 7; // contando hoje
   metaSemanaLegenda.textContent = restante >= 0
-    ? `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — faltam ${formatarMoeda(restante)}`
+    ? `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — faltam ${formatarMoeda(restante)} (${formatarMoeda(restante / diasRestantes)}/dia até domingo)`
     : `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — ${formatarMoeda(-restante)} acima do teto`;
 }
 
