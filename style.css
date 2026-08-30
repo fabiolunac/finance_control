@@ -650,3 +650,67 @@ body::after {
   font-size: 0.8rem;
   color: var(--tinta-fraca);
 }
+
+/* ---------- Calendário ---------- */
+
+.filtros-visao { margin-bottom: 16px; }
+
+.calendario {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(32px, 42px));
+  justify-content: center;
+  gap: 6px;
+}
+
+.calendario-cabecalho {
+  padding-bottom: 4px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tinta-muda);
+}
+
+.calendario-dia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  font-family: var(--fonte-mono);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-fraca);
+}
+
+.calendario-hoje {
+  background: var(--cartao-alto);
+  color: var(--tinta);
+  font-weight: 600;
+}
+
+.calendario-com-gasto {
+  border-color: var(--acento);
+  color: var(--tinta);
+  box-shadow: 0 0 10px var(--acento-brilho);
+}
+
+.calendario-legenda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: var(--tinta-fraca);
+}
+
+.calendario-legenda-ponto {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--acento);
+  border-radius: 999px;
+  flex: 0 0 auto;
+}

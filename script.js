@@ -30,10 +30,11 @@ const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
 const metaSemanaBarra = document.getElementById('meta-semana-barra');
 const metaSemanaLegenda = document.getElementById('meta-semana-legenda');
-const visaoSemanaMes = document.getElementById('visao-semana-mes');
+const visaoMes = document.getElementById('visao-mes');
+const botaoMesAtualVisao = document.getElementById('botao-mes-atual-visao');
+const calendario = document.getElementById('calendario');
 const graficoSemanal = document.getElementById('grafico-semanal');
 const graficoSemanalVazio = document.getElementById('grafico-semanal-vazio');
-const botaoMesAtualSemana = document.getElementById('botao-mes-atual-semana');
 
 const graficoCategoria = document.getElementById('grafico-categoria');
 const graficoCategoriaGeral = document.getElementById('grafico-categoria-geral');
@@ -119,7 +120,7 @@ async function carregar() {
     todosGastos = gastos;
     preencherFiltros();
     preencherFiltrosGrafico();
-    preencherFiltroSemanal();
+    preencherFiltroVisao();
     preencherSugestoes();
     aplicarFiltros();
     if (!secaoGraficos.hidden) atualizarGraficos();
@@ -406,8 +407,13 @@ function mesAtual() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
 }
 
+// Mês escolhido no filtro da aba (cai no mês atual enquanto não há opções)
+function mesSelecionado() {
+  return visaoMes.value || mesAtual();
+}
+
 function renderizarVisaoGeral() {
-  const gastosMes = todosGastos.filter((g) => g['Mês'] === mesAtual());
+  const gastosMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado());
 
   metricaTotalGasto.textContent = formatarMoeda(calcularTotalGasto(gastosMes));
   metricaLancamentos.textContent = String(gastosMes.length);
@@ -422,8 +428,16 @@ function renderizarVisaoGeral() {
   renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c]]));
 
   renderizarMetaSemanal();
+  renderizarCalendario();
   renderizarGraficoSemanal();
 }
+
+visaoMes.addEventListener('change', renderizarVisaoGeral);
+
+botaoMesAtualVisao.addEventListener('click', () => {
+  visaoMes.value = mesAtual();
+  renderizarVisaoGeral();
+});
 
 // ---------- Teto de gasto da semana atual ----------
 
@@ -492,29 +506,24 @@ function semanasDoMes(mes) {
   return semanas;
 }
 
-function preencherFiltroSemanal() {
+function preencherFiltroVisao() {
   const meses = valoresUnicos('Mês').sort().reverse();
-  const atual = visaoSemanaMes.value;
+  const atual = visaoMes.value;
 
-  visaoSemanaMes.innerHTML = '';
+  visaoMes.innerHTML = '';
   meses.forEach((mes) => {
     const opcao = document.createElement('option');
     opcao.value = mes;
     opcao.textContent = mes;
-    visaoSemanaMes.appendChild(opcao);
+    visaoMes.appendChild(opcao);
   });
 
-  if (meses.includes(atual)) visaoSemanaMes.value = atual;
-  else if (meses.includes(mesAtual())) visaoSemanaMes.value = mesAtual();
+  if (meses.includes(atual)) visaoMes.value = atual;
+  else if (meses.includes(mesAtual())) visaoMes.value = mesAtual();
 }
 
 function renderizarGraficoSemanal() {
-  const mes = visaoSemanaMes.value;
-  if (!mes) {
-    graficoSemanal.innerHTML = '';
-    graficoSemanalVazio.hidden = false;
-    return;
-  }
+  const mes = mesSelecionado();
   const gastosMes = todosGastos.filter((g) => g.tipo === 'Gasto' && g['Mês'] === mes);
 
   const totais = {};
@@ -539,12 +548,58 @@ function renderizarGraficoSemanal() {
   renderizarBarras(graficoSemanal, entradas);
 }
 
-visaoSemanaMes.addEventListener('change', renderizarGraficoSemanal);
+// ---------- Calendário do mês ----------
 
-botaoMesAtualSemana.addEventListener('click', () => {
-  visaoSemanaMes.value = mesAtual();
-  renderizarGraficoSemanal();
-});
+const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+
+function renderizarCalendario() {
+  const mes = mesSelecionado();
+  const [ano, m] = mes.split('-').map(Number);
+
+  // Soma por dia, pela data do gasto (o dia precisa existir no mês mostrado)
+  const totaisPorDia = {};
+  todosGastos.forEach((g) => {
+    if (g.tipo !== 'Gasto') return;
+    const data = g.Data.slice(0, 10);
+    if (data.slice(0, 7) !== mes) return;
+    totaisPorDia[data] = (totaisPorDia[data] || 0) + g.Valor;
+  });
+
+  calendario.innerHTML = '';
+
+  DIAS_SEMANA.forEach((nome) => {
+    const cabecalho = document.createElement('span');
+    cabecalho.className = 'calendario-cabecalho';
+    cabecalho.textContent = nome;
+    calendario.appendChild(cabecalho);
+  });
+
+  // Casas vazias até a primeira segunda-feira do mês
+  const vazias = (new Date(ano, m - 1, 1).getDay() + 6) % 7;
+  for (let i = 0; i < vazias; i += 1) {
+    calendario.appendChild(document.createElement('span'));
+  }
+
+  const diasNoMes = new Date(ano, m, 0).getDate();
+  const hoje = formatarIso(new Date());
+
+  for (let dia = 1; dia <= diasNoMes; dia += 1) {
+    const iso = formatarIso(new Date(ano, m - 1, dia));
+    const celula = document.createElement('span');
+    celula.className = 'calendario-dia';
+    celula.textContent = String(dia);
+
+    if (iso === hoje) celula.classList.add('calendario-hoje');
+
+    const total = totaisPorDia[iso];
+    if (total) {
+      celula.classList.add('calendario-com-gasto');
+      celula.title = `${formatarData(iso)} — ${formatarMoeda(total)}`;
+    }
+
+    calendario.appendChild(celula);
+  }
+}
 
 // ---------- Adicionar gasto ----------
 

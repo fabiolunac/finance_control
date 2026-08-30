@@ -139,6 +139,20 @@
 
     <section id="secao-visao-geral" hidden>
 
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Teto da semana</h2>
+        <div class="progresso-cabecalho" id="meta-semana-texto"></div>
+        <div class="progresso-trilha">
+          <div id="meta-semana-barra" class="progresso-barra"></div>
+        </div>
+        <p id="meta-semana-legenda" class="progresso-legenda"></p>
+      </div>
+
+      <div class="filtros filtros-dia filtros-visao">
+        <select id="visao-mes" class="select-basico" aria-label="Selecionar mês"></select>
+        <button id="botao-mes-atual-visao" class="botao-chip" type="button">Mês atual</button>
+      </div>
+
       <div class="metricas-grid">
         <div class="metrica">
           <span class="metrica-rotulo">Total gasto no mês</span>
@@ -151,26 +165,22 @@
       </div>
 
       <div class="cartao-grafico">
-        <h2 class="titulo-grafico">Teto da semana</h2>
-        <div class="progresso-cabecalho" id="meta-semana-texto"></div>
-        <div class="progresso-trilha">
-          <div id="meta-semana-barra" class="progresso-barra"></div>
-        </div>
-        <p id="meta-semana-legenda" class="progresso-legenda"></p>
+        <h2 class="titulo-grafico">Calendário do mês</h2>
+        <div id="calendario" class="calendario"></div>
+        <p class="calendario-legenda">
+          <span class="calendario-legenda-ponto" aria-hidden="true"></span>
+          dia com gasto
+        </p>
       </div>
 
       <div class="cartao-grafico cartao-grafico-dia">
         <h2 class="titulo-grafico">Gastos por semana</h2>
-        <div class="filtros filtros-dia">
-          <select id="visao-semana-mes" class="select-basico" aria-label="Selecionar mês"></select>
-          <button id="botao-mes-atual-semana" class="botao-chip" type="button">Mês atual</button>
-        </div>
         <div id="grafico-semanal" class="grafico"></div>
         <p id="grafico-semanal-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
       </div>
 
       <div class="cartao-grafico cartao-grafico-dia">
-        <h2 class="titulo-grafico">Gastos por categoria geral (mês atual)</h2>
+        <h2 class="titulo-grafico">Gastos por categoria geral</h2>
         <div id="grafico-categorias-mes" class="grafico"></div>
         <p id="visao-geral-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
       </div>
