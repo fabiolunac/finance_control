@@ -57,10 +57,14 @@
 
       <div class="filtros">
         <div id="filtro-mes" aria-label="Filtrar por mês de pagamento"></div>
-        <div id="filtro-categoria" aria-label="Filtrar por categoria"></div>
-        <div id="filtro-categoria-geral" aria-label="Filtrar por categoria geral"></div>
-        <div id="filtro-local" aria-label="Filtrar por local"></div>
         <button id="botao-mes-atual" class="botao-chip" type="button">Mês atual</button>
+        <!-- No celular os demais filtros ficam recolhidos atrás deste botão -->
+        <button id="botao-filtros" class="botao-chip botao-filtros" type="button" aria-expanded="false" aria-controls="painel-filtros">Filtros</button>
+        <div id="painel-filtros" class="painel-filtros">
+          <div id="filtro-categoria" aria-label="Filtrar por categoria"></div>
+          <div id="filtro-categoria-geral" aria-label="Filtrar por categoria geral"></div>
+          <div id="filtro-local" aria-label="Filtrar por local"></div>
+        </div>
       </div>
 
       <div class="cartao-total">
@@ -120,50 +124,50 @@
 
     <section id="secao-visao-geral">
 
-      <div class="cartao-grafico">
-        <h2 class="titulo-grafico">Teto da semana</h2>
-        <div class="progresso-cabecalho" id="meta-semana-texto"></div>
-        <div class="progresso-trilha">
-          <div id="meta-semana-barra" class="progresso-barra"></div>
-        </div>
-        <p id="meta-semana-legenda" class="progresso-legenda"></p>
-      </div>
-
       <div class="filtros filtros-dia filtros-visao">
         <select id="visao-mes" class="select-basico" aria-label="Selecionar mês"></select>
         <button id="botao-mes-atual-visao" class="botao-chip" type="button">Mês atual</button>
       </div>
 
-      <div class="metricas-grid">
-        <div class="metrica">
+      <div class="cartao-resumo">
+        <div class="resumo-mes">
           <span class="metrica-rotulo">Total gasto no mês</span>
-          <span class="metrica-valor" id="metrica-total-gasto"></span>
+          <span class="resumo-valor" id="metrica-total-gasto"></span>
+          <span class="resumo-sub" id="metrica-lancamentos"></span>
         </div>
-        <div class="metrica">
-          <span class="metrica-rotulo">Lançamentos no mês</span>
-          <span class="metrica-valor" id="metrica-lancamentos"></span>
+        <div class="resumo-semana">
+          <span class="metrica-rotulo">Teto da semana</span>
+          <div class="progresso-cabecalho" id="meta-semana-texto"></div>
+          <div class="progresso-trilha">
+            <div id="meta-semana-barra" class="progresso-barra"></div>
+          </div>
+          <p id="meta-semana-legenda" class="progresso-legenda"></p>
         </div>
       </div>
 
-      <div class="cartao-grafico">
-        <h2 class="titulo-grafico">Calendário do mês</h2>
-        <div id="calendario" class="calendario"></div>
-        <p class="calendario-legenda">
-          <span class="calendario-legenda-ponto" aria-hidden="true"></span>
-          dia com gasto
-        </p>
-      </div>
+      <div class="visao-grade">
+        <div class="cartao-grafico">
+          <h2 class="titulo-grafico">Calendário do mês</h2>
+          <div id="calendario" class="calendario"></div>
+          <p class="calendario-legenda">
+            <span class="calendario-legenda-ponto" aria-hidden="true"></span>
+            dia com gasto
+          </p>
+        </div>
 
-      <div class="cartao-grafico cartao-grafico-dia">
-        <h2 class="titulo-grafico">Gastos por semana</h2>
-        <div id="grafico-semanal" class="grafico"></div>
-        <p id="grafico-semanal-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
-      </div>
+        <div class="visao-coluna">
+          <div class="cartao-grafico">
+            <h2 class="titulo-grafico">Gastos por semana</h2>
+            <div id="grafico-semanal" class="grafico"></div>
+            <p id="grafico-semanal-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
+          </div>
 
-      <div class="cartao-grafico cartao-grafico-dia">
-        <h2 class="titulo-grafico">Gastos por categoria geral</h2>
-        <div id="grafico-categorias-mes" class="grafico"></div>
-        <p id="visao-geral-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
+          <div class="cartao-grafico">
+            <h2 class="titulo-grafico">Gastos por categoria geral</h2>
+            <div id="grafico-categorias-mes" class="grafico"></div>
+            <p id="visao-geral-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
+          </div>
+        </div>
       </div>
 
     </section>

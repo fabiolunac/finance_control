@@ -50,6 +50,8 @@ const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
 const filtroLocal = document.getElementById('filtro-local');
 const botaoMesAtual = document.getElementById('botao-mes-atual');
+const botaoFiltros = document.getElementById('botao-filtros');
+const painelFiltros = document.getElementById('painel-filtros');
 
 const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
@@ -271,7 +273,18 @@ function aplicarFiltros() {
   );
   renderizar(filtrados);
   totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
+
+  const ativos = [filtroCategoria, filtroCategoriaGeral, filtroLocal]
+    .filter((root) => root.selecionados.size > 0).length;
+  botaoFiltros.textContent = ativos ? `Filtros (${ativos})` : 'Filtros';
+  botaoFiltros.classList.toggle('botao-filtros-ativo', ativos > 0);
 }
+
+botaoFiltros.addEventListener('click', () => {
+  const vaiAbrir = !painelFiltros.classList.contains('painel-filtros-aberto');
+  painelFiltros.classList.toggle('painel-filtros-aberto', vaiAbrir);
+  botaoFiltros.setAttribute('aria-expanded', String(vaiAbrir));
+});
 
 // ---------- Abas ----------
 
@@ -417,7 +430,8 @@ function renderizarVisaoGeral() {
   const gastosMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado());
 
   metricaTotalGasto.textContent = formatarMoeda(calcularTotalGasto(gastosMes));
-  metricaLancamentos.textContent = String(gastosMes.length);
+  const n = gastosMes.length;
+  metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
   const totais = {};
   gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
@@ -685,12 +699,49 @@ gavetaAdicionar.addEventListener('click', (evento) => {
 
 // ---------- Renderização ----------
 
+// Rótulo do cabeçalho de dia na lista do celular: "Hoje", "Ontem" ou "seg, 27/09"
+function rotuloDia(dataIso) {
+  const hoje = new Date();
+  const ontem = new Date(hoje);
+  ontem.setDate(ontem.getDate() - 1);
+  if (dataIso === formatarIso(hoje)) return 'Hoje';
+  if (dataIso === formatarIso(ontem)) return 'Ontem';
+  const data = dataLocal(dataIso);
+  return `${DIAS_SEMANA[(data.getDay() + 6) % 7]}, ${formatarData(dataIso).slice(0, 5)}`;
+}
+
 function renderizar(gastos) {
   corpoTabela.innerHTML = '';
   vazio.hidden = gastos.length > 0;
 
+  // Total por dia, para os cabeçalhos de dia (só aparecem no celular)
+  const porDia = {};
+  gastos.forEach((g) => {
+    const dia = g.Data.slice(0, 10);
+    (porDia[dia] = porDia[dia] || []).push(g);
+  });
+  let diaAnterior = null;
+
   gastos.forEach((gasto) => {
+    const dia = gasto.Data.slice(0, 10);
+    if (dia !== diaAnterior) {
+      diaAnterior = dia;
+      const trDia = document.createElement('tr');
+      trDia.className = 'linha-dia';
+      const tdDia = document.createElement('td');
+      tdDia.colSpan = 8;
+      const nome = document.createElement('span');
+      nome.textContent = rotuloDia(dia);
+      const total = document.createElement('span');
+      total.className = 'linha-dia-total';
+      total.textContent = formatarMoeda(calcularTotalGasto(porDia[dia]));
+      tdDia.append(nome, total);
+      trDia.appendChild(tdDia);
+      corpoTabela.appendChild(trDia);
+    }
+
     const tr = document.createElement('tr');
+    if (gasto.tipo === 'Pagamento') tr.classList.add('linha-pagamento');
 
     const celulas = [
       { texto: formatarData(gasto.Data), campo: 'Data', tipoInput: 'date', valorEdicao: gasto.Data.slice(0, 10) },
