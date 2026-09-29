@@ -266,18 +266,42 @@ function fecharMultiSelects(exceto) {
     if (root === exceto) return;
     root._painel.hidden = true;
     root._botao.classList.remove('multiselect-aberto');
+    root._botao.setAttribute('aria-expanded', 'false');
   });
 }
 
 document.addEventListener('click', () => fecharMultiSelects());
+document.addEventListener('keydown', (evento) => {
+  if (evento.key === 'Escape') fecharMultiSelects();
+});
 
+const SETA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>';
+const MINIMO_PARA_BUSCA = 8; // listas maiores ganham campo de busca
+
+// Botão mostra o nome do filtro em cima e a escolha embaixo: "Todas",
+// o valor escolhido, ou o primeiro valor com "+2" quando há mais
 function atualizarTextoMultiSelect(root, campo, rotuloTodos) {
   const n = root.selecionados.size;
+  const todos = rotuloTodos.split(': ')[1] || 'todos';
+  root._rotulo.textContent = campo;
   root._texto.textContent = n === 0
-    ? rotuloTodos
-    : n === 1
-      ? [...root.selecionados][0]
-      : `${campo} (${n})`;
+    ? todos.charAt(0).toUpperCase() + todos.slice(1)
+    : [...root.selecionados][0];
+  root._contagem.hidden = n < 2;
+  root._contagem.textContent = `+${n - 1}`;
+  root.classList.toggle('multiselect-ativo', n > 0);
+}
+
+function filtrarItensMultiSelect(root) {
+  const termo = semAcento(root._busca.value.trim().toLowerCase());
+  let visiveis = 0;
+  root._lista.querySelectorAll('.multiselect-item').forEach((item) => {
+    const combina = !termo || item._textoBusca.includes(termo);
+    item.hidden = !combina;
+    if (combina) visiveis += 1;
+  });
+  root._semResultado.hidden = visiveis > 0;
 }
 
 function criarMultiSelect(root) {
@@ -289,19 +313,67 @@ function criarMultiSelect(root) {
   const botao = document.createElement('button');
   botao.type = 'button';
   botao.className = 'multiselect-botao';
+  botao.setAttribute('aria-expanded', 'false');
   if (rotulo) botao.setAttribute('aria-label', rotulo);
 
+  const textos = document.createElement('span');
+  textos.className = 'multiselect-textos';
+  const rotuloCampo = document.createElement('span');
+  rotuloCampo.className = 'multiselect-rotulo';
   const texto = document.createElement('span');
   texto.className = 'multiselect-texto';
+  textos.append(rotuloCampo, texto);
+
+  const contagem = document.createElement('span');
+  contagem.className = 'multiselect-contagem';
+  contagem.hidden = true;
+
   const seta = document.createElement('span');
   seta.className = 'multiselect-seta';
   seta.setAttribute('aria-hidden', 'true');
-  seta.textContent = '▾';
-  botao.append(texto, seta);
+  seta.innerHTML = SETA_SVG;
+  botao.append(textos, contagem, seta);
 
   const painel = document.createElement('div');
   painel.className = 'multiselect-painel';
   painel.hidden = true;
+
+  const busca = document.createElement('input');
+  busca.type = 'search';
+  busca.className = 'multiselect-busca';
+  busca.placeholder = 'Buscar…';
+  busca.setAttribute('aria-label', `Buscar em ${rotulo}`);
+  busca.hidden = true;
+  busca.addEventListener('input', () => filtrarItensMultiSelect(root));
+
+  const lista = document.createElement('div');
+  lista.className = 'multiselect-lista';
+
+  const semResultado = document.createElement('p');
+  semResultado.className = 'multiselect-sem-resultado';
+  semResultado.textContent = 'Nada encontrado';
+  semResultado.hidden = true;
+
+  const rodape = document.createElement('div');
+  rodape.className = 'multiselect-rodape';
+  const limpar = document.createElement('button');
+  limpar.type = 'button';
+  limpar.className = 'multiselect-acao';
+  limpar.textContent = 'Limpar';
+  limpar.addEventListener('click', () => {
+    root.selecionados.clear();
+    lista.querySelectorAll('input[type="checkbox"]').forEach((caixa) => { caixa.checked = false; });
+    atualizarTextoMultiSelect(root, root._campo, root._rotuloTodos);
+    if (root._aoMudar) root._aoMudar();
+  });
+  const pronto = document.createElement('button');
+  pronto.type = 'button';
+  pronto.className = 'multiselect-acao multiselect-acao-principal';
+  pronto.textContent = 'Pronto';
+  pronto.addEventListener('click', () => fecharMultiSelects());
+  rodape.append(limpar, pronto);
+
+  painel.append(busca, lista, semResultado, rodape);
 
   botao.addEventListener('click', (evento) => {
     evento.stopPropagation();
@@ -309,26 +381,40 @@ function criarMultiSelect(root) {
     fecharMultiSelects(root);
     painel.hidden = !vaiAbrir;
     botao.classList.toggle('multiselect-aberto', vaiAbrir);
+    botao.setAttribute('aria-expanded', String(vaiAbrir));
+    // No celular não foca a busca, senão o teclado sobe e cobre a lista
+    if (vaiAbrir && !busca.hidden && !ehCelular()) busca.focus();
   });
   painel.addEventListener('click', (evento) => evento.stopPropagation());
 
   root.append(botao, painel);
   root._botao = botao;
+  root._rotulo = rotuloCampo;
   root._texto = texto;
+  root._contagem = contagem;
   root._painel = painel;
+  root._busca = busca;
+  root._lista = lista;
+  root._semResultado = semResultado;
   todosMultiSelects.push(root);
 }
 
 function popularMultiSelect(root, valores, rotuloTodos, campo, aoMudar) {
   root.selecionados = new Set([...root.selecionados].filter((v) => valores.includes(v)));
-  root._painel.innerHTML = '';
+  root._campo = campo;
+  root._rotuloTodos = rotuloTodos;
+  root._aoMudar = aoMudar;
+  root._lista.innerHTML = '';
 
   valores.forEach((valor) => {
     const item = document.createElement('label');
     item.className = 'multiselect-item';
+    item._textoBusca = semAcento(String(valor ?? '').toLowerCase());
 
+    // Checkbox nativo invisível (teclado e leitor de tela) + marca desenhada
     const caixa = document.createElement('input');
     caixa.type = 'checkbox';
+    caixa.className = 'multiselect-caixa-nativa';
     caixa.value = valor;
     caixa.checked = root.selecionados.has(valor);
     caixa.addEventListener('change', () => {
@@ -338,13 +424,21 @@ function popularMultiSelect(root, valores, rotuloTodos, campo, aoMudar) {
       aoMudar();
     });
 
+    const marca = document.createElement('span');
+    marca.className = 'multiselect-marca';
+    marca.setAttribute('aria-hidden', 'true');
+    marca.innerHTML = CHECK_SVG;
+
     const span = document.createElement('span');
+    span.className = 'multiselect-item-texto';
     span.textContent = valor;
 
-    item.append(caixa, span);
-    root._painel.appendChild(item);
+    item.append(caixa, marca, span);
+    root._lista.appendChild(item);
   });
 
+  root._busca.hidden = valores.length < MINIMO_PARA_BUSCA;
+  filtrarItensMultiSelect(root);
   atualizarTextoMultiSelect(root, campo, rotuloTodos);
 }
 

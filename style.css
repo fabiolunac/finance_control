@@ -570,14 +570,12 @@ body {
 
 .multiselect-botao {
   width: 100%;
+  min-height: 52px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 500;
-  padding: 10px 14px;
+  padding: 8px 12px 8px 14px;
   border: 1px solid var(--borda);
   border-radius: var(--raio);
   background: var(--cartao);
@@ -586,52 +584,135 @@ body {
   text-align: left;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: border-color var(--t-rapida), background var(--t-rapida);
+  transition: border-color var(--t-rapida), background var(--t-rapida), box-shadow var(--t-rapida);
 }
 
 .multiselect-botao:hover { border-color: var(--borda-forte); }
 
-.multiselect-botao:focus,
+.multiselect-botao:focus-visible,
 .multiselect-botao.multiselect-aberto {
   border-color: var(--acento);
   box-shadow: 0 0 0 3px var(--acento-suave);
   outline: none;
 }
 
+/* Nome do filtro pequeno em cima, escolha embaixo */
+.multiselect-textos {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.multiselect-rotulo {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-muda);
+}
+
 .multiselect-texto {
+  font-size: 0.9rem;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.multiselect-seta {
-  flex: 0 0 auto;
-  font-size: 0.65rem;
-  color: var(--tinta-muda);
+.multiselect-contagem {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--gradiente);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
+
+.multiselect-seta {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--tinta-muda);
+  transition: transform var(--t-base), color var(--t-rapida);
+}
+
+.multiselect-seta svg { width: 100%; height: 100%; }
+
+.multiselect-aberto .multiselect-seta { transform: rotate(180deg); color: var(--acento); }
+
+/* Com algo escolhido o botão fica tingido, pra ver de relance o que está filtrado */
+.multiselect-ativo .multiselect-botao {
+  border-color: var(--acento-media);
+  background: var(--acento-suave);
+}
+
+.multiselect-ativo .multiselect-rotulo { color: var(--acento-claro); }
 
 .multiselect-painel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
   min-width: 100%;
-  max-height: 280px;
-  overflow-y: auto;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 8px;
   background: var(--cartao-alto);
   border: 1px solid var(--borda-forte);
-  border-radius: var(--raio);
-  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, .75);
-  padding: 6px;
-  z-index: 10;
+  border-radius: var(--raio-lg);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, .8);
+  transform-origin: top;
+  animation: painel-abre .18s cubic-bezier(.2, .8, .2, 1);
+}
+
+@keyframes painel-abre {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.multiselect-busca {
+  font: inherit;
+  font-size: 0.88rem;
+  margin-bottom: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-sm);
+  background: var(--campo-fundo);
+  color: var(--tinta);
+  outline: none;
+  color-scheme: dark;
+  transition: border-color var(--t-rapida), box-shadow var(--t-rapida);
+}
+
+.multiselect-busca::placeholder { color: var(--tinta-muda); }
+
+.multiselect-busca:focus {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+.multiselect-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 .multiselect-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 12px;
+  padding: 9px 10px;
   border-radius: var(--raio-sm);
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--t-rapida);
@@ -639,12 +720,76 @@ body {
 
 .multiselect-item:hover { background: var(--acento-suave); }
 
-.multiselect-item input {
-  accent-color: var(--acento-forte);
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
+.multiselect-caixa-nativa {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
+
+/* Caixinha desenhada: vazia com borda, cheia com o degradê do tema */
+.multiselect-marca {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--borda-forte);
+  border-radius: 7px;
+  color: transparent;
+  transition: background var(--t-rapida), border-color var(--t-rapida), color var(--t-rapida);
+}
+
+.multiselect-marca svg { width: 14px; height: 14px; }
+
+.multiselect-caixa-nativa:checked + .multiselect-marca {
+  background: var(--gradiente);
+  border-color: transparent;
+  color: #fff;
+}
+
+.multiselect-caixa-nativa:focus-visible + .multiselect-marca {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.multiselect-caixa-nativa:checked ~ .multiselect-item-texto { font-weight: 600; }
+
+.multiselect-sem-resultado {
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--tinta-muda);
+}
+
+.multiselect-rodape {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--borda);
+}
+
+.multiselect-acao {
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--tinta-fraca);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida);
+}
+
+.multiselect-acao:hover { background: rgba(255, 255, 255, .05); color: var(--tinta); }
+
+.multiselect-acao-principal { background: var(--acento-suave); color: var(--acento-claro); }
+.multiselect-acao-principal:hover { background: var(--acento-media); color: #fff; }
 
 /* ---------- Erro ---------- */
 
@@ -880,18 +1025,24 @@ body {
 .cartao-grafico-dia { margin-top: 16px; }
 
 .select-basico {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 52px;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 500;
-  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 44px 10px 14px;
   border: 1px solid var(--borda);
   border-radius: var(--raio);
-  background: var(--campo-fundo);
+  /* Seta desenhada no lugar da nativa, igual à dos filtros */
+  background: var(--cartao) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,.55)' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 14px center / 18px;
   color: var(--tinta);
   cursor: pointer;
   color-scheme: dark;
   transition: border-color var(--t-rapida), box-shadow var(--t-rapida);
 }
+
+.select-basico:hover { border-color: var(--borda-forte); }
 
 .select-basico:focus {
   border-color: var(--acento);
