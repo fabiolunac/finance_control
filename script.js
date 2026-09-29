@@ -89,6 +89,10 @@ const opcoesParamCategoria = document.getElementById('opcoes-param-categoria');
 const opcoesParamCategoriaGeral = document.getElementById('opcoes-param-categoria-geral');
 const corpoParam = document.getElementById('corpo-param');
 const paramVazio = document.getElementById('param-vazio');
+const listaPendentes = document.getElementById('lista-pendentes');
+const pendentesContagem = document.getElementById('pendentes-contagem');
+const pendentesVazio = document.getElementById('pendentes-vazio');
+const botaoMaisPendentes = document.getElementById('botao-mais-pendentes');
 
 let todosGastos = [];
 let todosParam = [];
@@ -204,6 +208,7 @@ function renderizarTudo() {
   aplicarFiltros();
   if (!secaoGraficos.hidden) atualizarGraficos();
   if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+  if (paramCarregado && !secaoParametros.hidden) renderizarPendentes();
 }
 
 // ---------- Filtros ----------
@@ -1411,6 +1416,145 @@ function renderizarParam() {
 
     corpoParam.appendChild(tr);
   });
+
+  renderizarPendentes();
+}
+
+// ---------- Locais sem categoria ----------
+
+// Locais dos gastos que não têm parâmetro: mesma comparação exata do servidor,
+// então um local categorizado de propósito como "Extra" não entra aqui
+const LIMITE_PENDENTES = 10;
+let mostrarTodosPendentes = false;
+const rascunhosPendentes = new Map(); // texto digitado por local, sobrevive às recargas
+
+function locaisPendentes() {
+  const cadastrados = new Set(todosParam.map((p) => p.Local));
+  const grupos = new Map();
+  todosGastos.forEach((g) => {
+    if (cadastrados.has(g.Local)) return;
+    const grupo = grupos.get(g.Local) || { local: g.Local, quantidade: 0, total: 0 };
+    grupo.quantidade += 1;
+    grupo.total += g.Valor;
+    grupos.set(g.Local, grupo);
+  });
+  return [...grupos.values()].sort((a, b) => b.quantidade - a.quantidade || b.total - a.total);
+}
+
+// Categoria Geral mais usada com essa Categoria nos parâmetros
+function geralSugerida(categoria) {
+  const contagem = {};
+  todosParam.forEach((p) => {
+    if (p.Categoria === categoria) contagem[p['Categoria Geral']] = (contagem[p['Categoria Geral']] || 0) + 1;
+  });
+  return Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a])[0] || '';
+}
+
+function textoLancamentos(n) {
+  return `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
+}
+
+function renderizarPendentes() {
+  // Sem os gastos carregados a lista sairia vazia e diria que está tudo certo
+  if (!carregouUmaVez) return;
+
+  const pendentes = locaisPendentes();
+  pendentesContagem.textContent = pendentes.length ? `(${pendentes.length})` : '';
+  pendentesVazio.hidden = pendentes.length > 0;
+
+  const visiveis = mostrarTodosPendentes ? pendentes : pendentes.slice(0, LIMITE_PENDENTES);
+  listaPendentes.innerHTML = '';
+  visiveis.forEach((grupo) => listaPendentes.appendChild(criarLinhaPendente(grupo)));
+
+  botaoMaisPendentes.hidden = pendentes.length <= LIMITE_PENDENTES;
+  botaoMaisPendentes.textContent = mostrarTodosPendentes ? 'Mostrar menos' : `Mostrar todos (${pendentes.length})`;
+}
+
+botaoMaisPendentes.addEventListener('click', () => {
+  mostrarTodosPendentes = !mostrarTodosPendentes;
+  renderizarPendentes();
+});
+
+function criarCampoPendente(lista, placeholder, local, valor) {
+  const campo = document.createElement('input');
+  campo.type = 'text';
+  campo.setAttribute('list', lista);
+  campo.placeholder = placeholder;
+  campo.autocomplete = 'off';
+  campo.maxLength = 120;
+  campo.required = true;
+  campo.value = valor;
+  campo.setAttribute('aria-label', `${placeholder} de ${local}`);
+  return campo;
+}
+
+function criarLinhaPendente({ local, quantidade, total }) {
+  const form = document.createElement('form');
+  form.className = 'pendente';
+
+  const info = document.createElement('div');
+  info.className = 'pendente-info';
+  const nome = document.createElement('span');
+  nome.className = 'pendente-local';
+  nome.textContent = local;
+  const meta = document.createElement('span');
+  meta.className = 'pendente-meta';
+  meta.textContent = `${textoLancamentos(quantidade)} · ${formatarMoeda(total)}`;
+  info.append(nome, meta);
+
+  const rascunho = rascunhosPendentes.get(local) || { categoria: '', geral: '' };
+  const campoCategoria = criarCampoPendente('opcoes-param-categoria', 'Categoria', local, rascunho.categoria);
+  const campoGeral = criarCampoPendente('opcoes-param-categoria-geral', 'Categoria Geral', local, rascunho.geral);
+
+  const guardar = () => rascunhosPendentes.set(local, { categoria: campoCategoria.value, geral: campoGeral.value });
+  campoCategoria.addEventListener('input', guardar);
+  campoGeral.addEventListener('input', guardar);
+  // Escolhida uma Categoria conhecida, já sugere a Categoria Geral que costuma acompanhá-la
+  campoCategoria.addEventListener('change', () => {
+    if (!campoGeral.value.trim()) {
+      campoGeral.value = geralSugerida(campoCategoria.value.trim());
+      guardar();
+    }
+  });
+
+  const botao = document.createElement('button');
+  botao.type = 'submit';
+  botao.className = 'botao-primario';
+  botao.textContent = 'Salvar';
+
+  form.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    salvarPendente(local, quantidade, campoCategoria.value.trim(), campoGeral.value.trim(), botao);
+  });
+
+  const campos = document.createElement('div');
+  campos.className = 'pendente-campos';
+  campos.append(campoCategoria, campoGeral, botao);
+  form.append(info, campos);
+  return form;
+}
+
+async function salvarPendente(local, quantidade, categoria, categoriaGeral, botao) {
+  if (!categoria || !categoriaGeral) return;
+  erro.hidden = true;
+  botao.disabled = true;
+
+  try {
+    await requisitar('POST', '/api/param',
+      { Local: local, Categoria: categoria, CategoriaGeral: categoriaGeral }, 'Erro ao gravar no servidor.');
+  } catch (e) {
+    mostrarErro(e.message);
+    botao.disabled = false;
+    return;
+  }
+
+  // Sai da lista na hora; parâmetros e gastos atualizados chegam em seguida
+  rascunhosPendentes.delete(local);
+  todosParam = [...todosParam, { Local: local, Categoria: categoria, 'Categoria Geral': categoriaGeral }];
+  renderizarPendentes();
+  mostrarNotificacao(`${local} → ${categoria} · ${textoLancamentos(quantidade)} ${quantidade === 1 ? 'atualizado' : 'atualizados'}`);
+
+  await Promise.all([carregarParametros(), carregar()]);
 }
 
 async function adicionarParam(evento) {
@@ -1444,7 +1588,7 @@ async function adicionarParam(evento) {
     formParam.reset();
     campoParamLocal.focus();
 
-    await carregarParametros();
+    await Promise.all([carregarParametros(), carregar()]);
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
@@ -1476,6 +1620,7 @@ function removerParam(param) {
         return;
       }
       paramRemovendo.delete(param.rowid);
+      carregar();
     },
   });
 }
@@ -1555,7 +1700,7 @@ async function salvarEdicaoParam(td, param, campo, novoValorBruto, valorOriginal
       throw new Error('Erro ao salvar no servidor.');
     }
 
-    await carregarParametros();
+    await Promise.all([carregarParametros(), carregar()]);
   } catch (e) {
     cancelar();
     erro.textContent = e.message;

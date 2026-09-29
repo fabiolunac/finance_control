@@ -208,6 +208,14 @@
 
     <section id="secao-parametros" hidden>
 
+      <div class="cartao-grafico cartao-pendentes">
+        <h2 class="titulo-grafico">Sem categoria <span id="pendentes-contagem" class="pendentes-contagem"></span></h2>
+        <p class="pendentes-ajuda">Locais sem parâmetro caem em "Extra". Cadastrar um aqui corrige todos os lançamentos dele.</p>
+        <div id="lista-pendentes" class="lista-pendentes"></div>
+        <p id="pendentes-vazio" class="vazio" hidden>Todos os locais têm categoria.</p>
+        <button id="botao-mais-pendentes" class="botao-chip botao-mais-pendentes" type="button" hidden></button>
+      </div>
+
       <form id="form-param" class="novo-gasto">
         <input id="campo-param-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" required>
         <input id="campo-param-categoria" list="opcoes-param-categoria" placeholder="Categoria" autocomplete="off" maxlength="120" required>
