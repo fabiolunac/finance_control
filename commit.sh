@@ -1,5 +1,6 @@
 #!/bin/bash
-# Adiciona todas as alterações, commita com a mensagem passada e dá push.
+# Adiciona todas as alterações, commita com a mensagem passada, traz o que
+# houver de novo no remoto (rebase) e dá push.
 # Uso: ./commit.sh "mensagem do commit"
 
 set -e
@@ -11,4 +12,5 @@ fi
 
 git add -A
 git commit -m "$1"
+git pull --rebase
 git push

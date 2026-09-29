@@ -31,9 +31,9 @@
   <main class="conteudo">
 
     <nav class="abas">
-      <button id="aba-tabela" class="aba aba-ativa" type="button">
-        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg>
-        <span class="aba-rotulo">Tabela</span>
+      <button id="aba-visao-geral" class="aba aba-ativa" type="button">
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+        <span class="aba-rotulo">Visão Geral</span>
       </button>
       <button id="aba-adicionar" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -43,9 +43,9 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="20" x2="21" y2="20"/><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg>
         <span class="aba-rotulo">Gráficos</span>
       </button>
-      <button id="aba-visao-geral" class="aba" type="button">
-        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
-        <span class="aba-rotulo">Visão Geral</span>
+      <button id="aba-tabela" class="aba" type="button">
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg>
+        <span class="aba-rotulo">Tabela</span>
       </button>
       <button id="aba-parametros" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
@@ -55,7 +55,7 @@
 
     <p id="erro" class="erro" hidden></p>
 
-    <section id="secao-tabela">
+    <section id="secao-tabela" hidden>
 
       <div class="filtros">
         <div id="filtro-mes" aria-label="Filtrar por mês de pagamento"></div>
@@ -137,7 +137,7 @@
 
     </section>
 
-    <section id="secao-visao-geral" hidden>
+    <section id="secao-visao-geral">
 
       <div class="cartao-grafico">
         <h2 class="titulo-grafico">Teto da semana</h2>
