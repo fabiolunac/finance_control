@@ -439,11 +439,40 @@ body {
 
 .form-acoes {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 4px;
 }
 
-.form-acoes .botao-primario { flex: 1; }
+/* Lado a lado quando cabe; no celular estreito o "continuar" desce */
+.form-acoes .botao-primario,
+.form-acoes .botao-secundario { flex: 1 1 180px; }
+
+.botao-secundario {
+  font: inherit;
+  font-weight: 700;
+  padding: 13px 18px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida);
+}
+
+.botao-secundario:hover { background: var(--acento-media); color: #fff; }
+.botao-secundario:active { transform: scale(.97); }
+.botao-secundario:disabled { opacity: .6; cursor: progress; transform: none; }
+
+/* Lista do que já entrou na sequência */
+.lote {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+}
+
+.mini-lista-item.mini-lista-item-ativo { background: var(--acento-suave); }
+.mini-lista-item:disabled { cursor: default; opacity: .7; }
 
 .botao-excluir {
   font: inherit;
@@ -501,6 +530,12 @@ body {
 }
 
 .notificacao-acao:hover { background: var(--acento-media); color: #fff; }
+
+/* Dentro da gaveta aberta o aviso vai pro topo, longe do formulário */
+.notificacao.notificacao-na-gaveta {
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  bottom: auto;
+}
 
 @keyframes notificacao-entra {
   from { opacity: 0; transform: translate(-50%, 12px); }
@@ -1145,7 +1180,7 @@ body {
   border-top: 1px solid var(--borda);
 }
 
-.calendario-detalhe-cabecalho {
+.mini-lista-cabecalho {
   display: flex;
   justify-content: space-between;
   padding: 0 6px 6px;
@@ -1156,9 +1191,9 @@ body {
   color: var(--tinta-muda);
 }
 
-.calendario-detalhe-cabecalho .linha-dia-total { font-family: var(--fonte-mono); letter-spacing: 0; }
+.mini-lista-cabecalho .linha-dia-total { font-family: var(--fonte-mono); letter-spacing: 0; }
 
-.calendario-detalhe-item {
+.mini-lista-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1176,9 +1211,9 @@ body {
   transition: background var(--t-rapida);
 }
 
-.calendario-detalhe-item:hover { background: var(--acento-suave); }
+.mini-lista-item:hover { background: var(--acento-suave); }
 
-.calendario-detalhe-local {
+.mini-lista-local {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -1186,7 +1221,7 @@ body {
   white-space: nowrap;
 }
 
-.calendario-detalhe-valor {
+.mini-lista-valor {
   flex-shrink: 0;
   font-family: var(--fonte-mono);
   font-variant-numeric: tabular-nums;

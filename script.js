@@ -69,6 +69,8 @@ const opcoesBanco = document.getElementById('opcoes-banco');
 const gavetaTitulo = document.getElementById('gaveta-titulo');
 const botaoSalvarGasto = document.getElementById('botao-salvar-gasto');
 const botaoExcluirGasto = document.getElementById('botao-excluir-gasto');
+const botaoContinuarGasto = document.getElementById('botao-continuar-gasto');
+const loteGastos = document.getElementById('lote-gastos');
 const erroAdicionar = document.getElementById('erro-adicionar');
 const gavetaAdicionar = document.getElementById('gaveta-adicionar');
 const botaoAdicionar = document.getElementById('botao-adicionar');
@@ -810,7 +812,7 @@ function renderizarDetalheCalendario() {
   if (!gastosDia.length) return;
 
   const cabecalho = document.createElement('div');
-  cabecalho.className = 'calendario-detalhe-cabecalho';
+  cabecalho.className = 'mini-lista-cabecalho';
   const nome = document.createElement('span');
   nome.textContent = rotuloDia(diaCalendario);
   const total = document.createElement('span');
@@ -822,12 +824,12 @@ function renderizarDetalheCalendario() {
   gastosDia.forEach((gasto) => {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'calendario-detalhe-item';
+    item.className = 'mini-lista-item';
     const local = document.createElement('span');
-    local.className = 'calendario-detalhe-local';
+    local.className = 'mini-lista-local';
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
     const valor = document.createElement('span');
-    valor.className = 'calendario-detalhe-valor';
+    valor.className = 'mini-lista-valor';
     valor.textContent = formatarMoeda(gasto.Valor);
     item.append(local, valor);
     item.addEventListener('click', () => abrirGaveta(gasto));
@@ -873,12 +875,26 @@ function ehCelular() {
 
 let gastoEditando = null; // gasto aberto na gaveta; null quando é um gasto novo
 
-function abrirGaveta(gasto = null) {
+// "Adicionar e continuar": gastos lançados em sequência nesta abertura da
+// gaveta, e a data/banco/tipo que seguem de um lançamento pro outro
+let lote = [];
+let camposLote = null;
+let editandoDoLote = false;
+
+// doLote: veio da sequência (mantém a lista e os campos que seguem)
+function abrirGaveta(gasto = null, doLote = false) {
   gastoEditando = gasto;
+  editandoDoLote = Boolean(gasto) && doLote;
+  if (!doLote) {
+    lote = [];
+    camposLote = null;
+  }
+
   erroAdicionar.hidden = true;
   gavetaTitulo.textContent = gasto ? 'Editar gasto' : 'Novo gasto';
   botaoSalvarGasto.textContent = gasto ? 'Salvar' : 'Adicionar';
   botaoExcluirGasto.hidden = !gasto;
+  botaoContinuarGasto.hidden = Boolean(gasto);
 
   if (gasto) {
     campoValor.value = String(gasto.Valor).replace('.', ',');
@@ -889,18 +905,66 @@ function abrirGaveta(gasto = null) {
   } else {
     campoValor.value = '';
     campoLocal.value = '';
-    campoData.value = formatarIso(new Date());
-    campoBanco.value = lerUltimoBanco();
-    formGasto.elements.tipo.value = 'Gasto';
+    campoData.value = camposLote ? camposLote.Data : formatarIso(new Date());
+    campoBanco.value = camposLote ? camposLote.banco : lerUltimoBanco();
+    formGasto.elements.tipo.value = camposLote ? camposLote.tipo : 'Gasto';
   }
 
-  gavetaAdicionar.showModal();
+  renderizarLote();
+  if (!gavetaAdicionar.open) gavetaAdicionar.showModal();
   if (!gasto) campoValor.focus();
+}
+
+// Acha o gasto recém-criado nos dados recarregados: pelo rowid que a API
+// devolve ou, se ela não devolver, pelo lançamento igual mais recente
+function acharGastoCriado(gasto, rowid) {
+  if (rowid != null) return todosGastos.find((g) => g.rowid === rowid) || null;
+  const jaNoLote = new Set(lote.map((g) => g.rowid));
+  const iguais = todosGastos.filter((g) =>
+    g.Data.slice(0, 10) === gasto.Data && g.Local === gasto.Local && g.Valor === gasto.Valor &&
+    g.tipo === gasto.tipo && g.banco === gasto.banco && !jaNoLote.has(g.rowid));
+  return iguais.sort((a, b) => b.rowid - a.rowid)[0] || null;
+}
+
+function renderizarLote() {
+  loteGastos.innerHTML = '';
+  loteGastos.hidden = lote.length === 0;
+  if (!lote.length) return;
+
+  const cabecalho = document.createElement('div');
+  cabecalho.className = 'mini-lista-cabecalho';
+  const contagem = document.createElement('span');
+  contagem.textContent = `${lote.length} ${lote.length === 1 ? 'lançamento' : 'lançamentos'}`;
+  const total = document.createElement('span');
+  total.className = 'linha-dia-total';
+  total.textContent = formatarMoeda(calcularTotalGasto(lote));
+  cabecalho.append(contagem, total);
+  loteGastos.appendChild(cabecalho);
+
+  lote.forEach((gasto) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'mini-lista-item';
+    if (gastoEditando && gastoEditando.rowid === gasto.rowid) item.classList.add('mini-lista-item-ativo');
+    // Sem rowid (recarga falhou) não dá pra abrir pra edição
+    item.disabled = gasto.rowid == null;
+
+    const local = document.createElement('span');
+    local.className = 'mini-lista-local';
+    local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
+    const valor = document.createElement('span');
+    valor.className = 'mini-lista-valor';
+    valor.textContent = formatarMoeda(gasto.Valor);
+    item.append(local, valor);
+    item.addEventListener('click', () => abrirGaveta(gasto, true));
+    loteGastos.appendChild(item);
+  });
 }
 
 async function salvarGasto(evento) {
   evento.preventDefault();
   erroAdicionar.hidden = true;
+  const continuar = evento.submitter === botaoContinuarGasto;
 
   const gasto = {
     Data: campoData.value,
@@ -918,14 +982,38 @@ async function salvarGasto(evento) {
   if (!gasto.Data || !gasto.Local || !gasto.tipo || !gasto.banco) return;
 
   const editando = gastoEditando;
+  const doLote = editandoDoLote;
   botaoSalvarGasto.disabled = true;
+  botaoContinuarGasto.disabled = true;
   try {
+    let rowid = null;
     if (editando) {
       await requisitar('PUT', `/api/gastos/${editando.rowid}`, gasto, 'Erro ao salvar no servidor.');
     } else {
-      await requisitar('POST', '/api/gastos', gasto, 'Erro ao gravar no servidor.');
+      const resposta = await requisitar('POST', '/api/gastos', gasto, 'Erro ao gravar no servidor.');
+      rowid = (await resposta.json()).rowid ?? null;
     }
     salvarUltimoBanco(gasto.banco);
+
+    if (continuar || doLote) {
+      // Fica na gaveta: item provisório na lista já, dados completos após recarregar
+      const provisorio = { ...(editando || {}), ...gasto, rowid: editando ? editando.rowid : rowid };
+      if (editando) lote = lote.map((g) => (g.rowid === editando.rowid ? provisorio : g));
+      else {
+        camposLote = { Data: gasto.Data, banco: gasto.banco, tipo: gasto.tipo };
+        lote.push(provisorio);
+      }
+      if (doLote) mostrarNotificacao('Alterações salvas');
+      abrirGaveta(null, true);
+
+      await carregar();
+      lote = lote.map((g) => (g === provisorio
+        ? acharGastoCriado(gasto, provisorio.rowid) || provisorio
+        : todosGastos.find((t) => t.rowid === g.rowid) || g));
+      renderizarLote();
+      return;
+    }
+
     gavetaAdicionar.close();
     mostrarNotificacao(editando
       ? 'Alterações salvas'
@@ -936,6 +1024,7 @@ async function salvarGasto(evento) {
     erroAdicionar.hidden = false;
   } finally {
     botaoSalvarGasto.disabled = false;
+    botaoContinuarGasto.disabled = false;
   }
 }
 
@@ -943,7 +1032,13 @@ formGasto.addEventListener('submit', salvarGasto);
 
 botaoExcluirGasto.addEventListener('click', () => {
   const gasto = gastoEditando;
-  gavetaAdicionar.close();
+  if (editandoDoLote) {
+    // Sai da lista e volta pro próximo lançamento; o aviso de desfazer aparece na gaveta
+    lote = lote.filter((g) => g.rowid !== gasto.rowid);
+    abrirGaveta(null, true);
+  } else {
+    gavetaAdicionar.close();
+  }
   removerGasto(gasto);
 });
 
@@ -959,6 +1054,15 @@ gavetaAdicionar.addEventListener('click', (evento) => {
 
 let notificacaoTimer = null;
 
+// A gaveta aberta fica acima de tudo; pra aparecer, o aviso entra nela
+function moverNotificacao() {
+  const destino = gavetaAdicionar.open ? gavetaAdicionar : document.body;
+  if (notificacao.parentElement !== destino) destino.appendChild(notificacao);
+  notificacao.classList.toggle('notificacao-na-gaveta', gavetaAdicionar.open);
+}
+
+gavetaAdicionar.addEventListener('close', moverNotificacao);
+
 function esconderNotificacao() {
   clearTimeout(notificacaoTimer);
   notificacao.hidden = true;
@@ -970,6 +1074,7 @@ function mostrarNotificacao(texto, rotuloAcao = null, aoAgir = null, duracao = 3
   notificacaoAcao.hidden = !rotuloAcao;
   notificacaoAcao.textContent = rotuloAcao || '';
   notificacaoAcao.onclick = aoAgir ? () => { esconderNotificacao(); aoAgir(); } : null;
+  moverNotificacao();
   notificacao.hidden = false;
   notificacaoTimer = setTimeout(esconderNotificacao, duracao);
 }

@@ -262,13 +262,18 @@
         </div>
         <datalist id="opcoes-banco"></datalist>
 
+        <!-- O botão principal vem antes no HTML: Enter no teclado usa o primeiro -->
         <div class="form-acoes">
           <button id="botao-excluir-gasto" class="botao-excluir" type="button" hidden>Excluir</button>
           <button id="botao-salvar-gasto" class="botao-primario" type="submit">Adicionar</button>
+          <button id="botao-continuar-gasto" class="botao-secundario" type="submit">Adicionar e continuar</button>
         </div>
       </form>
 
       <p id="erro-adicionar" class="erro" hidden></p>
+
+      <!-- Lançados em sequência com "Adicionar e continuar" -->
+      <div id="lote-gastos" class="lote" hidden></div>
     </div>
   </dialog>
 

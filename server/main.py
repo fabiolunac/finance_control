@@ -79,14 +79,15 @@ class NovoGasto(BaseModel):
 def adicionar_gasto(gasto: NovoGasto, _=Depends(checar_token)):
     client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     try:
-        client.execute(
+        rs = client.execute(
             "INSERT INTO gastos (Data, Local, Valor, banco, tipo) VALUES (?, ?, ?, ?, ?)",
             [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo],
         )
     finally:
         client.close()
 
-    return {"ok": True}
+    # rowid do gasto criado, pro app poder abrir ele pra edição logo em seguida
+    return {"ok": True, "rowid": rs.last_insert_rowid}
 
 
 @app.delete("/api/gastos/{rowid}", status_code=204)
