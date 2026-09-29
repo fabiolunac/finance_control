@@ -1452,9 +1452,28 @@ body {
 
 .resumo-fatura { font-size: 0.8rem; color: var(--tinta-muda); }
 
+/* Cards pequenos de acompanhamento (Araújo, corte de cabelo) */
+.metricas-extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metrica-extra { padding: 18px 20px; }
+
+.metrica-extra-valor {
+  display: block;
+  font-family: var(--fonte-mono);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Esqueleto enquanto a primeira carga não chega ---------- */
 
-body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap) {
+body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extra .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap) {
   position: relative;
   overflow: hidden;
   min-height: 140px;
@@ -1464,7 +1483,7 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-grafico
 body.carregando .cartao-total { min-height: 72px; min-width: 200px; }
 body.carregando .tabela-wrap { min-height: 320px; }
 
-body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after {
+body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extra .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1481,7 +1500,7 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-grafico
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after { animation: none; }
+  body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extra .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after { animation: none; }
   .botao-topo.girando .botao-topo-icone { animation: none; }
 }
 

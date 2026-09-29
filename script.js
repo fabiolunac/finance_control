@@ -30,6 +30,10 @@ const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
 const metricaComparacao = document.getElementById('metrica-comparacao');
 const metricaFatura = document.getElementById('metrica-fatura');
+const araujoContagem = document.getElementById('araujo-contagem');
+const araujoDetalhe = document.getElementById('araujo-detalhe');
+const corteQuando = document.getElementById('corte-quando');
+const corteDetalhe = document.getElementById('corte-detalhe');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
@@ -633,6 +637,8 @@ function renderizarVisaoGeral() {
   renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c], corCategoria(c)]), { porcentagem: true });
 
   renderizarMetaSemanal();
+  renderizarAraujo();
+  renderizarUltimoCorte();
   renderizarCalendario();
   renderizarGraficoSemanal();
 }
@@ -643,6 +649,49 @@ botaoMesAtualVisao.addEventListener('click', () => {
   visaoMes.value = mesAtual();
   renderizarVisaoGeral();
 });
+
+// ---------- Cards específicos: Araújo e corte de cabelo ----------
+
+function contem(texto, trecho) {
+  return Boolean(texto) && semAcento(texto).toLowerCase().includes(trecho);
+}
+
+function textoDiasAtras(dataIso) {
+  const hoje = dataLocal(formatarIso(new Date()));
+  const dias = Math.round((hoje - dataLocal(dataIso.slice(0, 10))) / 86400000);
+  return dias <= 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
+}
+
+function maisRecente(gastos) {
+  return gastos.reduce((a, b) => (b.Data > a.Data ? b : a));
+}
+
+// Compras na Araújo no mês escolhido (cada uma ≈ um Monster)
+function renderizarAraujo() {
+  const compras = todosGastos.filter((g) =>
+    g.tipo === 'Gasto' && g['Mês'] === mesSelecionado() && contem(g.Local, 'araujo'));
+  araujoContagem.textContent = String(compras.length);
+  if (!compras.length) {
+    araujoDetalhe.textContent = 'Nenhuma compra neste mês';
+    return;
+  }
+  const total = compras.reduce((soma, g) => soma + g.Valor, 0);
+  araujoDetalhe.textContent = `${formatarMoeda(total)} · última em ${formatarData(maisRecente(compras).Data).slice(0, 5)}`;
+}
+
+// Último lançamento com categoria de corte de cabelo, em todo o histórico
+function renderizarUltimoCorte() {
+  const cortes = todosGastos.filter((g) =>
+    g.tipo === 'Gasto' && contem(g.Categoria, 'corte') && contem(g.Categoria, 'cabelo'));
+  if (!cortes.length) {
+    corteQuando.textContent = '—';
+    corteDetalhe.textContent = 'Nenhum corte registrado';
+    return;
+  }
+  const ultimo = maisRecente(cortes);
+  corteQuando.textContent = textoDiasAtras(ultimo.Data);
+  corteDetalhe.textContent = `${formatarData(ultimo.Data)} · ${ultimo.Local} · ${formatarMoeda(ultimo.Valor)}`;
+}
 
 // ---------- Teto de gasto da semana atual ----------
 
