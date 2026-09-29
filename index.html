@@ -211,6 +211,19 @@
       <div class="cartao-grafico cartao-pendentes">
         <h2 class="titulo-grafico">Sem categoria <span id="pendentes-contagem" class="pendentes-contagem"></span></h2>
         <p class="pendentes-ajuda">Locais sem parâmetro caem em "Extra". Cadastrar um aqui corrige todos os lançamentos dele.</p>
+        <div class="pendentes-ferramentas">
+          <button id="botao-selecionar-nomes" class="botao-chip" type="button">Selecionar nomes de pessoa</button>
+          <button id="botao-limpar-selecao" class="botao-chip" type="button" hidden>Limpar seleção</button>
+        </div>
+        <!-- Aparece quando há locais marcados: uma categoria pra todos de uma vez -->
+        <form id="lote-pendentes" class="pendente lote-pendentes" hidden>
+          <span id="lote-pendentes-texto" class="lote-pendentes-texto"></span>
+          <div class="pendente-campos">
+            <input id="lote-categoria" list="opcoes-param-categoria" value="Pix" placeholder="Categoria" autocomplete="off" maxlength="120" required aria-label="Categoria dos selecionados">
+            <input id="lote-categoria-geral" list="opcoes-param-categoria-geral" placeholder="Categoria Geral" autocomplete="off" maxlength="120" required aria-label="Categoria Geral dos selecionados">
+            <button id="botao-aplicar-lote" class="botao-primario" type="submit">Aplicar</button>
+          </div>
+        </form>
         <div id="lista-pendentes" class="lista-pendentes"></div>
         <p id="pendentes-vazio" class="vazio" hidden>Todos os locais têm categoria.</p>
         <button id="botao-mais-pendentes" class="botao-chip botao-mais-pendentes" type="button" hidden></button>
