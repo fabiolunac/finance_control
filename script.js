@@ -18,10 +18,12 @@ const abaTabela = document.getElementById('aba-tabela');
 const abaGraficos = document.getElementById('aba-graficos');
 const abaVisaoGeral = document.getElementById('aba-visao-geral');
 const abaParametros = document.getElementById('botao-parametros');
+const abaConfiguracoes = document.getElementById('botao-configuracoes');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
 const secaoParametros = document.getElementById('secao-parametros');
+const secaoConfiguracoes = document.getElementById('secao-configuracoes');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
@@ -384,6 +386,7 @@ const abas = [
   [abaGraficos, secaoGraficos],
   [abaVisaoGeral, secaoVisaoGeral],
   [abaParametros, secaoParametros],
+  [abaConfiguracoes, secaoConfiguracoes],
 ];
 
 function selecionarAba(abaEscolhida) {
