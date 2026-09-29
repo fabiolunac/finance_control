@@ -1234,7 +1234,8 @@ body {
 
 @media (max-width: 640px) {
   /* Filtros: só o mês fica à vista, o resto abre pelo botão */
-  .filtros #filtro-mes { flex: 1 1 0; min-width: 0; }
+  /* Com três botões ao lado não sobra espaço: o mês ganha a linha dele */
+  .filtros #filtro-mes { flex: 1 1 100%; }
   .botao-filtros { display: block; }
 
   .painel-filtros { display: none; flex: 1 1 100%; flex-direction: column; gap: 8px; }
@@ -1448,6 +1449,8 @@ body {
 }
 
 .resumo-mes .metrica-delta { margin-top: 8px; }
+
+.resumo-fatura { font-size: 0.8rem; color: var(--tinta-muda); }
 
 /* ---------- Esqueleto enquanto a primeira carga não chega ---------- */
 

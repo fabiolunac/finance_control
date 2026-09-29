@@ -13,6 +13,7 @@ const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
 const totalFiltrado = document.getElementById('total-filtrado');
+const rotuloTotalFiltrado = document.getElementById('rotulo-total-filtrado');
 
 const abaTabela = document.getElementById('aba-tabela');
 const abaGraficos = document.getElementById('aba-graficos');
@@ -28,6 +29,7 @@ const secaoConfiguracoes = document.getElementById('secao-configuracoes');
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
 const metricaComparacao = document.getElementById('metrica-comparacao');
+const metricaFatura = document.getElementById('metrica-fatura');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
@@ -373,7 +375,7 @@ function bancoDe(gasto) {
 }
 
 function aplicarFiltros() {
-  const filtrados = todosGastos.filter((g) =>
+  const filtrados = gastosConsiderados().filter((g) =>
     multiSelectCombina(filtroMes, g['Mês']) &&
     multiSelectCombina(filtroCategoria, g.Categoria) &&
     multiSelectCombina(filtroCategoriaGeral, g['Categoria Geral']) &&
@@ -382,6 +384,7 @@ function aplicarFiltros() {
   );
   renderizar(filtrados);
   totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
+  rotuloTotalFiltrado.textContent = semFatura ? 'Total gasto (filtro atual, sem fatura)' : 'Total gasto (filtro atual)';
 
   const ativos = [filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco]
     .filter((root) => root.selecionados.size > 0).length;
@@ -475,7 +478,7 @@ function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
 }
 
 function gastosFiltradosGrafico() {
-  return todosGastos.filter((g) =>
+  return gastosConsiderados().filter((g) =>
     g.tipo === 'Gasto' &&
     multiSelectCombina(graficoCategoria, g.Categoria) &&
     multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
@@ -555,7 +558,7 @@ function mesAnterior(mes) {
 function renderizarComparacao(mes, totalMes) {
   const anterior = mesAnterior(mes);
   const nomeAnterior = MESES[Number(anterior.slice(5)) - 1];
-  let gastosAnteriores = todosGastos.filter((g) => g['Mês'] === anterior);
+  let gastosAnteriores = gastosConsiderados().filter((g) => g['Mês'] === anterior);
   let rotulo = `vs ${nomeAnterior}`;
 
   if (mes === mesAtual()) {
@@ -607,11 +610,16 @@ function mesSelecionado() {
 }
 
 function renderizarVisaoGeral() {
-  const gastosMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado());
+  const gastosMes = gastosConsiderados().filter((g) => g['Mês'] === mesSelecionado());
 
   const totalMes = calcularTotalGasto(gastosMes);
   animarValor(metricaTotalGasto, totalMes);
   renderizarComparacao(mesSelecionado(), totalMes);
+
+  // Com a fatura fora, diz quanto ficou de fora (e confirma o que foi reconhecido)
+  const faturasMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado() && ehFatura(g));
+  metricaFatura.hidden = !semFatura || faturasMes.length === 0;
+  metricaFatura.textContent = `Sem fatura · ${formatarMoeda(calcularTotalGasto(faturasMes))} fora do total`;
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
@@ -647,7 +655,7 @@ function renderizarMetaSemanal() {
   const inicioIso = formatarIso(inicio);
   const fimIso = formatarIso(fim);
 
-  const gastoSemana = todosGastos
+  const gastoSemana = gastosConsiderados()
     .filter((g) => g.tipo === 'Gasto')
     .filter((g) => {
       const data = g.Data.slice(0, 10);
@@ -721,7 +729,7 @@ function preencherFiltroVisao() {
 
 function renderizarGraficoSemanal() {
   const mes = mesSelecionado();
-  const gastosMes = todosGastos.filter((g) => g.tipo === 'Gasto' && g['Mês'] === mes);
+  const gastosMes = gastosConsiderados().filter((g) => g.tipo === 'Gasto' && g['Mês'] === mes);
 
   const totais = {};
   gastosMes.forEach((g) => {
@@ -763,7 +771,7 @@ function renderizarCalendario() {
 
   // Soma por dia, pela data do gasto (o dia precisa existir no mês mostrado)
   const totaisPorDia = {};
-  todosGastos.forEach((g) => {
+  gastosConsiderados().forEach((g) => {
     if (g.tipo !== 'Gasto') return;
     const data = g.Data.slice(0, 10);
     if (data.slice(0, 7) !== mes) return;
@@ -819,7 +827,7 @@ function renderizarCalendario() {
 // Lista abaixo do calendário com os gastos do dia tocado
 function renderizarDetalheCalendario() {
   const gastosDia = diaCalendario
-    ? todosGastos.filter((g) => g.tipo === 'Gasto' && g.Data.slice(0, 10) === diaCalendario)
+    ? gastosConsiderados().filter((g) => g.tipo === 'Gasto' && g.Data.slice(0, 10) === diaCalendario)
     : [];
   calendarioDetalhe.innerHTML = '';
   calendarioDetalhe.hidden = gastosDia.length === 0;
@@ -1707,6 +1715,47 @@ async function salvarEdicaoParam(td, param, campo, novoValorBruto, valorOriginal
     erro.hidden = false;
   }
 }
+
+// ---------- Com ou sem fatura ----------
+
+// A fatura do cartão entra como um lançamento só (ex.: "Fatura Nubank"); é
+// reconhecida pela palavra "fatura" no local ou na categoria, sem ligar pra
+// maiúsculas nem acento. "Sem fatura" tira esses lançamentos de todas as contas.
+function semAcento(texto) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function ehFatura(gasto) {
+  return [gasto.Local, gasto.Categoria, gasto['Categoria Geral']]
+    .some((texto) => texto && semAcento(texto).toLowerCase().includes('fatura'));
+}
+
+let semFatura = (() => {
+  try { return localStorage.getItem('semFatura') === '1'; } catch (e) { return false; }
+})();
+
+function gastosConsiderados() {
+  return semFatura ? todosGastos.filter((g) => !ehFatura(g)) : todosGastos;
+}
+
+const botoesFatura = document.querySelectorAll('.botao-fatura');
+
+function atualizarBotoesFatura() {
+  botoesFatura.forEach((botao) => {
+    botao.textContent = semFatura ? 'Sem fatura' : 'Com fatura';
+    botao.setAttribute('aria-pressed', String(semFatura));
+    botao.classList.toggle('botao-filtros-ativo', semFatura);
+  });
+}
+
+botoesFatura.forEach((botao) => botao.addEventListener('click', () => {
+  semFatura = !semFatura;
+  try { localStorage.setItem('semFatura', semFatura ? '1' : '0'); } catch (e) {}
+  atualizarBotoesFatura();
+  renderizarTudo();
+}));
+
+atualizarBotoesFatura();
 
 // ---------- Cor do tema ----------
 
