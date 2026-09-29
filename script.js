@@ -55,6 +55,7 @@ const filtroMes = document.getElementById('filtro-mes');
 const filtroCategoria = document.getElementById('filtro-categoria');
 const filtroCategoriaGeral = document.getElementById('filtro-categoria-geral');
 const filtroLocal = document.getElementById('filtro-local');
+const filtroBanco = document.getElementById('filtro-banco');
 const botaoMesAtual = document.getElementById('botao-mes-atual');
 const botaoFiltros = document.getElementById('botao-filtros');
 const painelFiltros = document.getElementById('painel-filtros');
@@ -344,7 +345,7 @@ function selecionarUnicoNoMultiSelect(root, valor, campo, rotuloTodos) {
   atualizarTextoMultiSelect(root, campo, rotuloTodos);
 }
 
-[filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal,
+[filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco,
   graficoCategoria, graficoCategoriaGeral, graficoLocal].forEach(criarMultiSelect);
 
 botaoMesAtual.addEventListener('click', () => {
@@ -357,6 +358,13 @@ function preencherFiltros() {
   popularMultiSelect(filtroCategoria, valoresUnicos('Categoria').sort((a, b) => a.localeCompare(b)), 'Categoria: todas', 'Categoria', aplicarFiltros);
   popularMultiSelect(filtroCategoriaGeral, valoresUnicos('Categoria Geral').sort((a, b) => a.localeCompare(b)), 'Categoria geral: todas', 'Categoria geral', aplicarFiltros);
   popularMultiSelect(filtroLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)), 'Local: todos', 'Local', aplicarFiltros);
+  const bancos = [...new Set(todosGastos.map(bancoDe))].sort((a, b) => a.localeCompare(b));
+  popularMultiSelect(filtroBanco, bancos, 'Banco: todos', 'Banco', aplicarFiltros);
+}
+
+// Lançamentos antigos podem não ter banco; entram no filtro como "Sem banco"
+function bancoDe(gasto) {
+  return gasto.banco || 'Sem banco';
 }
 
 function aplicarFiltros() {
@@ -364,12 +372,13 @@ function aplicarFiltros() {
     multiSelectCombina(filtroMes, g['Mês']) &&
     multiSelectCombina(filtroCategoria, g.Categoria) &&
     multiSelectCombina(filtroCategoriaGeral, g['Categoria Geral']) &&
-    multiSelectCombina(filtroLocal, g.Local)
+    multiSelectCombina(filtroLocal, g.Local) &&
+    multiSelectCombina(filtroBanco, bancoDe(g))
   );
   renderizar(filtrados);
   totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
 
-  const ativos = [filtroCategoria, filtroCategoriaGeral, filtroLocal]
+  const ativos = [filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco]
     .filter((root) => root.selecionados.size > 0).length;
   botaoFiltros.textContent = ativos ? `Filtros (${ativos})` : 'Filtros';
   botaoFiltros.classList.toggle('botao-filtros-ativo', ativos > 0);
