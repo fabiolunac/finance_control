@@ -560,13 +560,26 @@ body {
 .painel-filtros { display: contents; }
 .botao-filtros { display: none; }
 
-.botao-filtros-ativo {
+.botao-chip.botao-filtros-ativo {
   background: var(--gradiente);
   border-color: transparent;
   color: #fff;
 }
 
-.botao-filtros-ativo:hover { color: #fff; border-color: transparent; }
+.botao-chip.botao-filtros-ativo:hover { color: #fff; border-color: transparent; }
+
+/* Discreto, em vermelho, pra não competir com os filtros */
+.botao-chip.botao-limpar-filtros {
+  background: var(--erro-suave);
+  border-color: rgba(251, 113, 133, .25);
+  color: var(--erro);
+}
+
+.botao-chip.botao-limpar-filtros:hover {
+  background: rgba(251, 113, 133, .22);
+  border-color: var(--erro);
+  color: var(--erro);
+}
 
 .multiselect-botao {
   width: 100%;

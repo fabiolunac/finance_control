@@ -67,6 +67,8 @@ const filtroBanco = document.getElementById('filtro-banco');
 const botaoMesAtual = document.getElementById('botao-mes-atual');
 const botaoFiltros = document.getElementById('botao-filtros');
 const painelFiltros = document.getElementById('painel-filtros');
+const botaoLimparFiltros = document.getElementById('botao-limpar-filtros');
+const botaoLimparFiltrosGrafico = document.getElementById('botao-limpar-filtros-grafico');
 
 const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
@@ -295,6 +297,13 @@ function atualizarTextoMultiSelect(root, campo, rotuloTodos) {
   root.classList.toggle('multiselect-ativo', n > 0);
 }
 
+// Desmarca tudo sem avisar quem depende do filtro (quem chama redesenha)
+function limparMultiSelect(root) {
+  root.selecionados.clear();
+  root._lista.querySelectorAll('input[type="checkbox"]').forEach((caixa) => { caixa.checked = false; });
+  atualizarTextoMultiSelect(root, root._campo, root._rotuloTodos);
+}
+
 function filtrarItensMultiSelect(root) {
   const termo = semAcento(root._busca.value.trim().toLowerCase());
   let visiveis = 0;
@@ -363,9 +372,7 @@ function criarMultiSelect(root) {
   limpar.className = 'multiselect-acao';
   limpar.textContent = 'Limpar';
   limpar.addEventListener('click', () => {
-    root.selecionados.clear();
-    lista.querySelectorAll('input[type="checkbox"]').forEach((caixa) => { caixa.checked = false; });
-    atualizarTextoMultiSelect(root, root._campo, root._rotuloTodos);
+    limparMultiSelect(root);
     if (root._aoMudar) root._aoMudar();
   });
   const pronto = document.createElement('button');
@@ -490,7 +497,16 @@ function aplicarFiltros() {
     .filter((root) => root.selecionados.size > 0).length;
   botaoFiltros.textContent = ativos ? `Filtros (${ativos})` : 'Filtros';
   botaoFiltros.classList.toggle('botao-filtros-ativo', ativos > 0);
+  botaoLimparFiltros.hidden = !filtrosTabela.some((root) => root.selecionados.size > 0);
 }
+
+// Todos os filtros da Tabela, inclusive o de mês
+const filtrosTabela = [filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco];
+
+botaoLimparFiltros.addEventListener('click', () => {
+  filtrosTabela.forEach(limparMultiSelect);
+  aplicarFiltros();
+});
 
 botaoFiltros.addEventListener('click', () => {
   const vaiAbrir = !painelFiltros.classList.contains('painel-filtros-aberto');
@@ -523,10 +539,18 @@ abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)))
 
 // ---------- Gráficos ----------
 
+const filtrosGrafico = [graficoCategoria, graficoCategoriaGeral, graficoLocal];
+
 function atualizarGraficos() {
   renderizarGrafico();
   atualizarGraficosDoMes();
+  botaoLimparFiltrosGrafico.hidden = !filtrosGrafico.some((root) => root.selecionados.size > 0);
 }
+
+botaoLimparFiltrosGrafico.addEventListener('click', () => {
+  filtrosGrafico.forEach(limparMultiSelect);
+  atualizarGraficos();
+});
 
 // Gráficos que dependem do mês escolhido na aba: por dia e por categoria
 function atualizarGraficosDoMes() {
