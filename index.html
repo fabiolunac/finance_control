@@ -9,6 +9,17 @@
   <!-- PWA: manifesto e cor do tema (barra do navegador/celular) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0D0A18">
+
+  <!-- Aplica a cor do tema salva antes de desenhar, pra não piscar o roxo padrão -->
+  <script>
+    try {
+      const matiz = localStorage.getItem('matiz');
+      if (matiz !== null) {
+        document.documentElement.style.setProperty('--matiz', matiz);
+        document.querySelector('meta[name="theme-color"]').content = `hsl(${matiz} 41% 7%)`;
+      }
+    } catch (e) {}
+  </script>
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -173,6 +184,13 @@
     </section>
 
     <section id="secao-parametros" hidden>
+
+      <div class="cartao-grafico cartao-tema">
+        <h2 class="titulo-grafico">Cor do tema</h2>
+        <div id="seletor-cor" class="seletor-cor" role="group" aria-label="Cor do tema"></div>
+        <label class="faixa-matiz-rotulo" for="faixa-matiz">Personalizada</label>
+        <input id="faixa-matiz" class="faixa-matiz" type="range" min="0" max="359" step="1">
+      </div>
 
       <form id="form-param" class="novo-gasto">
         <input id="campo-param-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" required>

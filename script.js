@@ -1123,6 +1123,61 @@ async function salvarEdicaoParam(td, param, campo, novoValorBruto, valorOriginal
   }
 }
 
+// ---------- Cor do tema ----------
+
+const MATIZ_PADRAO = 258; // roxo
+const CORES_TEMA = [
+  ['Roxo', 258],
+  ['Azul', 222],
+  ['Ciano', 188],
+  ['Verde', 150],
+  ['Âmbar', 38],
+  ['Vermelho', 355],
+  ['Rosa', 322],
+];
+
+const seletorCor = document.getElementById('seletor-cor');
+const faixaMatiz = document.getElementById('faixa-matiz');
+const metaCorTema = document.querySelector('meta[name="theme-color"]');
+
+function lerMatizSalvo() {
+  try {
+    const salvo = localStorage.getItem('matiz');
+    return salvo === null ? MATIZ_PADRAO : Number(salvo);
+  } catch (e) {
+    return MATIZ_PADRAO;
+  }
+}
+
+function aplicarMatiz(matiz, salvar) {
+  document.documentElement.style.setProperty('--matiz', matiz);
+  metaCorTema.content = `hsl(${matiz} 41% 7%)`;
+  faixaMatiz.value = matiz;
+  seletorCor.querySelectorAll('.amostra-cor').forEach((amostra) => {
+    amostra.setAttribute('aria-pressed', String(Number(amostra.dataset.matiz) === Number(matiz)));
+  });
+  if (salvar) {
+    try { localStorage.setItem('matiz', String(matiz)); } catch (e) {}
+  }
+}
+
+CORES_TEMA.forEach(([nome, matiz]) => {
+  const amostra = document.createElement('button');
+  amostra.type = 'button';
+  amostra.className = 'amostra-cor';
+  amostra.dataset.matiz = matiz;
+  amostra.title = nome;
+  amostra.setAttribute('aria-label', nome);
+  amostra.style.backgroundImage =
+    `linear-gradient(135deg, hsl(${matiz} 90% 66%), hsl(${matiz + 34} 70% 49%))`;
+  amostra.addEventListener('click', () => aplicarMatiz(matiz, true));
+  seletorCor.appendChild(amostra);
+});
+
+faixaMatiz.addEventListener('input', () => aplicarMatiz(Number(faixaMatiz.value), true));
+
+aplicarMatiz(lerMatizSalvo(), false);
+
 // ---------- Indicador online/offline ----------
 
 function atualizarRede() {

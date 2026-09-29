@@ -1,39 +1,45 @@
 /* ============================================================
    Controle de Gastos — folha de estilo
-   Tema escuro em roxo profundo, Plus Jakarta Sans + Geist Mono,
-   cartões translúcidos com brilho violeta nas bordas.
+   Tema escuro, Plus Jakarta Sans + Geist Mono, cartões translúcidos.
+   Toda a paleta sai de um matiz só (--matiz, 0 a 359): o seletor de
+   cor em Parâmetros troca esse número no <html>. 258 é o roxo.
    ============================================================ */
 
 :root {
-  /* Fundo (escala roxa escura) */
-  --fundo: #0D0A18;
-  --fundo-brilho-1: rgba(124, 58, 237, .22);
-  --fundo-brilho-2: rgba(192, 38, 211, .10);
-  --topo-fundo: rgba(13, 10, 24, .72);
-  --cartao: rgba(28, 21, 48, .72);
-  --cartao-solido: #1A1430;
-  --cartao-alto: #241B40;
+  /* Matiz do tema; o segundo matiz é o fim do degradê */
+  --matiz: 258;
+  --matiz-2: calc(var(--matiz) + 34);
+
+  /* Fundo (escala escura tingida pelo matiz) */
+  --fundo: hsl(var(--matiz) 41% 7%);
+  --fundo-brilho-1: hsl(var(--matiz) 83% 58% / .22);
+  --fundo-brilho-2: hsl(var(--matiz-2) 70% 49% / .10);
+  --topo-fundo: hsl(var(--matiz) 41% 7% / .72);
+  --cartao: hsl(var(--matiz) 39% 13% / .72);
+  --cartao-solido: hsl(var(--matiz) 41% 13%);
+  --cartao-alto: hsl(var(--matiz) 41% 18%);
+  --campo-fundo: hsl(var(--matiz) 41% 7% / .55);
   --trilha: rgba(255, 255, 255, .05);
 
   /* Bordas */
-  --borda: rgba(196, 181, 253, .10);
-  --borda-forte: rgba(196, 181, 253, .20);
+  --borda: hsl(var(--matiz) 95% 85% / .10);
+  --borda-forte: hsl(var(--matiz) 95% 85% / .20);
 
   /* Texto */
-  --tinta: #EEEAFB;
-  --tinta-fraca: #A59CC4;
-  --tinta-muda: #7D739E;
-  --tinta-inversa: #0D0A18;
+  --tinta: hsl(var(--matiz) 68% 95%);
+  --tinta-fraca: hsl(var(--matiz) 28% 69%);
+  --tinta-muda: hsl(var(--matiz) 17% 54%);
+  --tinta-inversa: var(--fundo);
 
   /* Marca */
-  --acento: #A78BFA;
-  --acento-claro: #C4B5FD;
-  --acento-forte: #7C3AED;
-  --acento-suave: rgba(167, 139, 250, .12);
-  --acento-media: rgba(167, 139, 250, .28);
-  --acento-brilho: rgba(139, 92, 246, .35);
-  --gradiente: linear-gradient(135deg, #8B5CF6 0%, #C026D3 100%);
-  --gradiente-barra: linear-gradient(90deg, #6D28D9 0%, #A78BFA 100%);
+  --acento: hsl(var(--matiz) 92% 76%);
+  --acento-claro: hsl(var(--matiz) 95% 85%);
+  --acento-forte: hsl(var(--matiz) 83% 58%);
+  --acento-suave: hsl(var(--matiz) 92% 76% / .12);
+  --acento-media: hsl(var(--matiz) 92% 76% / .28);
+  --acento-brilho: hsl(var(--matiz) 90% 66% / .35);
+  --gradiente: linear-gradient(135deg, hsl(var(--matiz) 90% 66%) 0%, hsl(var(--matiz-2) 70% 49%) 100%);
+  --gradiente-barra: linear-gradient(90deg, hsl(var(--matiz) 70% 50%) 0%, var(--acento) 100%);
 
   --sucesso: #4ADE80;
   --sucesso-suave: rgba(74, 222, 128, .12);
@@ -89,7 +95,7 @@ body {
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(167, 139, 250, .18);
+  background: hsl(var(--matiz) 92% 76% / .18);
   border-radius: 99px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -216,7 +222,7 @@ body {
   gap: 4px;
   max-width: calc(100% - 24px);
   padding: 6px;
-  background: rgba(24, 18, 42, .78);
+  background: hsl(var(--matiz) 40% 12% / .78);
   border: 1px solid var(--borda-forte);
   border-radius: 22px;
   box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .7), 0 0 0 1px rgba(0, 0, 0, .2);
@@ -299,7 +305,7 @@ body {
 .gaveta[open] { animation: gaveta-sobe .28s cubic-bezier(.2, .8, .2, 1); }
 
 .gaveta::backdrop {
-  background: rgba(8, 5, 16, .6);
+  background: hsl(var(--matiz) 50% 4% / .6);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -493,7 +499,7 @@ body {
   padding: 13px 16px;
   border: 1px solid var(--borda);
   border-radius: var(--raio);
-  background: rgba(13, 10, 24, .55);
+  background: var(--campo-fundo);
   color: var(--tinta);
   outline: none;
   color-scheme: dark;
@@ -694,7 +700,7 @@ body {
   padding: 10px 14px;
   border: 1px solid var(--borda);
   border-radius: var(--raio);
-  background: rgba(13, 10, 24, .55);
+  background: var(--campo-fundo);
   color: var(--tinta);
   cursor: pointer;
   color-scheme: dark;
@@ -794,7 +800,7 @@ body {
   margin-bottom: 16px;
   padding: 22px;
   background:
-    radial-gradient(500px 220px at 0% 0%, rgba(139, 92, 246, .22), transparent 70%),
+    radial-gradient(500px 220px at 0% 0%, hsl(var(--matiz) 90% 66% / .22), transparent 70%),
     var(--cartao);
   border: 1px solid var(--borda-forte);
   border-radius: var(--raio-lg);
@@ -1061,4 +1067,74 @@ body {
   }
 
   .linha-dia-total { font-family: var(--fonte-mono); letter-spacing: 0; }
+}
+
+/* ---------- Seletor de cor do tema ---------- */
+
+.cartao-tema { margin-bottom: 16px; }
+
+.seletor-cor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.amostra-cor {
+  width: 40px;
+  height: 40px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08) inset;
+  transition: transform var(--t-rapida), border-color var(--t-rapida);
+}
+
+.amostra-cor:hover { transform: scale(1.08); }
+
+.amostra-cor[aria-pressed="true"] {
+  border-color: var(--tinta);
+  transform: scale(1.08);
+}
+
+.faixa-matiz-rotulo {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-muda);
+}
+
+/* Faixa com o arco-íris de matizes; a bolinha segue a cor escolhida */
+.faixa-matiz {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    hsl(0 85% 62%), hsl(60 85% 62%), hsl(120 85% 62%), hsl(180 85% 62%),
+    hsl(240 85% 62%), hsl(300 85% 62%), hsl(360 85% 62%));
+  cursor: pointer;
+}
+
+.faixa-matiz::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--acento-forte);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}
+
+.faixa-matiz::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--acento-forte);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
 }
