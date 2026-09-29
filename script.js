@@ -7,6 +7,8 @@
 const API_URL = 'https://finance-control-99hx.onrender.com';
 
 const statusRede = document.getElementById('status-rede');
+const botaoAtualizar = document.getElementById('botao-atualizar');
+const topo = document.querySelector('.topo');
 const corpoTabela = document.getElementById('corpo-tabela');
 const vazio = document.getElementById('vazio');
 const erro = document.getElementById('erro');
@@ -23,6 +25,7 @@ const secaoParametros = document.getElementById('secao-parametros');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
+const metricaComparacao = document.getElementById('metrica-comparacao');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
@@ -31,6 +34,7 @@ const metaSemanaLegenda = document.getElementById('meta-semana-legenda');
 const visaoMes = document.getElementById('visao-mes');
 const botaoMesAtualVisao = document.getElementById('botao-mes-atual-visao');
 const calendario = document.getElementById('calendario');
+const calendarioDetalhe = document.getElementById('calendario-detalhe');
 const graficoSemanal = document.getElementById('grafico-semanal');
 const graficoSemanalVazio = document.getElementById('grafico-semanal-vazio');
 
@@ -138,8 +142,20 @@ function mostrarErro(mensagem) {
 
 // ---------- Carregamento ----------
 
+let carregouUmaVez = false;
+
 async function carregar() {
   erro.hidden = true;
+  botaoAtualizar.classList.add('girando');
+  if (!carregouUmaVez) document.body.classList.add('carregando');
+
+  // O servidor dorme quando fica sem uso e demora pra acordar; avisa se passar de 4 s
+  let avisouLentidao = false;
+  const timerLentidao = setTimeout(() => {
+    avisouLentidao = true;
+    mostrarNotificacao('Acordando o servidor, pode levar até um minuto…', null, null, 60000);
+  }, 4000);
+
   try {
     const resposta = await fetch(`${API_URL}/api/gastos`, {
       headers: { Authorization: `Bearer ${obterToken()}` },
@@ -156,14 +172,26 @@ async function carregar() {
     const { gastos } = await resposta.json();
     // Gastos com remoção aguardando o "Desfazer" continuam fora da tela
     todosGastos = gastos.filter((g) => !gastosRemovendo.has(g.rowid));
+    carregouUmaVez = true;
     renderizarTudo();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
+  } finally {
+    clearTimeout(timerLentidao);
+    if (avisouLentidao) esconderNotificacao();
+    document.body.classList.remove('carregando');
+    botaoAtualizar.classList.remove('girando');
   }
 }
 
+botaoAtualizar.addEventListener('click', () => {
+  carregar();
+  if (!secaoParametros.hidden) carregarParametros();
+});
+
 function renderizarTudo() {
+  atualizarCoresCategoria();
   preencherFiltros();
   preencherFiltrosGrafico();
   preencherFiltroVisao();
@@ -182,6 +210,31 @@ function valoresUnicos(campo) {
 function calcularTotalGasto(gastos) {
   const soma = (tipo) => gastos.filter((g) => g.tipo === tipo).reduce((s, g) => s + g.Valor, 0);
   return soma('Gasto') - soma('Pagamento');
+}
+
+// ---------- Cor por categoria geral ----------
+
+// Ordem alfabética espalhada pelo círculo de matizes (ângulo áureo), pra
+// categorias vizinhas não ficarem com cores parecidas. "Extra" fica cinza.
+let coresCategoria = new Map();
+
+function atualizarCoresCategoria() {
+  const categorias = valoresUnicos('Categoria Geral')
+    .filter((c) => c && c !== 'Extra')
+    .sort((a, b) => a.localeCompare(b));
+  coresCategoria = new Map(categorias.map((c, i) => [c, `hsl(${Math.round((i * 137.5 + 15) % 360)} 70% 64%)`]));
+}
+
+function corCategoria(categoriaGeral) {
+  return coresCategoria.get(categoriaGeral) || 'hsl(0 0% 58%)';
+}
+
+function criarPonto(cor) {
+  const ponto = document.createElement('span');
+  ponto.className = 'ponto-categoria';
+  ponto.style.background = cor;
+  ponto.setAttribute('aria-hidden', 'true');
+  return ponto;
 }
 
 // ---------- Multiselect (checkboxes) ----------
@@ -360,11 +413,13 @@ function preencherFiltrosGrafico() {
   preencherFiltroDiario();
 }
 
-function renderizarBarras(container, entradas) {
+// entradas: [rótulo, valor, cor opcional]
+function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
   const maximo = Math.max(...entradas.map(([, valorTotal]) => valorTotal), 0);
+  const soma = entradas.reduce((total, [, valorTotal]) => total + valorTotal, 0);
   container.innerHTML = '';
 
-  entradas.forEach(([rotuloTexto, valorTotal]) => {
+  entradas.forEach(([rotuloTexto, valorTotal, cor]) => {
     const linha = document.createElement('div');
     linha.className = 'barra-linha';
 
@@ -382,6 +437,18 @@ function renderizarBarras(container, entradas) {
     const valor = document.createElement('span');
     valor.className = 'barra-valor';
     valor.textContent = formatarMoeda(valorTotal);
+
+    if (cor) {
+      rotulo.prepend(criarPonto(cor));
+      barra.style.background = cor;
+      barra.style.boxShadow = 'none';
+    }
+    if (porcentagem && soma) {
+      const pct = document.createElement('span');
+      pct.className = 'barra-porcentagem';
+      pct.textContent = `${Math.round((valorTotal / soma) * 100)}%`;
+      valor.append(' ', pct);
+    }
 
     linha.append(rotulo, trilha, valor);
     container.appendChild(linha);
@@ -454,7 +521,65 @@ botaoMesAtualDia.addEventListener('click', () => {
 // ---------- Visão geral ----------
 
 function mesAtual() {
-  return new Date().toISOString().slice(0, 7); // YYYY-MM
+  return formatarIso(new Date()).slice(0, 7); // YYYY-MM, no fuso local
+}
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+function mesAnterior(mes) {
+  const [ano, m] = mes.split('-').map(Number);
+  return formatarIso(new Date(ano, m - 2, 1)).slice(0, 7);
+}
+
+// Compara com o mês anterior; no mês corrente, só com o mesmo trecho (dia 1 até hoje)
+function renderizarComparacao(mes, totalMes) {
+  const anterior = mesAnterior(mes);
+  const nomeAnterior = MESES[Number(anterior.slice(5)) - 1];
+  let gastosAnteriores = todosGastos.filter((g) => g['Mês'] === anterior);
+  let rotulo = `vs ${nomeAnterior}`;
+
+  if (mes === mesAtual()) {
+    const dia = new Date().getDate();
+    gastosAnteriores = gastosAnteriores.filter((g) => Number(g.Data.slice(8, 10)) <= dia);
+    rotulo = `vs 1–${dia} de ${nomeAnterior}`;
+  }
+
+  const totalAnterior = calcularTotalGasto(gastosAnteriores);
+  if (totalAnterior <= 0) {
+    metricaComparacao.hidden = true;
+    return;
+  }
+
+  const variacao = (totalMes - totalAnterior) / totalAnterior;
+  const subiu = variacao > 0;
+  metricaComparacao.textContent = `${subiu ? '▲' : '▼'} ${Math.abs(variacao * 100).toFixed(0)}% ${rotulo}`;
+  // Gastar mais é o lado ruim: vermelho quando sobe
+  metricaComparacao.className = 'metrica-delta ' + (subiu ? 'metrica-delta-negativa' : 'metrica-delta-positiva');
+  metricaComparacao.hidden = false;
+}
+
+const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+// Conta do valor anterior até o novo em ~0,6 s
+function animarValor(elemento, valor) {
+  const inicio = elemento._valor ?? 0;
+  elemento._valor = valor;
+  cancelAnimationFrame(elemento._quadro);
+
+  if (inicio === valor || reduzirMovimento.matches) {
+    elemento.textContent = formatarMoeda(valor);
+    return;
+  }
+
+  const t0 = performance.now();
+  const passo = (agora) => {
+    const progresso = Math.min((agora - t0) / 600, 1);
+    const suave = 1 - (1 - progresso) ** 3;
+    elemento.textContent = formatarMoeda(inicio + (valor - inicio) * suave);
+    if (progresso < 1) elemento._quadro = requestAnimationFrame(passo);
+  };
+  elemento._quadro = requestAnimationFrame(passo);
 }
 
 // Mês escolhido no filtro da aba (cai no mês atual enquanto não há opções)
@@ -465,7 +590,9 @@ function mesSelecionado() {
 function renderizarVisaoGeral() {
   const gastosMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado());
 
-  metricaTotalGasto.textContent = formatarMoeda(calcularTotalGasto(gastosMes));
+  const totalMes = calcularTotalGasto(gastosMes);
+  animarValor(metricaTotalGasto, totalMes);
+  renderizarComparacao(mesSelecionado(), totalMes);
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
@@ -476,7 +603,7 @@ function renderizarVisaoGeral() {
 
   const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
   visaoGeralVazio.hidden = categorias.length > 0;
-  renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c]]));
+  renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c], corCategoria(c)]), { porcentagem: true });
 
   renderizarMetaSemanal();
   renderizarCalendario();
@@ -603,9 +730,17 @@ function renderizarGraficoSemanal() {
 
 const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 
+let diaCalendario = null; // dia tocado no calendário (YYYY-MM-DD)
+
+function selecionarDiaCalendario(iso) {
+  diaCalendario = diaCalendario === iso ? null : iso;
+  renderizarCalendario();
+}
+
 function renderizarCalendario() {
   const mes = mesSelecionado();
   const [ano, m] = mes.split('-').map(Number);
+  if (diaCalendario && diaCalendario.slice(0, 7) !== mes) diaCalendario = null;
 
   // Soma por dia, pela data do gasto (o dia precisa existir no mês mostrado)
   const totaisPorDia = {};
@@ -616,6 +751,7 @@ function renderizarCalendario() {
     totaisPorDia[data] = (totaisPorDia[data] || 0) + g.Valor;
   });
 
+  const maximo = Math.max(0, ...Object.values(totaisPorDia));
   calendario.innerHTML = '';
 
   DIAS_SEMANA.forEach((nome) => {
@@ -636,20 +772,64 @@ function renderizarCalendario() {
 
   for (let dia = 1; dia <= diasNoMes; dia += 1) {
     const iso = formatarIso(new Date(ano, m - 1, dia));
-    const celula = document.createElement('span');
+    const total = totaisPorDia[iso];
+    const celula = document.createElement(total ? 'button' : 'span');
     celula.className = 'calendario-dia';
     celula.textContent = String(dia);
 
     if (iso === hoje) celula.classList.add('calendario-hoje');
 
-    const total = totaisPorDia[iso];
+    // Dia com gasto: cor mais forte quanto maior o total, e tocável
     if (total) {
+      celula.type = 'button';
       celula.classList.add('calendario-com-gasto');
-      celula.title = `${formatarData(iso)} — ${formatarMoeda(total)}`;
+      celula.style.setProperty('--intensidade', (total / maximo).toFixed(2));
+      celula.title = `${formatarData(iso)}: ${formatarMoeda(total)}`;
+      celula.setAttribute('aria-label', celula.title);
+      celula.setAttribute('aria-pressed', String(iso === diaCalendario));
+      if (iso === diaCalendario) celula.classList.add('calendario-selecionado');
+      celula.addEventListener('click', () => selecionarDiaCalendario(iso));
     }
 
     calendario.appendChild(celula);
   }
+
+  renderizarDetalheCalendario();
+}
+
+// Lista abaixo do calendário com os gastos do dia tocado
+function renderizarDetalheCalendario() {
+  const gastosDia = diaCalendario
+    ? todosGastos.filter((g) => g.tipo === 'Gasto' && g.Data.slice(0, 10) === diaCalendario)
+    : [];
+  calendarioDetalhe.innerHTML = '';
+  calendarioDetalhe.hidden = gastosDia.length === 0;
+  if (!gastosDia.length) return;
+
+  const cabecalho = document.createElement('div');
+  cabecalho.className = 'calendario-detalhe-cabecalho';
+  const nome = document.createElement('span');
+  nome.textContent = rotuloDia(diaCalendario);
+  const total = document.createElement('span');
+  total.className = 'linha-dia-total';
+  total.textContent = formatarMoeda(calcularTotalGasto(gastosDia));
+  cabecalho.append(nome, total);
+  calendarioDetalhe.appendChild(cabecalho);
+
+  gastosDia.forEach((gasto) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'calendario-detalhe-item';
+    const local = document.createElement('span');
+    local.className = 'calendario-detalhe-local';
+    local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
+    const valor = document.createElement('span');
+    valor.className = 'calendario-detalhe-valor';
+    valor.textContent = formatarMoeda(gasto.Valor);
+    item.append(local, valor);
+    item.addEventListener('click', () => abrirGaveta(gasto));
+    calendarioDetalhe.appendChild(item);
+  });
 }
 
 // ---------- Gaveta de gasto (novo e edição) ----------
@@ -876,8 +1056,8 @@ function renderizar(gastos) {
       { texto: formatarData(gasto.Data), campo: 'Data', tipoInput: 'date', valorEdicao: gasto.Data.slice(0, 10) },
       { texto: gasto.Local, campo: 'Local', tipoInput: 'text', valorEdicao: gasto.Local },
       { texto: formatarMoeda(gasto.Valor), campo: 'Valor', tipoInput: 'number', valorEdicao: gasto.Valor, classe: 'col-valor' },
-      { texto: gasto.Categoria },
-      { texto: gasto['Categoria Geral'] },
+      { texto: gasto.Categoria, ponto: true },
+      { texto: gasto['Categoria Geral'], ponto: true },
       { texto: gasto.tipo, campo: 'tipo', tipoInput: 'text', valorEdicao: gasto.tipo },
       { texto: gasto['Mês'] },
     ];
@@ -885,6 +1065,7 @@ function renderizar(gastos) {
     celulas.forEach((c) => {
       const td = document.createElement('td');
       td.textContent = c.texto;
+      if (c.ponto) td.prepend(criarPonto(corCategoria(gasto['Categoria Geral'])));
       if (c.classe) td.className = c.classe;
       if (c.campo) {
         td.classList.add('editavel');
@@ -1322,11 +1503,15 @@ aplicarMatiz(lerMatizSalvo(), false);
 
 // ---------- Indicador online/offline ----------
 
+// O badge só aparece quando falta internet
 function atualizarRede() {
-  const online = navigator.onLine;
-  statusRede.textContent = online ? 'online' : 'offline';
-  statusRede.className = 'badge ' + (online ? 'badge-online' : 'badge-offline');
+  statusRede.hidden = navigator.onLine;
 }
+
+// Altura do topo fixo, pros cabeçalhos de dia grudarem logo abaixo dele
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--altura-topo', `${topo.offsetHeight}px`);
+}).observe(topo);
 
 window.addEventListener('online', () => { atualizarRede(); carregar(); });
 window.addEventListener('offline', atualizarRede);

@@ -35,7 +35,10 @@
     <div class="topo-inner">
       <span class="marca-ponto" aria-hidden="true"></span>
       <h1>Controle de Gastos</h1>
-      <span id="status-rede" class="badge badge-online">online</span>
+      <span id="status-rede" class="badge badge-offline" hidden>offline</span>
+      <button id="botao-atualizar" class="botao-topo" type="button" aria-label="Atualizar" title="Atualizar">
+        <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 4 21 10 15 10"/><path d="M20.5 15a8.5 8.5 0 1 1-2-8.8L21 10"/></svg>
+      </button>
       <button id="botao-parametros" class="botao-topo" type="button" aria-label="Parâmetros" title="Parâmetros">
         <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
       </button>
@@ -83,7 +86,7 @@
         <span class="metrica-valor" id="total-filtrado"></span>
       </div>
 
-      <div class="tabela-wrap">
+      <div class="tabela-wrap tabela-wrap-gastos">
         <table class="tabela tabela-gastos">
           <thead>
             <tr>
@@ -145,6 +148,7 @@
           <span class="metrica-rotulo">Total gasto no mês</span>
           <span class="resumo-valor" id="metrica-total-gasto"></span>
           <span class="resumo-sub" id="metrica-lancamentos"></span>
+          <span class="metrica-delta" id="metrica-comparacao" hidden></span>
         </div>
         <div class="resumo-semana">
           <span class="metrica-rotulo">Teto da semana</span>
@@ -161,9 +165,11 @@
           <h2 class="titulo-grafico">Calendário do mês</h2>
           <div id="calendario" class="calendario"></div>
           <p class="calendario-legenda">
-            <span class="calendario-legenda-ponto" aria-hidden="true"></span>
-            dia com gasto
+            menos
+            <span class="calendario-escala" aria-hidden="true"></span>
+            mais · toque num dia
           </p>
+          <div id="calendario-detalhe" class="calendario-detalhe" hidden></div>
         </div>
 
         <div class="visao-coluna">

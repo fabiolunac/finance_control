@@ -68,6 +68,9 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Várias classes daqui definem display; sem isto elas venceriam o atributo hidden */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; background: var(--fundo); }
 
 body {
@@ -190,6 +193,10 @@ body {
 }
 
 .botao-topo-icone { width: 18px; height: 18px; }
+
+.botao-topo.girando .botao-topo-icone { animation: girar .9s linear infinite; }
+
+@keyframes girar { to { transform: rotate(360deg); } }
 
 .botao-topo:hover { color: var(--tinta); border-color: var(--borda-forte); }
 
@@ -463,8 +470,6 @@ body {
   transform: translateX(-50%);
   animation: notificacao-entra .24s cubic-bezier(.2, .8, .2, 1);
 }
-
-.notificacao[hidden] { display: none; }
 
 #notificacao-texto {
   overflow: hidden;
@@ -1084,14 +1089,26 @@ body {
 
 .calendario-hoje {
   background: var(--cartao-alto);
+  border-color: var(--tinta-muda);
   color: var(--tinta);
   font-weight: 600;
 }
 
+/* --intensidade vai de 0 a 1 (total do dia / maior total do mês) */
 .calendario-com-gasto {
-  border-color: var(--acento);
-  color: var(--tinta);
-  box-shadow: 0 0 10px var(--acento-brilho);
+  padding: 0;
+  background: hsl(var(--matiz) 83% 58% / calc(.18 + var(--intensidade, 0) * .7));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--t-rapida);
+}
+
+.calendario-com-gasto:active { transform: scale(.92); }
+
+.calendario-selecionado {
+  outline: 2px solid var(--acento-claro);
+  outline-offset: 2px;
 }
 
 .calendario-legenda {
@@ -1104,12 +1121,64 @@ body {
   color: var(--tinta-fraca);
 }
 
-.calendario-legenda-ponto {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--acento);
-  border-radius: 999px;
-  flex: 0 0 auto;
+.calendario-escala {
+  width: 64px;
+  height: 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, hsl(var(--matiz) 83% 58% / .18), hsl(var(--matiz) 83% 58% / .88));
+}
+
+.calendario-detalhe {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+}
+
+.calendario-detalhe-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 6px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-muda);
+}
+
+.calendario-detalhe-cabecalho .linha-dia-total { font-family: var(--fonte-mono); letter-spacing: 0; }
+
+.calendario-detalhe-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 6px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-rapida);
+}
+
+.calendario-detalhe-item:hover { background: var(--acento-suave); }
+
+.calendario-detalhe-local {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.calendario-detalhe-valor {
+  flex-shrink: 0;
+  font-family: var(--fonte-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Celular ---------- */
@@ -1202,6 +1271,18 @@ body {
   }
 
   .linha-dia-total { font-family: var(--fonte-mono); letter-spacing: 0; }
+
+  .tabela-gastos tbody td:nth-child(4) .ponto-categoria { display: inline-block; }
+
+  /* overflow: clip mantém os cantos arredondados sem virar área de rolagem,
+     senão o sticky dos cabeçalhos de dia não funcionaria */
+  .tabela-wrap-gastos { overflow: clip; }
+
+  .tabela-gastos tbody tr.linha-dia {
+    position: sticky;
+    top: var(--altura-topo, 64px);
+    z-index: 1;
+  }
 }
 
 /* ---------- Seletor de cor do tema ---------- */
@@ -1272,4 +1353,82 @@ body {
   border-radius: 50%;
   background: var(--acento-forte);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}
+
+/* ---------- Cor por categoria ---------- */
+
+.ponto-categoria {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: 1px;
+}
+
+/* Na tabela larga o ponto fica só na coluna Categoria Geral */
+.tabela-gastos td:nth-child(4) .ponto-categoria { display: none; }
+
+/* Gráfico por categoria: nome e valor em cima, barra embaixo */
+#grafico-categorias-mes { gap: 14px; }
+
+#grafico-categorias-mes .barra-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+}
+
+#grafico-categorias-mes .barra-rotulo {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  font-family: var(--fonte);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+#grafico-categorias-mes .barra-valor { grid-area: 1 / 2; }
+
+#grafico-categorias-mes .barra-trilha { grid-area: 2 / 1 / 3 / 3; height: 8px; }
+
+.barra-porcentagem {
+  color: var(--tinta-muda);
+  font-weight: 500;
+}
+
+.resumo-mes .metrica-delta { margin-top: 8px; }
+
+/* ---------- Esqueleto enquanto a primeira carga não chega ---------- */
+
+body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap) {
+  position: relative;
+  overflow: hidden;
+  min-height: 140px;
+  pointer-events: none;
+}
+
+body.carregando .cartao-total { min-height: 72px; min-width: 200px; }
+body.carregando .tabela-wrap { min-height: 320px; }
+
+body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: linear-gradient(100deg, var(--cartao-solido) 30%, var(--cartao-alto) 50%, var(--cartao-solido) 70%);
+  background-size: 200% 100%;
+  animation: esqueleto 1.3s linear infinite;
+}
+
+@keyframes esqueleto {
+  from { background-position: 100% 0; }
+  to   { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-graficos .cartao-grafico, .cartao-total, .tabela-wrap)::after { animation: none; }
+  .botao-topo.girando .botao-topo-icone { animation: none; }
 }
