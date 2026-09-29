@@ -37,7 +37,7 @@ const corteDetalhe = document.getElementById('corte-detalhe');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const graficoSubcategoriasMes = document.getElementById('grafico-subcategorias-mes');
 const graficoSubcategoriasVazio = document.getElementById('grafico-subcategorias-vazio');
-const visaoGeralVazio = document.getElementById('visao-geral-vazio');
+const graficoCategoriasVazio = document.getElementById('grafico-categorias-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
 const metaSemanaBarra = document.getElementById('meta-semana-barra');
 const metaSemanaLegenda = document.getElementById('meta-semana-legenda');
@@ -525,7 +525,26 @@ abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)))
 
 function atualizarGraficos() {
   renderizarGrafico();
+  atualizarGraficosDoMes();
+}
+
+// Gráficos que dependem do mês escolhido na aba: por dia e por categoria
+function atualizarGraficosDoMes() {
   renderizarGraficoDiario();
+  const gastosMes = gastosFiltradosGrafico().filter((g) => g['Mês'] === graficoDiaMes.value);
+  renderizarGraficoCategoriasGerais(gastosMes);
+  renderizarGraficoSubcategorias(gastosMes);
+}
+
+function renderizarGraficoCategoriasGerais(gastosMes) {
+  const totais = {};
+  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
+    totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + g.Valor;
+  });
+
+  const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
+  graficoCategoriasVazio.hidden = categorias.length > 0;
+  renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c], corCategoria(c)]), { porcentagem: true });
 }
 
 function preencherFiltrosGrafico() {
@@ -633,11 +652,11 @@ function renderizarGraficoDiario() {
   renderizarBarras(graficoDiario, entradas);
 }
 
-graficoDiaMes.addEventListener('change', renderizarGraficoDiario);
+graficoDiaMes.addEventListener('change', atualizarGraficosDoMes);
 
 botaoMesAtualDia.addEventListener('click', () => {
   graficoDiaMes.value = mesAtual();
-  renderizarGraficoDiario();
+  atualizarGraficosDoMes();
 });
 
 // ---------- Visão geral ----------
@@ -722,16 +741,6 @@ function renderizarVisaoGeral() {
   metricaFatura.textContent = `Sem fatura · ${formatarMoeda(calcularTotalGasto(faturasMes))} fora do total`;
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
-
-  const totais = {};
-  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
-    totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + g.Valor;
-  });
-
-  const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
-  visaoGeralVazio.hidden = categorias.length > 0;
-  renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c], corCategoria(c)]), { porcentagem: true });
-  renderizarGraficoSubcategorias(gastosMes);
 
   renderizarMetaSemanal();
   renderizarAraujo();

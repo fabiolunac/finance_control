@@ -1022,7 +1022,19 @@ body {
   padding: 22px;
 }
 
-.cartao-grafico-dia { margin-top: 16px; }
+/* Aba Gráficos: seletor de mês entre o total mensal e os gráficos do mês */
+.filtros-mes-graficos { margin: 20px 0 12px; }
+
+.grade-categorias {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+@media (min-width: 860px) {
+  .grade-categorias { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
 
 .select-basico {
   -webkit-appearance: none;
@@ -1174,8 +1186,7 @@ body {
   border-top: 1px solid var(--borda);
 }
 
-.visao-grade,
-.visao-coluna {
+.visao-grade {
   display: grid;
   gap: 16px;
   align-items: start;
