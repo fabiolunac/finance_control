@@ -167,6 +167,33 @@ body {
 .badge-online  { background: var(--sucesso-suave); color: var(--sucesso); border-color: rgba(74, 222, 128, .2); }
 .badge-offline { background: rgba(255, 255, 255, .06); color: var(--tinta-fraca); border-color: var(--borda); }
 
+/* Parâmetros: botão de engrenagem no canto do topo */
+.botao-topo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--borda);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .03);
+  color: var(--tinta-fraca);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida), border-color var(--t-rapida);
+}
+
+.botao-topo-icone { width: 18px; height: 18px; }
+
+.botao-topo:hover { color: var(--tinta); border-color: var(--borda-forte); }
+
+.botao-topo.aba-ativa {
+  background: var(--acento-suave);
+  border-color: var(--acento);
+  color: var(--acento-claro);
+  box-shadow: none;
+}
+
 /* ---------- Conteúdo ---------- */
 
 .conteudo {
@@ -228,6 +255,94 @@ body {
 }
 
 .aba-ativa:hover { color: #fff; }
+
+/* Botão "+" no fim da barra: abre a gaveta de novo gasto */
+.aba-mais {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 48px;
+  height: 48px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--acento-forte);
+  cursor: pointer;
+  box-shadow: 0 6px 18px -6px rgba(255, 255, 255, .35);
+  transition: transform var(--t-rapida), box-shadow var(--t-base);
+}
+
+.aba-mais svg { width: 24px; height: 24px; }
+
+.aba-mais:hover { transform: translateY(-1px); box-shadow: 0 8px 22px -6px rgba(255, 255, 255, .45); }
+.aba-mais:active { transform: scale(.94); }
+
+/* ---------- Gaveta de novo gasto ---------- */
+
+.gaveta {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - 40px);
+  margin: auto auto 0;
+  padding: 0;
+  border: 1px solid var(--borda-forte);
+  border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  background: var(--cartao-solido);
+  color: var(--tinta);
+  box-shadow: 0 -20px 50px -10px rgba(0, 0, 0, .7);
+}
+
+.gaveta[open] { animation: gaveta-sobe .28s cubic-bezier(.2, .8, .2, 1); }
+
+.gaveta::backdrop {
+  background: rgba(8, 5, 16, .6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+@keyframes gaveta-sobe {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.gaveta-corpo {
+  padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+/* Alça no topo, como nas gavetas do sistema */
+.gaveta-corpo::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 99px;
+  background: var(--borda-forte);
+}
+
+.gaveta-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.gaveta-cabecalho .titulo-grafico { margin-bottom: 0; }
+
+.gaveta .novo-gasto {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.gaveta .novo-gasto button { flex: 1 1 100%; }
+
+.gaveta .erro { margin: 16px 0 0; }
 
 /* ---------- Filtros ---------- */
 

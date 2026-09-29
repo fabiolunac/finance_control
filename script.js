@@ -13,12 +13,10 @@ const erro = document.getElementById('erro');
 const totalFiltrado = document.getElementById('total-filtrado');
 
 const abaTabela = document.getElementById('aba-tabela');
-const abaAdicionar = document.getElementById('aba-adicionar');
 const abaGraficos = document.getElementById('aba-graficos');
 const abaVisaoGeral = document.getElementById('aba-visao-geral');
-const abaParametros = document.getElementById('aba-parametros');
+const abaParametros = document.getElementById('botao-parametros');
 const secaoTabela = document.getElementById('secao-tabela');
-const secaoAdicionar = document.getElementById('secao-adicionar');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
 const secaoParametros = document.getElementById('secao-parametros');
@@ -62,6 +60,10 @@ const campoBanco = document.getElementById('campo-banco');
 const opcoesTipo = document.getElementById('opcoes-tipo');
 const opcoesBanco = document.getElementById('opcoes-banco');
 const sucesso = document.getElementById('sucesso');
+const erroAdicionar = document.getElementById('erro-adicionar');
+const gavetaAdicionar = document.getElementById('gaveta-adicionar');
+const botaoAdicionar = document.getElementById('botao-adicionar');
+const botaoFecharGaveta = document.getElementById('botao-fechar-gaveta');
 
 const formParam = document.getElementById('form-param');
 const campoParamLocal = document.getElementById('campo-param-local');
@@ -275,7 +277,6 @@ function aplicarFiltros() {
 
 const abas = [
   [abaTabela, secaoTabela],
-  [abaAdicionar, secaoAdicionar],
   [abaGraficos, secaoGraficos],
   [abaVisaoGeral, secaoVisaoGeral],
   [abaParametros, secaoParametros],
@@ -619,7 +620,7 @@ function preencherSugestoes() {
 
 async function adicionar(evento) {
   evento.preventDefault();
-  erro.hidden = true;
+  erroAdicionar.hidden = true;
   sucesso.hidden = true;
 
   const gasto = {
@@ -658,12 +659,29 @@ async function adicionar(evento) {
 
     await carregar();
   } catch (e) {
-    erro.textContent = e.message;
-    erro.hidden = false;
+    erroAdicionar.textContent = e.message;
+    erroAdicionar.hidden = false;
   }
 }
 
 formGasto.addEventListener('submit', adicionar);
+
+// ---------- Gaveta de novo gasto ----------
+
+function abrirGaveta() {
+  erroAdicionar.hidden = true;
+  sucesso.hidden = true;
+  gavetaAdicionar.showModal();
+  campoLocal.focus();
+}
+
+botaoAdicionar.addEventListener('click', abrirGaveta);
+botaoFecharGaveta.addEventListener('click', () => gavetaAdicionar.close());
+
+// Clique no fundo escurecido (fora do corpo da gaveta) fecha
+gavetaAdicionar.addEventListener('click', (evento) => {
+  if (evento.target === gavetaAdicionar) gavetaAdicionar.close();
+});
 
 // ---------- Renderização ----------
 
