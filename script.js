@@ -93,13 +93,6 @@ const listaPendentes = document.getElementById('lista-pendentes');
 const pendentesContagem = document.getElementById('pendentes-contagem');
 const pendentesVazio = document.getElementById('pendentes-vazio');
 const botaoMaisPendentes = document.getElementById('botao-mais-pendentes');
-const botaoSelecionarNomes = document.getElementById('botao-selecionar-nomes');
-const botaoLimparSelecao = document.getElementById('botao-limpar-selecao');
-const lotePendentes = document.getElementById('lote-pendentes');
-const lotePendentesTexto = document.getElementById('lote-pendentes-texto');
-const loteCategoria = document.getElementById('lote-categoria');
-const loteCategoriaGeral = document.getElementById('lote-categoria-geral');
-const botaoAplicarLote = document.getElementById('botao-aplicar-lote');
 
 let todosGastos = [];
 let todosParam = [];
@@ -1434,7 +1427,6 @@ function renderizarParam() {
 const LIMITE_PENDENTES = 10;
 let mostrarTodosPendentes = false;
 const rascunhosPendentes = new Map(); // texto digitado por local, sobrevive às recargas
-const selecionadosPendentes = new Set(); // locais marcados pra categorizar em lote
 
 function locaisPendentes() {
   const cadastrados = new Set(todosParam.map((p) => p.Local));
@@ -1466,8 +1458,7 @@ function renderizarPendentes() {
   // Sem os gastos carregados a lista sairia vazia e diria que está tudo certo
   if (!carregouUmaVez) return;
 
-  const pendentes = locaisPendentes()
-    .sort((a, b) => selecionadosPendentes.has(b.local) - selecionadosPendentes.has(a.local));
+  const pendentes = locaisPendentes();
   pendentesContagem.textContent = pendentes.length ? `(${pendentes.length})` : '';
   pendentesVazio.hidden = pendentes.length > 0;
 
@@ -1477,8 +1468,6 @@ function renderizarPendentes() {
 
   botaoMaisPendentes.hidden = pendentes.length <= LIMITE_PENDENTES;
   botaoMaisPendentes.textContent = mostrarTodosPendentes ? 'Mostrar menos' : `Mostrar todos (${pendentes.length})`;
-  botaoSelecionarNomes.hidden = pendentes.length === 0;
-  atualizarLotePendentes(pendentes);
 }
 
 botaoMaisPendentes.addEventListener('click', () => {
@@ -1511,19 +1500,7 @@ function criarLinhaPendente({ local, quantidade, total }) {
   const meta = document.createElement('span');
   meta.className = 'pendente-meta';
   meta.textContent = `${textoLancamentos(quantidade)} · ${formatarMoeda(total)}`;
-  const caixa = document.createElement('input');
-  caixa.type = 'checkbox';
-  caixa.className = 'pendente-caixa';
-  caixa.checked = selecionadosPendentes.has(local);
-  caixa.setAttribute('aria-label', `Selecionar ${local}`);
-  form.classList.toggle('pendente-selecionado', caixa.checked);
-  caixa.addEventListener('change', () => {
-    if (caixa.checked) selecionadosPendentes.add(local);
-    else selecionadosPendentes.delete(local);
-    form.classList.toggle('pendente-selecionado', caixa.checked);
-    atualizarLotePendentes(locaisPendentes());
-  });
-  info.append(caixa, nome, meta);
+  info.append(nome, meta);
 
   const rascunho = rascunhosPendentes.get(local) || { categoria: '', geral: '' };
   const campoCategoria = criarCampoPendente('opcoes-param-categoria', 'Categoria', local, rascunho.categoria);
@@ -1556,121 +1533,6 @@ function criarLinhaPendente({ local, quantidade, total }) {
   form.append(info, campos);
   return form;
 }
-
-// ---------- Categorizar em lote (ex.: Pix pra nomes de pessoa) ----------
-
-// Palavras que indicam comércio; nome com alguma delas não é de pessoa
-const PALAVRAS_DE_COMERCIO = new Set(`
-  ltda me mei eireli sa cia comercio comercial mercado supermercado mercadinho minimercado
-  padaria panificadora pao restaurante bar lanchonete lanches farmacia drogaria posto loja lojas
-  shop store pizzaria pizza cafe cafeteria hotel pousada auto pet petshop academia clinica
-  hospital laboratorio uber ifood rappi pag pagamento pagamentos banco bank distribuidora
-  servicos servico center market mart acougue hortifruti sorveteria burger burguer grill
-  churrascaria doceria confeitaria emporio atacado atacadao magazine tabacaria estacionamento
-  lavanderia barbearia salao studio estudio bistro cantina delivery express club clube cinema
-  teatro shopping outlet sushi temakeria hamburgueria acai acaiteria cervejaria adega
-  conveniencia papelaria livraria otica joalheria floricultura imobiliaria seguros seguradora
-  telecom net internet energia agua gas combustiveis transportes transporte viagens turismo
-  cursos escola colegio universidade faculdade igreja associacao condominio assinatura casa
-  forno cozinha sabor sabores point ponto grupo rede tech digital online brasil netflix
-  spotify amazon google apple shopee carrefour americanas magalu
-`.trim().split(/\s+/));
-const CONECTIVOS = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
-
-function semAcento(texto) {
-  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-// Heurística: 2 a 6 palavras, só letras, nome e sobrenome com inicial maiúscula
-// (ou tudo maiúsculo, como nos extratos) e nenhuma palavra de comércio.
-// Serve só pra marcar sugestões; quem confirma é você.
-function pareceNomeDePessoa(local) {
-  const texto = local.trim().replace(/\s+/g, ' ');
-  if (!/^[\p{L}' -]+$/u.test(texto)) return false;
-
-  const palavras = texto.split(' ');
-  if (palavras.length < 2 || palavras.length > 6) return false;
-
-  const normais = palavras.map((p) => semAcento(p).toLowerCase());
-  if (normais.some((p) => PALAVRAS_DE_COMERCIO.has(p))) return false;
-
-  const principais = palavras.filter((_, i) => !CONECTIVOS.has(normais[i]));
-  if (principais.length < 2 || principais.some((p) => p.length < 2)) return false;
-  return principais.every((p) => /^\p{Lu}/u.test(p));
-}
-
-function atualizarLotePendentes(pendentes) {
-  // Descarta seleções de locais que já saíram da lista
-  const aindaPendentes = new Set(pendentes.map((g) => g.local));
-  [...selecionadosPendentes].forEach((local) => {
-    if (!aindaPendentes.has(local)) selecionadosPendentes.delete(local);
-  });
-
-  const n = selecionadosPendentes.size;
-  lotePendentes.hidden = n === 0;
-  botaoLimparSelecao.hidden = n === 0;
-  lotePendentesTexto.textContent = `${n} ${n === 1 ? 'local selecionado' : 'locais selecionados'}`;
-  if (!loteCategoriaGeral.value.trim()) loteCategoriaGeral.value = geralSugerida(loteCategoria.value.trim());
-}
-
-botaoSelecionarNomes.addEventListener('click', () => {
-  const nomes = locaisPendentes().filter((g) => pareceNomeDePessoa(g.local));
-  nomes.forEach((g) => selecionadosPendentes.add(g.local));
-  mostrarTodosPendentes = true;
-  renderizarPendentes();
-  mostrarNotificacao(nomes.length
-    ? `${nomes.length} ${nomes.length === 1 ? 'local parece' : 'locais parecem'} nome de pessoa. Confira antes de aplicar.`
-    : 'Nenhum local parece nome de pessoa.', null, null, 5000);
-});
-
-botaoLimparSelecao.addEventListener('click', () => {
-  selecionadosPendentes.clear();
-  renderizarPendentes();
-});
-
-loteCategoria.addEventListener('change', () => {
-  if (!loteCategoriaGeral.value.trim()) loteCategoriaGeral.value = geralSugerida(loteCategoria.value.trim());
-});
-
-// Um parâmetro por local, um de cada vez; se um falhar, os anteriores ficam salvos
-async function aplicarLotePendentes(evento) {
-  evento.preventDefault();
-  const categoria = loteCategoria.value.trim();
-  const categoriaGeral = loteCategoriaGeral.value.trim();
-  if (!categoria || !categoriaGeral) return;
-
-  const grupos = locaisPendentes().filter((g) => selecionadosPendentes.has(g.local));
-  erro.hidden = true;
-  botaoAplicarLote.disabled = true;
-  let feitos = 0;
-  let lancamentos = 0;
-
-  try {
-    for (const grupo of grupos) {
-      botaoAplicarLote.textContent = `Salvando ${feitos + 1}/${grupos.length}…`;
-      await requisitar('POST', '/api/param',
-        { Local: grupo.local, Categoria: categoria, CategoriaGeral: categoriaGeral }, 'Erro ao gravar no servidor.');
-      feitos += 1;
-      lancamentos += grupo.quantidade;
-      selecionadosPendentes.delete(grupo.local);
-      rascunhosPendentes.delete(grupo.local);
-      todosParam = [...todosParam, { Local: grupo.local, Categoria: categoria, 'Categoria Geral': categoriaGeral }];
-    }
-  } catch (e) {
-    mostrarErro(`${e.message} ${feitos} de ${grupos.length} foram salvos.`);
-  } finally {
-    botaoAplicarLote.disabled = false;
-    botaoAplicarLote.textContent = 'Aplicar';
-  }
-
-  if (!feitos) return;
-  renderizarPendentes();
-  mostrarNotificacao(`${feitos} ${feitos === 1 ? 'local' : 'locais'} → ${categoria} · ` +
-    `${textoLancamentos(lancamentos)} ${lancamentos === 1 ? 'atualizado' : 'atualizados'}`);
-  await Promise.all([carregarParametros(), carregar()]);
-}
-
-lotePendentes.addEventListener('submit', aplicarLotePendentes);
 
 async function salvarPendente(local, quantidade, categoria, categoriaGeral, botao) {
   if (!categoria || !categoriaGeral) return;

@@ -675,7 +675,7 @@ body {
 .novo-gasto input,
 .novo-gasto select,
 .form-gasto input:not([type="radio"]),
-.pendente input:not([type="checkbox"]) {
+.pendente input {
   font: inherit;
   font-size: 0.95rem;
   padding: 13px 16px;
@@ -692,12 +692,12 @@ body {
 
 .novo-gasto input::placeholder,
 .form-gasto input::placeholder,
-.pendente input:not([type="checkbox"])::placeholder { color: var(--tinta-muda); }
+.pendente input::placeholder { color: var(--tinta-muda); }
 
 .novo-gasto input:focus,
 .novo-gasto select:focus,
 .form-gasto input:not([type="radio"]):focus,
-.pendente input:not([type="checkbox"]):focus {
+.pendente input:focus {
   border-color: var(--acento);
   box-shadow: 0 0 0 3px var(--acento-suave);
 }
@@ -1510,22 +1510,12 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-grafico
 
 .pendente-info {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
-
-.pendente-caixa {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--acento-forte);
-  cursor: pointer;
-}
-
-.pendente-selecionado { border-color: var(--acento); }
 
 .pendente-local {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1545,7 +1535,7 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-grafico
   gap: 8px;
 }
 
-.pendente input:not([type="checkbox"]) {
+.pendente input {
   padding: 10px 12px;
   font-size: 0.9rem;
   background: var(--cartao-solido);
@@ -1558,23 +1548,4 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, #secao-grafico
 @media (max-width: 640px) {
   .pendente-campos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pendente-campos .botao-primario { grid-column: 1 / -1; }
-}
-
-.pendentes-ferramentas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-/* Barra de categorizar em lote, destacada acima da lista */
-.lote-pendentes {
-  margin-bottom: 12px;
-  border-color: var(--acento);
-  background: var(--acento-suave);
-}
-
-.lote-pendentes-texto {
-  font-size: 0.88rem;
-  font-weight: 600;
 }
