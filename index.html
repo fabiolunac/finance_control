@@ -184,15 +184,23 @@
       </div>
 
       <div class="visao-grade">
-        <div class="cartao-grafico">
-          <h2 class="titulo-grafico">Calendário do mês</h2>
-          <div id="calendario" class="calendario"></div>
-          <p class="calendario-legenda">
-            menos
-            <span class="calendario-escala" aria-hidden="true"></span>
-            mais · toque num dia
-          </p>
-          <div id="calendario-detalhe" class="calendario-detalhe" hidden></div>
+        <div class="visao-coluna">
+          <div class="cartao-grafico">
+            <h2 class="titulo-grafico">Calendário do mês</h2>
+            <div id="calendario" class="calendario"></div>
+            <p class="calendario-legenda">
+              menos
+              <span class="calendario-escala" aria-hidden="true"></span>
+              mais · toque num dia
+            </p>
+            <div id="calendario-detalhe" class="calendario-detalhe" hidden></div>
+          </div>
+
+          <div class="cartao-grafico">
+            <h2 class="titulo-grafico">Gastos por categoria</h2>
+            <div id="grafico-subcategorias-mes" class="grafico grafico-com-nomes"></div>
+            <p id="grafico-subcategorias-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
+          </div>
         </div>
 
         <div class="visao-coluna">
@@ -204,7 +212,7 @@
 
           <div class="cartao-grafico">
             <h2 class="titulo-grafico">Gastos por categoria geral</h2>
-            <div id="grafico-categorias-mes" class="grafico"></div>
+            <div id="grafico-categorias-mes" class="grafico grafico-com-nomes"></div>
             <p id="visao-geral-vazio" class="vazio" hidden>Nenhum gasto neste mês ainda.</p>
           </div>
         </div>

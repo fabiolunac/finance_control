@@ -1571,16 +1571,16 @@ body {
 /* Na tabela larga o ponto fica só na coluna Categoria Geral */
 .tabela-gastos td:nth-child(4) .ponto-categoria { display: none; }
 
-/* Gráfico por categoria: nome e valor em cima, barra embaixo */
-#grafico-categorias-mes { gap: 14px; }
+/* Gráficos por categoria: nome e valor em cima, barra embaixo */
+.grafico-com-nomes { gap: 14px; }
 
-#grafico-categorias-mes .barra-linha {
+.grafico-com-nomes .barra-linha {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px 12px;
 }
 
-#grafico-categorias-mes .barra-rotulo {
+.grafico-com-nomes .barra-rotulo {
   grid-area: 1 / 1;
   display: flex;
   align-items: center;
@@ -1590,9 +1590,9 @@ body {
   color: var(--tinta);
 }
 
-#grafico-categorias-mes .barra-valor { grid-area: 1 / 2; }
+.grafico-com-nomes .barra-valor { grid-area: 1 / 2; }
 
-#grafico-categorias-mes .barra-trilha { grid-area: 2 / 1 / 3 / 3; height: 8px; }
+.grafico-com-nomes .barra-trilha { grid-area: 2 / 1 / 3 / 3; height: 8px; }
 
 .barra-porcentagem {
   color: var(--tinta-muda);

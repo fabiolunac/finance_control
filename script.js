@@ -35,6 +35,8 @@ const araujoDetalhe = document.getElementById('araujo-detalhe');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
+const graficoSubcategoriasMes = document.getElementById('grafico-subcategorias-mes');
+const graficoSubcategoriasVazio = document.getElementById('grafico-subcategorias-vazio');
 const visaoGeralVazio = document.getElementById('visao-geral-vazio');
 const metaSemanaTexto = document.getElementById('meta-semana-texto');
 const metaSemanaBarra = document.getElementById('meta-semana-barra');
@@ -729,6 +731,7 @@ function renderizarVisaoGeral() {
   const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
   visaoGeralVazio.hidden = categorias.length > 0;
   renderizarBarras(graficoCategoriasMes, categorias.map((c) => [c, totais[c], corCategoria(c)]), { porcentagem: true });
+  renderizarGraficoSubcategorias(gastosMes);
 
   renderizarMetaSemanal();
   renderizarAraujo();
@@ -743,6 +746,38 @@ botaoMesAtualVisao.addEventListener('click', () => {
   visaoMes.value = mesAtual();
   renderizarVisaoGeral();
 });
+
+// ---------- Gastos por categoria (nível detalhado) ----------
+
+// Acima disso as menores viram uma barra só de "Outras", pra lista não ficar enorme
+const LIMITE_CATEGORIAS = 10;
+
+function renderizarGraficoSubcategorias(gastosMes) {
+  const totais = {};
+  const geraisPorCategoria = {}; // pra pintar a barra com a cor da categoria geral
+  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
+    totais[g.Categoria] = (totais[g.Categoria] || 0) + g.Valor;
+    const gerais = (geraisPorCategoria[g.Categoria] = geraisPorCategoria[g.Categoria] || {});
+    gerais[g['Categoria Geral']] = (gerais[g['Categoria Geral']] || 0) + 1;
+  });
+
+  const geralMaisComum = (categoria) => {
+    const gerais = geraisPorCategoria[categoria];
+    return Object.keys(gerais).sort((a, b) => gerais[b] - gerais[a])[0];
+  };
+
+  const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
+  graficoSubcategoriasVazio.hidden = categorias.length > 0;
+
+  const entradas = categorias.slice(0, LIMITE_CATEGORIAS)
+    .map((c) => [c, totais[c], corCategoria(geralMaisComum(c))]);
+  const resto = categorias.slice(LIMITE_CATEGORIAS);
+  if (resto.length) {
+    const somaResto = resto.reduce((soma, c) => soma + totais[c], 0);
+    entradas.push([`Outras (${resto.length})`, somaResto, 'hsl(0 0% 58%)']);
+  }
+  renderizarBarras(graficoSubcategoriasMes, entradas, { porcentagem: true });
+}
 
 // ---------- Cards específicos: Araújo e corte de cabelo ----------
 
