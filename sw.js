@@ -7,7 +7,7 @@
    A VERSAO só serve para limpar caches antigos na ativação.
    ============================================================ */
 
-const VERSAO = 'controle-gastos-v35';
+const VERSAO = 'controle-gastos-v36';
 
 const ARQUIVOS = [
   './',

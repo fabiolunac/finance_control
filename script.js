@@ -57,15 +57,20 @@ const formGasto = document.getElementById('form-gasto');
 const campoData = document.getElementById('campo-data');
 const campoLocal = document.getElementById('campo-local');
 const campoValor = document.getElementById('campo-valor');
-const campoTipo = document.getElementById('campo-tipo');
 const campoBanco = document.getElementById('campo-banco');
-const opcoesTipo = document.getElementById('opcoes-tipo');
+const opcoesLocal = document.getElementById('opcoes-local');
 const opcoesBanco = document.getElementById('opcoes-banco');
-const sucesso = document.getElementById('sucesso');
+const gavetaTitulo = document.getElementById('gaveta-titulo');
+const botaoSalvarGasto = document.getElementById('botao-salvar-gasto');
+const botaoExcluirGasto = document.getElementById('botao-excluir-gasto');
 const erroAdicionar = document.getElementById('erro-adicionar');
 const gavetaAdicionar = document.getElementById('gaveta-adicionar');
 const botaoAdicionar = document.getElementById('botao-adicionar');
 const botaoFecharGaveta = document.getElementById('botao-fechar-gaveta');
+
+const notificacao = document.getElementById('notificacao');
+const notificacaoTexto = document.getElementById('notificacao-texto');
+const notificacaoAcao = document.getElementById('notificacao-acao');
 
 const formParam = document.getElementById('form-param');
 const campoParamLocal = document.getElementById('campo-param-local');
@@ -75,7 +80,6 @@ const opcoesParamCategoria = document.getElementById('opcoes-param-categoria');
 const opcoesParamCategoriaGeral = document.getElementById('opcoes-param-categoria-geral');
 const corpoParam = document.getElementById('corpo-param');
 const paramVazio = document.getElementById('param-vazio');
-const paramSucesso = document.getElementById('param-sucesso');
 
 let todosGastos = [];
 let todosParam = [];
@@ -103,6 +107,35 @@ function formatarData(dataIso) {
   return `${dia}/${mes}/${ano}`;
 }
 
+// ---------- Requisições ----------
+
+// Chama a API com o token; lança Error com mensagem pronta pra mostrar.
+// keepalive deixa a requisição terminar mesmo se o app for fechado logo depois.
+async function requisitar(metodo, caminho, corpo, mensagemErro) {
+  const opcoes = {
+    method: metodo,
+    keepalive: true,
+    headers: { Authorization: `Bearer ${obterToken()}` },
+  };
+  if (corpo) {
+    opcoes.headers['Content-Type'] = 'application/json';
+    opcoes.body = JSON.stringify(corpo);
+  }
+
+  const resposta = await fetch(`${API_URL}${caminho}`, opcoes);
+  if (resposta.status === 401) {
+    localStorage.removeItem('apiToken');
+    throw new Error('Código de acesso inválido. Recarregue a página.');
+  }
+  if (!resposta.ok) throw new Error(mensagemErro);
+  return resposta;
+}
+
+function mostrarErro(mensagem) {
+  erro.textContent = mensagem;
+  erro.hidden = false;
+}
+
 // ---------- Carregamento ----------
 
 async function carregar() {
@@ -121,18 +154,23 @@ async function carregar() {
     }
 
     const { gastos } = await resposta.json();
-    todosGastos = gastos;
-    preencherFiltros();
-    preencherFiltrosGrafico();
-    preencherFiltroVisao();
-    preencherSugestoes();
-    aplicarFiltros();
-    if (!secaoGraficos.hidden) atualizarGraficos();
-    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+    // Gastos com remoção aguardando o "Desfazer" continuam fora da tela
+    todosGastos = gastos.filter((g) => !gastosRemovendo.has(g.rowid));
+    renderizarTudo();
   } catch (e) {
     erro.textContent = e.message;
     erro.hidden = false;
   }
+}
+
+function renderizarTudo() {
+  preencherFiltros();
+  preencherFiltrosGrafico();
+  preencherFiltroVisao();
+  preencherSugestoes();
+  aplicarFiltros();
+  if (!secaoGraficos.hidden) atualizarGraficos();
+  if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
 }
 
 // ---------- Filtros ----------
@@ -301,8 +339,6 @@ function selecionarAba(abaEscolhida) {
     secao.hidden = aba !== abaEscolhida;
   });
   erro.hidden = true;
-  sucesso.hidden = true;
-  paramSucesso.hidden = true;
   if (abaEscolhida === abaGraficos) atualizarGraficos();
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
   if (abaEscolhida === abaParametros) carregarParametros();
@@ -616,7 +652,7 @@ function renderizarCalendario() {
   }
 }
 
-// ---------- Adicionar gasto ----------
+// ---------- Gaveta de gasto (novo e edição) ----------
 
 function preencherDatalist(datalist, valores) {
   datalist.innerHTML = '';
@@ -628,73 +664,166 @@ function preencherDatalist(datalist, valores) {
 }
 
 function preencherSugestoes() {
-  preencherDatalist(opcoesTipo, valoresUnicos('tipo').sort((a, b) => a.localeCompare(b)));
-  preencherDatalist(opcoesBanco, valoresUnicos('banco').sort((a, b) => a.localeCompare(b)));
+  preencherDatalist(opcoesLocal, valoresUnicos('Local').sort((a, b) => a.localeCompare(b)));
+  preencherDatalist(opcoesBanco, valoresUnicos('banco').filter(Boolean).sort((a, b) => a.localeCompare(b)));
 }
 
-async function adicionar(evento) {
+function lerUltimoBanco() {
+  try { return localStorage.getItem('ultimoBanco') || ''; } catch (e) { return ''; }
+}
+
+function salvarUltimoBanco(banco) {
+  try { localStorage.setItem('ultimoBanco', banco); } catch (e) {}
+}
+
+// Aceita "12,50", "12.50" e "1.234,56"
+function lerValor(texto) {
+  let limpo = texto.trim().replace(/\s/g, '');
+  if (limpo.includes(',')) limpo = limpo.replace(/\./g, '').replace(',', '.');
+  const valor = parseFloat(limpo);
+  return valor >= 0 ? valor : NaN;
+}
+
+function ehCelular() {
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+let gastoEditando = null; // gasto aberto na gaveta; null quando é um gasto novo
+
+function abrirGaveta(gasto = null) {
+  gastoEditando = gasto;
+  erroAdicionar.hidden = true;
+  gavetaTitulo.textContent = gasto ? 'Editar gasto' : 'Novo gasto';
+  botaoSalvarGasto.textContent = gasto ? 'Salvar' : 'Adicionar';
+  botaoExcluirGasto.hidden = !gasto;
+
+  if (gasto) {
+    campoValor.value = String(gasto.Valor).replace('.', ',');
+    campoLocal.value = gasto.Local;
+    campoData.value = gasto.Data.slice(0, 10);
+    campoBanco.value = gasto.banco || '';
+    formGasto.elements.tipo.value = gasto.tipo;
+  } else {
+    campoValor.value = '';
+    campoLocal.value = '';
+    campoData.value = formatarIso(new Date());
+    campoBanco.value = lerUltimoBanco();
+    formGasto.elements.tipo.value = 'Gasto';
+  }
+
+  gavetaAdicionar.showModal();
+  if (!gasto) campoValor.focus();
+}
+
+async function salvarGasto(evento) {
   evento.preventDefault();
   erroAdicionar.hidden = true;
-  sucesso.hidden = true;
 
   const gasto = {
     Data: campoData.value,
     Local: campoLocal.value.trim(),
-    Valor: parseFloat(campoValor.value),
-    tipo: campoTipo.value.trim(),
+    Valor: lerValor(campoValor.value),
+    tipo: formGasto.elements.tipo.value,
     banco: campoBanco.value.trim(),
   };
 
-  if (!gasto.Data || !gasto.Local || Number.isNaN(gasto.Valor) || !gasto.tipo || !gasto.banco) return;
+  if (Number.isNaN(gasto.Valor)) {
+    erroAdicionar.textContent = 'Valor inválido. Use algo como 12,50.';
+    erroAdicionar.hidden = false;
+    return;
+  }
+  if (!gasto.Data || !gasto.Local || !gasto.tipo || !gasto.banco) return;
 
+  const editando = gastoEditando;
+  botaoSalvarGasto.disabled = true;
   try {
-    const resposta = await fetch(`${API_URL}/api/gastos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${obterToken()}`,
-      },
-      body: JSON.stringify(gasto),
-    });
-
-    if (resposta.status === 401) {
-      localStorage.removeItem('apiToken');
-      throw new Error('Código de acesso inválido. Recarregue a página.');
+    if (editando) {
+      await requisitar('PUT', `/api/gastos/${editando.rowid}`, gasto, 'Erro ao salvar no servidor.');
+    } else {
+      await requisitar('POST', '/api/gastos', gasto, 'Erro ao gravar no servidor.');
     }
-    if (!resposta.ok) {
-      throw new Error('Erro ao gravar no servidor.');
-    }
-
-    sucesso.textContent = `Adicionado: ${gasto.Local} — ${formatarMoeda(gasto.Valor)} (${formatarData(gasto.Data)})`;
-    sucesso.hidden = false;
-    campoLocal.value = '';
-    campoValor.value = '';
-    campoLocal.focus();
-
+    salvarUltimoBanco(gasto.banco);
+    gavetaAdicionar.close();
+    mostrarNotificacao(editando
+      ? 'Alterações salvas'
+      : `Adicionado: ${gasto.Local} · ${formatarMoeda(gasto.Valor)}`);
     await carregar();
   } catch (e) {
     erroAdicionar.textContent = e.message;
     erroAdicionar.hidden = false;
+  } finally {
+    botaoSalvarGasto.disabled = false;
   }
 }
 
-formGasto.addEventListener('submit', adicionar);
+formGasto.addEventListener('submit', salvarGasto);
 
-// ---------- Gaveta de novo gasto ----------
+botaoExcluirGasto.addEventListener('click', () => {
+  const gasto = gastoEditando;
+  gavetaAdicionar.close();
+  removerGasto(gasto);
+});
 
-function abrirGaveta() {
-  erroAdicionar.hidden = true;
-  sucesso.hidden = true;
-  gavetaAdicionar.showModal();
-  campoLocal.focus();
-}
-
-botaoAdicionar.addEventListener('click', abrirGaveta);
+botaoAdicionar.addEventListener('click', () => abrirGaveta());
 botaoFecharGaveta.addEventListener('click', () => gavetaAdicionar.close());
 
 // Clique no fundo escurecido (fora do corpo da gaveta) fecha
 gavetaAdicionar.addEventListener('click', (evento) => {
   if (evento.target === gavetaAdicionar) gavetaAdicionar.close();
+});
+
+// ---------- Notificação e "Desfazer" ----------
+
+let notificacaoTimer = null;
+
+function esconderNotificacao() {
+  clearTimeout(notificacaoTimer);
+  notificacao.hidden = true;
+}
+
+function mostrarNotificacao(texto, rotuloAcao = null, aoAgir = null, duracao = 3000) {
+  clearTimeout(notificacaoTimer);
+  notificacaoTexto.textContent = texto;
+  notificacaoAcao.hidden = !rotuloAcao;
+  notificacaoAcao.textContent = rotuloAcao || '';
+  notificacaoAcao.onclick = aoAgir ? () => { esconderNotificacao(); aoAgir(); } : null;
+  notificacao.hidden = false;
+  notificacaoTimer = setTimeout(esconderNotificacao, duracao);
+}
+
+// A remoção só vai pro servidor depois de alguns segundos, pra dar tempo de
+// desfazer. Uma nova remoção, ou o app indo pro fundo, envia a anterior na hora.
+const ESPERA_DESFAZER = 5000;
+const gastosRemovendo = new Set();
+const paramRemovendo = new Set();
+let remocaoPendente = null;
+
+function enviarRemocaoPendente() {
+  if (!remocaoPendente) return;
+  const { enviar, timer } = remocaoPendente;
+  clearTimeout(timer);
+  remocaoPendente = null;
+  enviar();
+}
+
+function removerComDesfazer(mensagem, { tirar, devolver, enviar }) {
+  enviarRemocaoPendente();
+  tirar();
+
+  const pendente = { enviar };
+  pendente.timer = setTimeout(enviarRemocaoPendente, ESPERA_DESFAZER);
+  remocaoPendente = pendente;
+
+  mostrarNotificacao(mensagem, 'Desfazer', () => {
+    clearTimeout(pendente.timer);
+    if (remocaoPendente === pendente) remocaoPendente = null;
+    devolver();
+  }, ESPERA_DESFAZER);
+}
+
+window.addEventListener('pagehide', enviarRemocaoPendente);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') enviarRemocaoPendente();
 });
 
 // ---------- Renderização ----------
@@ -761,7 +890,9 @@ function renderizar(gastos) {
         td.classList.add('editavel');
         td.tabIndex = 0;
         td.title = 'Clique para editar';
-        td.addEventListener('click', () => editarCelula(td, gasto, c.campo, c.tipoInput, c.valorEdicao));
+        td.addEventListener('click', () => {
+          if (!ehCelular()) editarCelula(td, gasto, c.campo, c.tipoInput, c.valorEdicao);
+        });
       }
       tr.appendChild(td);
     });
@@ -773,37 +904,48 @@ function renderizar(gastos) {
     botaoRemover.className = 'botao-remover';
     botaoRemover.textContent = '×';
     botaoRemover.setAttribute('aria-label', `Remover gasto de ${gasto.Local}`);
-    botaoRemover.addEventListener('click', () => removerGasto(gasto.rowid, gasto.Local));
+    botaoRemover.addEventListener('click', () => removerGasto(gasto));
     tdAcoes.appendChild(botaoRemover);
     tr.appendChild(tdAcoes);
+
+    // No celular a linha inteira abre a gaveta de edição
+    tr.addEventListener('click', () => {
+      if (ehCelular()) abrirGaveta(gasto);
+    });
 
     corpoTabela.appendChild(tr);
   });
 }
 
-async function removerGasto(rowid, local) {
-  if (!confirm(`Remover o gasto "${local}"? Essa ação não pode ser desfeita.`)) return;
+function ordenarGastos(gastos) {
+  return gastos.sort((a, b) => b.Data.localeCompare(a.Data) || b.rowid - a.rowid);
+}
 
+function removerGasto(gasto) {
   erro.hidden = true;
-  try {
-    const resposta = await fetch(`${API_URL}/api/gastos/${rowid}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${obterToken()}` },
-    });
-
-    if (resposta.status === 401) {
-      localStorage.removeItem('apiToken');
-      throw new Error('Código de acesso inválido. Recarregue a página.');
-    }
-    if (!resposta.ok) {
-      throw new Error('Erro ao remover no servidor.');
-    }
-
-    await carregar();
-  } catch (e) {
-    erro.textContent = e.message;
-    erro.hidden = false;
-  }
+  removerComDesfazer(`Gasto removido: ${gasto.Local}`, {
+    tirar: () => {
+      gastosRemovendo.add(gasto.rowid);
+      todosGastos = todosGastos.filter((g) => g.rowid !== gasto.rowid);
+      renderizarTudo();
+    },
+    devolver: () => {
+      gastosRemovendo.delete(gasto.rowid);
+      todosGastos = ordenarGastos([...todosGastos, gasto]);
+      renderizarTudo();
+    },
+    enviar: async () => {
+      try {
+        await requisitar('DELETE', `/api/gastos/${gasto.rowid}`, null, 'Erro ao remover no servidor.');
+      } catch (e) {
+        mostrarErro(e.message);
+        gastosRemovendo.delete(gasto.rowid);
+        carregar();
+        return;
+      }
+      gastosRemovendo.delete(gasto.rowid);
+    },
+  });
 }
 
 function editarCelula(td, gasto, campo, tipoInput, valorAtual) {
@@ -918,7 +1060,7 @@ async function carregarParametros() {
     }
 
     const { param } = await resposta.json();
-    todosParam = param;
+    todosParam = param.filter((p) => !paramRemovendo.has(p.rowid));
     paramCarregado = true;
     preencherSugestoesParam();
     renderizarParam();
@@ -965,7 +1107,7 @@ function renderizarParam() {
     botaoRemover.className = 'botao-remover';
     botaoRemover.textContent = '×';
     botaoRemover.setAttribute('aria-label', `Remover parâmetro de ${param.Local}`);
-    botaoRemover.addEventListener('click', () => removerParam(param.rowid, param.Local));
+    botaoRemover.addEventListener('click', () => removerParam(param));
     tdAcoes.appendChild(botaoRemover);
     tr.appendChild(tdAcoes);
 
@@ -976,7 +1118,6 @@ function renderizarParam() {
 async function adicionarParam(evento) {
   evento.preventDefault();
   erro.hidden = true;
-  paramSucesso.hidden = true;
 
   const local = campoParamLocal.value.trim();
   const categoria = campoParamCategoria.value.trim();
@@ -1001,8 +1142,7 @@ async function adicionarParam(evento) {
       throw new Error('Erro ao gravar no servidor.');
     }
 
-    paramSucesso.textContent = `Adicionado: ${local} → ${categoria} / ${categoriaGeral}`;
-    paramSucesso.hidden = false;
+    mostrarNotificacao(`Adicionado: ${local} → ${categoria}`);
     formParam.reset();
     campoParamLocal.focus();
 
@@ -1015,29 +1155,31 @@ async function adicionarParam(evento) {
 
 formParam.addEventListener('submit', adicionarParam);
 
-async function removerParam(rowid, local) {
-  if (!confirm(`Remover o parâmetro "${local}"? Essa ação não pode ser desfeita.`)) return;
-
+function removerParam(param) {
   erro.hidden = true;
-  try {
-    const resposta = await fetch(`${API_URL}/api/param/${rowid}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${obterToken()}` },
-    });
-
-    if (resposta.status === 401) {
-      localStorage.removeItem('apiToken');
-      throw new Error('Código de acesso inválido. Recarregue a página.');
-    }
-    if (!resposta.ok) {
-      throw new Error('Erro ao remover no servidor.');
-    }
-
-    await carregarParametros();
-  } catch (e) {
-    erro.textContent = e.message;
-    erro.hidden = false;
-  }
+  removerComDesfazer(`Parâmetro removido: ${param.Local}`, {
+    tirar: () => {
+      paramRemovendo.add(param.rowid);
+      todosParam = todosParam.filter((p) => p.rowid !== param.rowid);
+      renderizarParam();
+    },
+    devolver: () => {
+      paramRemovendo.delete(param.rowid);
+      todosParam = [...todosParam, param].sort((a, b) => a.Local.localeCompare(b.Local));
+      renderizarParam();
+    },
+    enviar: async () => {
+      try {
+        await requisitar('DELETE', `/api/param/${param.rowid}`, null, 'Erro ao remover no servidor.');
+      } catch (e) {
+        mostrarErro(e.message);
+        paramRemovendo.delete(param.rowid);
+        carregarParametros();
+        return;
+      }
+      paramRemovendo.delete(param.rowid);
+    },
+  });
 }
 
 function editarCelulaParam(td, param, campo, valorAtual) {
@@ -1191,6 +1333,5 @@ window.addEventListener('offline', atualizarRede);
 
 // ---------- Início ----------
 
-campoData.value = new Date().toISOString().slice(0, 10);
 atualizarRede();
 carregar();

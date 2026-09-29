@@ -84,7 +84,7 @@
       </div>
 
       <div class="tabela-wrap">
-        <table class="tabela">
+        <table class="tabela tabela-gastos">
           <thead>
             <tr>
               <th>Data</th>
@@ -201,8 +201,6 @@
         <button type="submit">Adicionar</button>
       </form>
 
-      <p id="param-sucesso" class="sucesso" hidden></p>
-
       <div class="tabela-wrap">
         <table class="tabela">
           <thead>
@@ -229,21 +227,41 @@
         <h2 id="gaveta-titulo" class="titulo-grafico">Novo gasto</h2>
         <button id="botao-fechar-gaveta" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
       </div>
-      <form id="form-gasto" class="novo-gasto">
-        <input id="campo-data" type="date" required>
-        <input id="campo-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" required>
-        <input id="campo-valor" type="number" step="0.01" min="0" placeholder="Valor (R$)" required>
-        <input id="campo-tipo" list="opcoes-tipo" value="Gasto" placeholder="Tipo" required>
-        <datalist id="opcoes-tipo"></datalist>
-        <input id="campo-banco" list="opcoes-banco" placeholder="Banco" required>
+      <form id="form-gasto" class="form-gasto">
+        <label class="campo-valor-grande">
+          <span class="campo-valor-moeda">R$</span>
+          <input id="campo-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Valor" required>
+        </label>
+
+        <div class="tipo-segmentado" role="radiogroup" aria-label="Tipo">
+          <label><input type="radio" name="tipo" value="Gasto" checked required><span>Gasto</span></label>
+          <label><input type="radio" name="tipo" value="Pagamento"><span>Pagamento</span></label>
+        </div>
+
+        <input id="campo-local" list="opcoes-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" aria-label="Local" required>
+        <datalist id="opcoes-local"></datalist>
+
+        <div class="form-linha">
+          <input id="campo-data" type="date" aria-label="Data" required>
+          <input id="campo-banco" list="opcoes-banco" placeholder="Banco" autocomplete="off" aria-label="Banco" required>
+        </div>
         <datalist id="opcoes-banco"></datalist>
-        <button type="submit">Adicionar</button>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-gasto" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-salvar-gasto" class="botao-primario" type="submit">Adicionar</button>
+        </div>
       </form>
 
       <p id="erro-adicionar" class="erro" hidden></p>
-      <p id="sucesso" class="sucesso" hidden></p>
     </div>
   </dialog>
+
+  <!-- Aviso flutuante acima da barra (confirmações e "Desfazer") -->
+  <div id="notificacao" class="notificacao" role="status" aria-live="polite" hidden>
+    <span id="notificacao-texto"></span>
+    <button id="notificacao-acao" class="notificacao-acao" type="button" hidden></button>
+  </div>
 
   <script src="script.js"></script>
 
