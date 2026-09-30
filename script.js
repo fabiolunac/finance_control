@@ -216,6 +216,7 @@ botaoAtualizar.addEventListener('click', () => {
   carregar();
   if (!secaoParametros.hidden) carregarParametros();
   if (!secaoFatura.hidden || !secaoConfiguracoes.hidden) carregarFatura();
+  if (moduloAtual.aoAtualizar) moduloAtual.aoAtualizar();
 });
 
 function renderizarTudo() {
@@ -553,13 +554,19 @@ function selecionarAba(abaEscolhida) {
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
   if (abaEscolhida === abaParametros) carregarParametros();
   if (abaEscolhida === abaFatura || abaEscolhida === abaConfiguracoes) carregarFatura();
+  const aoAbrir = aoAbrirAba.get(abaEscolhida);
+  if (aoAbrir) aoAbrir();
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
 
-// Pra módulos em outros arquivos acrescentarem suas abas
-function registrarAba(aba, secao) {
+// Pra módulos em outros arquivos acrescentarem suas abas; aoAbrir roda
+// sempre que a aba for aberta (ex.: carregar os dados dela)
+const aoAbrirAba = new Map();
+
+function registrarAba(aba, secao, aoAbrir) {
   abas.push([aba, secao]);
+  if (aoAbrir) aoAbrirAba.set(aba, aoAbrir);
   aba.addEventListener('click', () => selecionarAba(aba));
 }
 

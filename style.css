@@ -2140,34 +2140,29 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 .botao-voltar:hover { background: var(--acento-suave); }
 .botao-voltar svg { width: 18px; height: 18px; }
 
-/* ---------- Módulo sem conteúdo ainda ---------- */
+/* ---------- Combustível ---------- */
 
-.modulo-vazio {
+.combustivel-veiculos { margin-bottom: 14px; }
+
+.combustivel-resumo { margin-bottom: 16px; }
+
+/* Valor em cima e o que o abastecimento rendeu embaixo, à direita */
+.abast-direita {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 40px 24px;
-  text-align: center;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.modulo-vazio .titulo-grafico { margin-bottom: 0; }
-
-.modulo-vazio-icone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 8px;
-  border-radius: 18px;
-  background: var(--acento-suave);
+.abast-rendimento {
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--acento-claro);
+  white-space: nowrap;
 }
 
-.modulo-vazio-icone svg { width: 28px; height: 28px; }
-
-.modulo-vazio-texto { font-size: 0.9rem; color: var(--tinta-muda); }
+.abast-em-uso { color: var(--tinta-muda); font-weight: 500; }
 
 /* Pagamento (reembolso, estorno) em listas: valor negativo em verde */
 .valor-que-volta { color: var(--sucesso); }

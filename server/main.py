@@ -378,3 +378,10 @@ def desfazer_pagamento(id: int, _=Depends(checar_token)):
             ("DELETE FROM gastos WHERE rowid = ?", [gasto_rowid]),
             ("DELETE FROM faturas_pagas WHERE id = ?", [id]),
         ])
+
+
+# ---------- Módulos em arquivos próprios ----------
+
+from combustivel import criar_rotas as rotas_combustivel  # noqa: E402
+
+app.include_router(rotas_combustivel(conectar, checar_token))

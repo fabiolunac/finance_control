@@ -79,7 +79,7 @@
       </button>
       <button id="aba-combustivel" data-modulo="combustivel" class="aba" type="button" hidden>
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
-        <span class="aba-rotulo">Início</span>
+        <span class="aba-rotulo">Abastecimentos</span>
       </button>
       <button id="botao-adicionar" class="aba-mais" type="button" aria-label="Adicionar gasto" title="Adicionar gasto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -285,12 +285,21 @@
     <!-- ========== Módulo Combustível (combustivel.js) ========== -->
     <section id="secao-combustivel" hidden>
 
-      <div class="cartao-grafico modulo-vazio">
-        <span class="modulo-vazio-icone" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
-        </span>
-        <h2 class="titulo-grafico">Combustível</h2>
-        <p class="modulo-vazio-texto">Ainda vazio. Os abastecimentos vão aparecer aqui.</p>
+      <!-- Um chip por veículo, só quando há mais de um -->
+      <div id="combustivel-veiculos" class="filtros combustivel-veiculos" hidden></div>
+
+      <div class="cartao-resumo combustivel-resumo">
+        <div>
+          <span class="metrica-rotulo" id="comb-media-rotulo">Consumo médio</span>
+          <span class="resumo-valor" id="comb-media-km"></span>
+          <span class="resumo-sub" id="comb-media-sub"></span>
+        </div>
+      </div>
+
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Abastecimentos</h2>
+        <div id="lista-abastecimentos"></div>
+        <p id="abastecimentos-vazio" class="vazio" hidden>Nenhum abastecimento ainda. Toque no + pra registrar o primeiro.</p>
       </div>
 
     </section>
@@ -469,6 +478,64 @@
       </form>
 
       <p id="erro-compra" class="erro" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="gaveta-abastecimento" class="gaveta" aria-labelledby="gaveta-abast-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-abast-titulo" class="titulo-grafico">Novo abastecimento</h2>
+        <button id="botao-fechar-abast" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-abastecimento" class="form-gasto">
+        <label class="campo-valor-grande">
+          <span class="campo-valor-moeda">R$</span>
+          <input id="abast-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Valor do abastecimento" required>
+        </label>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Data</span>
+            <input id="abast-data" type="date" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>Km do parcial</span>
+            <input id="abast-km" type="text" inputmode="decimal" placeholder="Antes de zerar" autocomplete="off" required>
+          </label>
+        </div>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Combustível</span>
+            <select id="abast-combustivel" class="select-basico" required>
+              <option>Gasolina</option>
+              <option>Gasolina aditivada</option>
+              <option>Etanol</option>
+              <option>Diesel</option>
+              <option>GNV</option>
+            </select>
+          </label>
+          <label class="campo-rotulado">
+            <span>Preço por litro</span>
+            <input id="abast-preco" type="text" inputmode="decimal" placeholder="Ex.: 5,89" autocomplete="off" required>
+          </label>
+        </div>
+
+        <label class="campo-rotulado">
+          <span>Veículo</span>
+          <input id="abast-veiculo" type="text" list="opcoes-veiculos" placeholder="Ex.: Onix" autocomplete="off" maxlength="60" required>
+        </label>
+        <datalist id="opcoes-veiculos"></datalist>
+
+        <p id="abast-previa" class="compra-previa"></p>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-abast" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-salvar-abast" class="botao-primario" type="submit">Adicionar</button>
+        </div>
+      </form>
+
+      <p id="erro-abast" class="erro" hidden></p>
     </div>
   </dialog>
 
