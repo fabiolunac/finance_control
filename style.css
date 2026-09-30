@@ -1,5 +1,5 @@
 /* ============================================================
-   Controle de Gastos — folha de estilo
+   Controle Pessoal — folha de estilo
    Tema escuro, Plus Jakarta Sans + Geist Mono, cartões translúcidos.
    Toda a paleta sai de um matiz só (--matiz, 0 a 359): o seletor de
    cor em Parâmetros troca esse número no <html>. 258 é o roxo.
@@ -145,17 +145,107 @@ body {
   transform: rotate(45deg);
 }
 
-.topo h1 {
-  font-family: var(--fonte-titulo);
-  font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
+/* Título do topo: nome do app pequeno e o módulo atual, que abre o menu */
+.seletor-modulo {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.botao-modulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin-left: -6px;
+  padding: 4px 10px 4px 6px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-rapida);
+}
+
+.botao-modulo:hover { background: rgba(255, 255, 255, .04); }
+
+.botao-modulo-textos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.botao-modulo-app {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-muda);
+}
+
+.botao-modulo-nome {
+  font-family: var(--fonte-titulo);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.botao-modulo[aria-expanded="true"] .multiselect-seta { transform: rotate(180deg); color: var(--acento); }
+
+.menu-modulos {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 50;
+  min-width: 240px;
+  padding: 8px;
+  background: var(--cartao-alto);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-lg);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, .8);
+  transform-origin: top left;
+  animation: painel-abre .18s cubic-bezier(.2, .8, .2, 1);
+}
+
+.menu-modulo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--tinta);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-rapida);
+}
+
+.menu-modulo-item:hover { background: var(--acento-suave); }
+
+.menu-modulo-icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+}
+
+.menu-modulo-icone svg { width: 20px; height: 20px; }
+
+.menu-modulo-ativo .menu-modulo-icone { background: var(--gradiente); color: #fff; }
 
 /* Botões de ícone do topo (atualizar, parâmetros, configurações) juntos */
 .topo-acoes {
@@ -1993,3 +2083,59 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 .alternar-parcelas-seta { display: flex; width: 16px; height: 16px; transition: transform var(--t-base); }
 .alternar-parcelas-seta svg { width: 100%; height: 100%; }
 .alternar-parcelas-aberta .alternar-parcelas-seta { transform: rotate(180deg); }
+
+/* ---------- Configurações por seção ---------- */
+
+.titulo-secao {
+  margin: 28px 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-muda);
+}
+
+.titulo-secao:first-child { margin-top: 0; }
+
+/* Linha que abre outra tela (ex.: Parâmetros) */
+.linha-config {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-lg);
+  background: var(--cartao);
+  box-shadow: var(--sombra);
+  color: var(--tinta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-rapida);
+}
+
+.linha-config:hover { border-color: var(--borda-forte); }
+
+.linha-config-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.linha-config-titulo { font-weight: 700; }
+.linha-config-sub { font-size: 0.82rem; color: var(--tinta-muda); }
+.linha-config-seta { width: 18px; height: 18px; margin-left: auto; flex-shrink: 0; color: var(--tinta-muda); }
+
+.botao-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 8px 12px 8px 6px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--acento-claro);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-voltar:hover { background: var(--acento-suave); }
+.botao-voltar svg { width: 18px; height: 18px; }

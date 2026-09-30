@@ -1,4 +1,4 @@
-# Controle de Gastos 💰
+# Controle Pessoal 💰
 
 Visualizador da tabela de gastos, já tratada com pandas no backend.
 Instalável como aplicativo (PWA), dados sincronizados via API.

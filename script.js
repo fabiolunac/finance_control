@@ -1,7 +1,8 @@
 /* ============================================================
-   Controle de Gastos — só visualização.
-   Busca a tabela final já tratada (pandas no backend) e exibe,
-   com filtros por mês de pagamento, categoria e local.
+   Controle Pessoal — núcleo do app e módulo Finanças.
+   Navegação por módulos (ver MODULOS, perto do fim), API, avisos,
+   filtros, tema, e as telas de gastos, gráficos e fatura.
+   Módulos novos vão em arquivos próprios, carregados depois deste.
    ============================================================ */
 
 const API_URL = 'https://finance-control-99hx.onrender.com';
@@ -538,6 +539,8 @@ function selecionarAba(abaEscolhida) {
     aba.classList.toggle('aba-ativa', aba === abaEscolhida);
     secao.hidden = aba !== abaEscolhida;
   });
+  // Parâmetros fica dentro de Configurações: a engrenagem continua acesa
+  if (abaEscolhida === abaParametros) abaConfiguracoes.classList.add('aba-ativa');
   erro.hidden = true;
   if (abaEscolhida === abaGraficos) atualizarGraficos();
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
@@ -546,6 +549,8 @@ function selecionarAba(abaEscolhida) {
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
+
+document.getElementById('voltar-configuracoes').addEventListener('click', () => selecionarAba(abaConfiguracoes));
 
 // ---------- Gráficos ----------
 
@@ -1285,11 +1290,8 @@ botaoExcluirGasto.addEventListener('click', () => {
   removerGasto(gasto);
 });
 
-// Na aba Fatura o "+" lança uma compra no cartão; nas outras, um gasto
-botaoAdicionar.addEventListener('click', () => {
-  if (!secaoFatura.hidden && cartoes.length) abrirGavetaCompra();
-  else abrirGaveta();
-});
+// O "+" faz o que o módulo ativo definir (ver MODULOS)
+botaoAdicionar.addEventListener('click', () => moduloAtual.aoAdicionar());
 botaoFecharGaveta.addEventListener('click', () => gavetaAdicionar.close());
 
 // Clique no fundo escurecido (fora do corpo da gaveta) fecha
@@ -2833,6 +2835,89 @@ CORES_TEMA.forEach(([nome, matiz]) => {
 faixaMatiz.addEventListener('input', () => aplicarMatiz(Number(faixaMatiz.value), true));
 
 aplicarMatiz(lerMatizSalvo(), false);
+
+// ---------- Módulos ----------
+
+// Cada módulo tem suas sub-abas na barra de baixo (botões com data-modulo
+// igual ao id) e decide o que o "+" faz. Pra um módulo novo: as abas e seções
+// dele no HTML, o código num arquivo próprio e uma entrada aqui.
+const MODULOS = [
+  {
+    id: 'financas',
+    nome: 'Finanças',
+    icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><circle cx="16" cy="14" r="1.5"/></svg>',
+    abaInicial: abaVisaoGeral,
+    // Na aba Fatura o "+" lança uma compra no cartão; nas outras, um gasto
+    aoAdicionar: () => {
+      if (!secaoFatura.hidden && cartoes.length) abrirGavetaCompra();
+      else abrirGaveta();
+    },
+  },
+];
+
+const botaoModulo = document.getElementById('botao-modulo');
+const nomeModulo = document.getElementById('nome-modulo');
+const menuModulos = document.getElementById('menu-modulos');
+
+let moduloAtual = (() => {
+  let salvo = null;
+  try { salvo = localStorage.getItem('modulo'); } catch (e) {}
+  return MODULOS.find((m) => m.id === salvo) || MODULOS[0];
+})();
+
+function fecharMenuModulos() {
+  menuModulos.hidden = true;
+  botaoModulo.setAttribute('aria-expanded', 'false');
+}
+
+function renderizarMenuModulos() {
+  menuModulos.innerHTML = '';
+  MODULOS.forEach((modulo) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'menu-modulo-item';
+    item.classList.toggle('menu-modulo-ativo', modulo === moduloAtual);
+    item.setAttribute('aria-current', String(modulo === moduloAtual));
+    const icone = document.createElement('span');
+    icone.className = 'menu-modulo-icone';
+    icone.innerHTML = modulo.icone;
+    const nome = document.createElement('span');
+    nome.textContent = modulo.nome;
+    item.append(icone, nome);
+    item.addEventListener('click', () => {
+      fecharMenuModulos();
+      if (modulo !== moduloAtual) aplicarModulo(modulo, true);
+    });
+    menuModulos.appendChild(item);
+  });
+}
+
+// abrir: vai pra aba inicial do módulo (na carga da página a aba já vem do HTML)
+function aplicarModulo(modulo, abrir) {
+  moduloAtual = modulo;
+  try { localStorage.setItem('modulo', modulo.id); } catch (e) {}
+  nomeModulo.textContent = modulo.nome;
+  document.querySelectorAll('.abas [data-modulo]').forEach((aba) => {
+    aba.hidden = aba.dataset.modulo !== modulo.id;
+  });
+  renderizarMenuModulos();
+  if (abrir) selecionarAba(modulo.abaInicial);
+}
+
+botaoModulo.addEventListener('click', (evento) => {
+  evento.stopPropagation();
+  const vaiAbrir = menuModulos.hidden;
+  fecharMultiSelects();
+  menuModulos.hidden = !vaiAbrir;
+  botaoModulo.setAttribute('aria-expanded', String(vaiAbrir));
+});
+menuModulos.addEventListener('click', (evento) => evento.stopPropagation());
+document.addEventListener('click', fecharMenuModulos);
+document.addEventListener('keydown', (evento) => {
+  if (evento.key === 'Escape') fecharMenuModulos();
+});
+
+aplicarModulo(moduloAtual, moduloAtual !== MODULOS[0]);
 
 // ---------- Indicador online/offline ----------
 

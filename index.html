@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Controle de Gastos</title>
-  <meta name="description" content="Tabela de gastos tratada, sincronizada entre dispositivos.">
+  <title>Controle Pessoal</title>
+  <meta name="description" content="Controle pessoal: finanças e outros registros do dia a dia, sincronizados entre dispositivos.">
 
   <!-- PWA: manifesto e cor do tema (barra do navegador/celular) -->
   <link rel="manifest" href="manifest.json">
@@ -34,14 +34,22 @@
   <header class="topo">
     <div class="topo-inner">
       <span class="marca-ponto" aria-hidden="true"></span>
-      <h1>Controle de Gastos</h1>
+      <h1 class="sr-only">Controle Pessoal</h1>
+      <!-- Troca de módulo (Finanças, e os que vierem); montado pelo script -->
+      <div class="seletor-modulo">
+        <button id="botao-modulo" class="botao-modulo" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu-modulos">
+          <span class="botao-modulo-textos">
+            <span class="botao-modulo-app">Controle Pessoal</span>
+            <span id="nome-modulo" class="botao-modulo-nome">Finanças</span>
+          </span>
+          <span class="multiselect-seta" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="menu-modulos" class="menu-modulos" hidden></div>
+      </div>
       <span id="status-rede" class="badge badge-offline" hidden>offline</span>
       <div class="topo-acoes">
         <button id="botao-atualizar" class="botao-topo" type="button" aria-label="Atualizar" title="Atualizar">
           <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 4 21 10 15 10"/><path d="M20.5 15a8.5 8.5 0 1 1-2-8.8L21 10"/></svg>
-        </button>
-        <button id="botao-parametros" class="botao-topo" type="button" aria-label="Parâmetros" title="Parâmetros">
-          <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
         </button>
         <button id="botao-configuracoes" class="botao-topo" type="button" aria-label="Configurações" title="Configurações">
           <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -53,19 +61,19 @@
   <main class="conteudo">
 
     <nav class="abas">
-      <button id="aba-visao-geral" class="aba aba-ativa" type="button">
+      <button id="aba-visao-geral" data-modulo="financas" class="aba aba-ativa" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
         <span class="aba-rotulo">Visão Geral</span>
       </button>
-      <button id="aba-graficos" class="aba" type="button">
+      <button id="aba-graficos" data-modulo="financas" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="20" x2="21" y2="20"/><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg>
         <span class="aba-rotulo">Gráficos</span>
       </button>
-      <button id="aba-tabela" class="aba" type="button">
+      <button id="aba-tabela" data-modulo="financas" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg>
         <span class="aba-rotulo">Tabela</span>
       </button>
-      <button id="aba-fatura" class="aba" type="button">
+      <button id="aba-fatura" data-modulo="financas" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
         <span class="aba-rotulo">Fatura</span>
       </button>
@@ -272,12 +280,24 @@
 
     <section id="secao-configuracoes" hidden>
 
+      <h2 class="titulo-secao">Geral</h2>
+
       <div class="cartao-grafico cartao-tema">
         <h2 class="titulo-grafico">Cor do tema</h2>
         <div id="seletor-cor" class="seletor-cor" role="group" aria-label="Cor do tema"></div>
         <label class="faixa-matiz-rotulo" for="faixa-matiz">Personalizada</label>
         <input id="faixa-matiz" class="faixa-matiz" type="range" min="0" max="359" step="1">
       </div>
+
+      <h2 class="titulo-secao">Finanças</h2>
+
+      <button id="botao-parametros" class="linha-config" type="button">
+        <span class="linha-config-textos">
+          <span class="linha-config-titulo">Parâmetros</span>
+          <span class="linha-config-sub">Categoria de cada local e locais sem categoria</span>
+        </span>
+        <svg class="linha-config-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
 
       <div id="cartao-cartoes" class="cartao-grafico cartao-cartoes">
         <h2 class="titulo-grafico">Cartões</h2>
@@ -297,6 +317,11 @@
     </section>
 
     <section id="secao-parametros" hidden>
+
+      <button id="voltar-configuracoes" class="botao-voltar" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Configurações
+      </button>
 
       <div class="cartao-grafico cartao-pendentes">
         <h2 class="titulo-grafico">Sem categoria <span id="pendentes-contagem" class="pendentes-contagem"></span></h2>
