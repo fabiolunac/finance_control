@@ -1730,6 +1730,26 @@ body {
 
 .metrica-extra { padding: 18px 20px; }
 
+/* Card que é botão (ex.: última compra abre a edição) */
+.metrica-extra-botao {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: var(--tinta);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-rapida);
+}
+
+.metrica-extra-botao:hover { border-color: var(--borda-forte); }
+.metrica-extra-botao:disabled { cursor: default; }
+
+.metrica-extra-botao .resumo-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .metrica-extra-valor {
   display: block;
   font-family: var(--fonte-mono);

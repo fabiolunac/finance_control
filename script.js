@@ -37,6 +37,9 @@ const araujoContagem = document.getElementById('araujo-contagem');
 const araujoDetalhe = document.getElementById('araujo-detalhe');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
+const cardUltimaCompra = document.getElementById('card-ultima-compra');
+const ultimaCompraValor = document.getElementById('ultima-compra-valor');
+const ultimaCompraDetalhe = document.getElementById('ultima-compra-detalhe');
 const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const graficoSubcategoriasMes = document.getElementById('grafico-subcategorias-mes');
 const graficoSubcategoriasVazio = document.getElementById('grafico-subcategorias-vazio');
@@ -802,6 +805,7 @@ function renderizarVisaoGeral() {
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
   renderizarMetaSemanal();
+  renderizarUltimaCompra();
   renderizarAraujo();
   renderizarUltimoCorte();
   renderizarCalendario();
@@ -862,6 +866,27 @@ function textoDiasAtras(dataIso) {
 function maisRecente(gastos) {
   return gastos.reduce((a, b) => (b.Data > a.Data ? b : a));
 }
+
+// Gasto mais recente de todo o histórico, sem contar o pagamento da fatura
+// (não é compra). Tocar no card abre ele pra editar.
+let ultimaCompra = null;
+
+function renderizarUltimaCompra() {
+  const compras = todosGastos.filter((g) => g.tipo === 'Gasto' && !ehFatura(g));
+  ultimaCompra = compras.length ? maisRecente(compras) : null;
+  cardUltimaCompra.disabled = !ultimaCompra;
+  if (!ultimaCompra) {
+    ultimaCompraValor.textContent = '—';
+    ultimaCompraDetalhe.textContent = 'Nenhuma compra registrada';
+    return;
+  }
+  ultimaCompraValor.textContent = formatarMoeda(ultimaCompra.Valor);
+  ultimaCompraDetalhe.textContent = `${ultimaCompra.Local} · ${textoDiasAtras(ultimaCompra.Data)}`;
+}
+
+cardUltimaCompra.addEventListener('click', () => {
+  if (ultimaCompra) abrirGaveta(ultimaCompra);
+});
 
 // Compras na Araújo no mês escolhido (cada uma ≈ um Monster)
 function renderizarAraujo() {
