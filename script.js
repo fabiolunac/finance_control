@@ -127,7 +127,16 @@ function obterToken() {
 
 // ---------- Formatação ----------
 
+// Olho de esconder valores: todo valor em dinheiro passa por aqui, então
+// esconder é só trocar o texto e redesenhar. Vale só no módulo que pede
+// (ocultaValores em MODULOS); aplicarOcultacao liga e desliga.
+let valoresOcultos = (() => {
+  try { return localStorage.getItem('valoresOcultos') === '1'; } catch (e) { return false; }
+})();
+let ocultarValoresAgora = false;
+
 function formatarMoeda(valor) {
+  if (ocultarValoresAgora) return 'R$ ••••';
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
@@ -2896,6 +2905,7 @@ const MODULOS = [
     nome: 'Finanças',
     icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><circle cx="16" cy="14" r="1.5"/></svg>',
     abaInicial: abaVisaoGeral,
+    ocultaValores: true, // tem o olho de esconder valores
     // Na aba Fatura o "+" lança uma compra no cartão; nas outras, um gasto
     aoAdicionar: () => {
       if (!secaoFatura.hidden && cartoes.length) abrirGavetaCompra();
@@ -2952,8 +2962,36 @@ function aplicarModulo(modulo, abrir) {
   });
   botaoAdicionar.hidden = !modulo.aoAdicionar;
   renderizarMenuModulos();
+  aplicarOcultacao();
   if (abrir) selecionarAba(modulo.abaInicial);
 }
+
+const botaoOlho = document.getElementById('botao-olho');
+
+// Liga ou desliga a ocultação conforme o olho e o módulo, e redesenha o que
+// já estava na tela (as outras abas se redesenham ao serem abertas)
+function aplicarOcultacao() {
+  const antes = ocultarValoresAgora;
+  ocultarValoresAgora = valoresOcultos && Boolean(moduloAtual.ocultaValores);
+
+  botaoOlho.hidden = !moduloAtual.ocultaValores;
+  botaoOlho.setAttribute('aria-pressed', String(valoresOcultos));
+  const rotulo = valoresOcultos ? 'Mostrar valores' : 'Esconder valores';
+  botaoOlho.setAttribute('aria-label', rotulo);
+  botaoOlho.title = rotulo;
+  botaoOlho.querySelector('.icone-olho-aberto').hidden = valoresOcultos;
+  botaoOlho.querySelector('.icone-olho-fechado').hidden = !valoresOcultos;
+
+  if (antes === ocultarValoresAgora || !moduloAtual.ocultaValores) return;
+  if (carregouUmaVez) renderizarTudo();
+  if (mesFatura) renderizarFatura();
+}
+
+botaoOlho.addEventListener('click', () => {
+  valoresOcultos = !valoresOcultos;
+  try { localStorage.setItem('valoresOcultos', valoresOcultos ? '1' : '0'); } catch (e) {}
+  aplicarOcultacao();
+});
 
 botaoModulo.addEventListener('click', (evento) => {
   evento.stopPropagation();
