@@ -2219,3 +2219,75 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 
 /* Pagamento (reembolso, estorno) em listas: valor negativo em verde */
 .valor-que-volta { color: var(--sucesso); }
+
+/* ---------- Aba ainda sem conteúdo (ex.: Dieta › Comida) ---------- */
+
+.modulo-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.modulo-vazio .titulo-grafico { margin-bottom: 0; }
+
+.modulo-vazio-icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+}
+
+.modulo-vazio-icone svg { width: 28px; height: 28px; }
+
+.modulo-vazio-texto { font-size: 0.9rem; color: var(--tinta-muda); }
+
+/* ---------- Dieta › Cafeína ---------- */
+
+/* Uma coluna só, mesmo em tela larga: total, barra e lista do dia */
+.cartao-resumo.cafeina-hoje {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.cafeina-rapido { margin-bottom: 16px; }
+
+.cafeina-rapido-botoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.cafeina-rapido-botao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--acento-suave);
+  color: var(--tinta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-rapida), transform var(--t-rapida);
+}
+
+.cafeina-rapido-botao:hover { background: var(--acento-media); }
+.cafeina-rapido-botao:active { transform: scale(.97); }
+.cafeina-rapido-botao:disabled { opacity: .6; cursor: progress; }
+
+.cafeina-rapido-nome { font-weight: 700; }
+
+.cafeina-rapido-info {
+  font-size: 0.78rem;
+  color: var(--acento-claro);
+}

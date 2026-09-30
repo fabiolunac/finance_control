@@ -385,3 +385,7 @@ def desfazer_pagamento(id: int, _=Depends(checar_token)):
 from combustivel import criar_rotas as rotas_combustivel  # noqa: E402
 
 app.include_router(rotas_combustivel(conectar, checar_token))
+
+from dieta import criar_rotas as rotas_dieta  # noqa: E402
+
+app.include_router(rotas_dieta(conectar, checar_token))

@@ -90,6 +90,14 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
         <span class="aba-rotulo">Calendário</span>
       </button>
+      <button id="aba-dieta-comida" data-modulo="dieta" class="aba" type="button" hidden>
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a3 3 0 0 0 6 0V2"/><line x1="6" y1="2" x2="6" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
+        <span class="aba-rotulo">Comida</span>
+      </button>
+      <button id="aba-dieta-cafeina" data-modulo="dieta" class="aba" type="button" hidden>
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
+        <span class="aba-rotulo">Cafeína</span>
+      </button>
       <button id="botao-adicionar" class="aba-mais" type="button" aria-label="Adicionar gasto" title="Adicionar gasto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -343,6 +351,44 @@
 
     </section>
 
+    <!-- ========== Módulo Dieta (dieta.js) ========== -->
+    <section id="secao-dieta-comida" hidden>
+
+      <div class="cartao-grafico modulo-vazio">
+        <span class="modulo-vazio-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a3 3 0 0 0 6 0V2"/><line x1="6" y1="2" x2="6" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
+        </span>
+        <h2 class="titulo-grafico">Comida</h2>
+        <p class="modulo-vazio-texto">Ainda vazio. As dietas vão ser organizadas aqui.</p>
+      </div>
+
+    </section>
+
+    <section id="secao-dieta-cafeina" hidden>
+
+      <div class="cartao-resumo cafeina-hoje">
+        <div>
+          <span class="metrica-rotulo">Cafeína hoje</span>
+          <span class="resumo-valor" id="cafeina-hoje-total"></span>
+          <span class="resumo-sub" id="cafeina-hoje-sub"></span>
+        </div>
+        <div class="progresso-trilha">
+          <div id="cafeina-hoje-barra" class="progresso-barra"></div>
+        </div>
+        <div id="cafeina-hoje-lista"></div>
+      </div>
+
+      <div id="cafeina-rapido" class="cartao-grafico cafeina-rapido">
+        <h2 class="titulo-grafico">Registrar agora</h2>
+        <div id="cafeina-rapido-botoes" class="cafeina-rapido-botoes"></div>
+        <div id="cafeina-sem-bebida" hidden>
+          <p class="vazio-pequeno">Cadastre suas bebidas em Configurações pra registrar com um toque.</p>
+          <button id="botao-ir-bebidas" class="botao-chip" type="button">Cadastrar bebida</button>
+        </div>
+      </div>
+
+    </section>
+
     <section id="secao-configuracoes" hidden>
 
       <h2 class="titulo-secao">Geral</h2>
@@ -374,6 +420,24 @@
             <input id="cartao-nome" type="text" placeholder="Nome (ex.: Nubank)" maxlength="60" autocomplete="off" required aria-label="Nome do cartão">
             <input id="cartao-fechamento" type="number" inputmode="numeric" min="1" max="31" placeholder="Fecha dia" required aria-label="Dia de fechamento">
             <input id="cartao-vencimento" type="number" inputmode="numeric" min="1" max="31" placeholder="Vence dia" required aria-label="Dia de vencimento">
+            <button class="botao-primario" type="submit">Adicionar</button>
+          </div>
+        </form>
+      </div>
+
+
+      <h2 class="titulo-secao">Dieta</h2>
+
+      <div id="cartao-bebidas" class="cartao-grafico">
+        <h2 class="titulo-grafico">Bebidas com cafeína</h2>
+        <p class="pendentes-ajuda">Ml de uma unidade (lata, xícara) e mg de cafeína por ml. Ex.: Monster 473 ml, 0,338 mg/ml ≈ 160 mg por lata.</p>
+        <div id="lista-bebidas" class="lista-pendentes"></div>
+        <form id="form-bebida" class="pendente form-cartao">
+          <span class="pendente-local">Nova bebida</span>
+          <div class="cartao-campos">
+            <input id="bebida-nome" type="text" placeholder="Nome (ex.: Monster)" maxlength="60" autocomplete="off" required aria-label="Nome da bebida">
+            <input id="bebida-ml" type="text" inputmode="decimal" placeholder="Ml" autocomplete="off" required aria-label="Ml de uma unidade">
+            <input id="bebida-mg" type="text" inputmode="decimal" placeholder="mg/ml" autocomplete="off" required aria-label="Cafeína em mg por ml">
             <button class="botao-primario" type="submit">Adicionar</button>
           </div>
         </form>
@@ -578,6 +642,41 @@
     </div>
   </dialog>
 
+  <dialog id="gaveta-cafeina" class="gaveta" aria-labelledby="gaveta-cafeina-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-cafeina-titulo" class="titulo-grafico">Registrar cafeína</h2>
+        <button id="botao-fechar-cafeina" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-cafeina" class="form-gasto">
+        <label class="campo-rotulado">
+          <span>Bebida</span>
+          <select id="cafeina-bebida" class="select-basico" required></select>
+        </label>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Quantidade (ml)</span>
+            <input id="cafeina-ml" type="text" inputmode="decimal" autocomplete="off" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>Quando</span>
+            <input id="cafeina-quando" type="datetime-local" required>
+          </label>
+        </div>
+
+        <p id="cafeina-previa" class="compra-previa"></p>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-cafeina" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-salvar-cafeina" class="botao-primario" type="submit">Registrar</button>
+        </div>
+      </form>
+
+      <p id="erro-cafeina" class="erro" hidden></p>
+    </div>
+  </dialog>
+
   <!-- Aviso flutuante acima da barra (confirmações e "Desfazer") -->
   <div id="notificacao" class="notificacao" role="status" aria-live="polite" hidden>
     <span id="notificacao-texto"></span>
@@ -587,6 +686,7 @@
   <script src="script.js"></script>
   <!-- Módulos: cada um num arquivo, depois do núcleo -->
   <script src="combustivel.js"></script>
+  <script src="dieta.js"></script>
 
   <!-- Registro do Service Worker: é isso que torna o site um PWA -->
   <script>

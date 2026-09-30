@@ -566,19 +566,24 @@ function selecionarAba(abaEscolhida) {
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
   if (abaEscolhida === abaParametros) carregarParametros();
   if (abaEscolhida === abaFatura || abaEscolhida === abaConfiguracoes) carregarFatura();
-  const aoAbrir = aoAbrirAba.get(abaEscolhida);
-  if (aoAbrir) aoAbrir();
+  (aoAbrirAba.get(abaEscolhida) || []).forEach((funcao) => funcao());
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
 
 // Pra módulos em outros arquivos acrescentarem suas abas; aoAbrir roda
 // sempre que a aba for aberta (ex.: carregar os dados dela)
-const aoAbrirAba = new Map();
+const aoAbrirAba = new Map(); // aba → lista de funções
+
+// Também serve pra um módulo agir quando outra aba abre (ex.: Configurações)
+function quandoAbrir(aba, funcao) {
+  if (!aoAbrirAba.has(aba)) aoAbrirAba.set(aba, []);
+  aoAbrirAba.get(aba).push(funcao);
+}
 
 function registrarAba(aba, secao, aoAbrir) {
   abas.push([aba, secao]);
-  if (aoAbrir) aoAbrirAba.set(aba, aoAbrir);
+  if (aoAbrir) quandoAbrir(aba, aoAbrir);
   aba.addEventListener('click', () => selecionarAba(aba));
 }
 
