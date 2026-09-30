@@ -12,11 +12,18 @@
 const abaCombustivel = document.getElementById('aba-combustivel');
 const secaoCombustivel = document.getElementById('secao-combustivel');
 
-const combustivelVeiculos = document.getElementById('combustivel-veiculos');
+const abaCombCalendario = document.getElementById('aba-comb-calendario');
+const secaoCombCalendario = document.getElementById('secao-comb-calendario');
+// Um seletor de veículo em cada sub-aba; os dois mostram a mesma escolha
+const seletoresVeiculo = document.querySelectorAll('.seletor-veiculo');
 const combMediaRotulo = document.getElementById('comb-media-rotulo');
 const combMediaKm = document.getElementById('comb-media-km');
 const combMediaSub = document.getElementById('comb-media-sub');
 const listaAbastecimentos = document.getElementById('lista-abastecimentos');
+const combCalendario = document.getElementById('comb-calendario');
+const combCalMes = document.getElementById('comb-cal-mes');
+const combCalResumo = document.getElementById('comb-cal-resumo');
+const combCalDetalhe = document.getElementById('comb-cal-detalhe');
 const abastecimentosVazio = document.getElementById('abastecimentos-vazio');
 
 const gavetaAbastecimento = document.getElementById('gaveta-abastecimento');
@@ -136,13 +143,18 @@ function renderizarCombustivel() {
   const rendimentos = calcularRendimentos();
   renderizarResumoCombustivel(lista, rendimentos);
   renderizarListaAbastecimentos(lista, rendimentos);
+  renderizarCalendarioCombustivel(lista, rendimentos);
 }
 
 // Botões lado a lado, um por veículo; só aparece com mais de um
 function renderizarSeletorVeiculos(veiculos) {
-  combustivelVeiculos.hidden = veiculos.length < 2;
-  combustivelVeiculos.innerHTML = '';
-  combustivelVeiculos.style.setProperty('--colunas', veiculos.length);
+  seletoresVeiculo.forEach((seletor) => preencherSeletorVeiculos(seletor, veiculos));
+}
+
+function preencherSeletorVeiculos(seletor, veiculos) {
+  seletor.hidden = veiculos.length < 2;
+  seletor.innerHTML = '';
+  seletor.style.setProperty('--colunas', veiculos.length);
   veiculos.forEach((veiculo) => {
     const botao = document.createElement('button');
     botao.type = 'button';
@@ -154,7 +166,7 @@ function renderizarSeletorVeiculos(veiculos) {
       escolherVeiculo(veiculo);
       renderizarCombustivel();
     });
-    combustivelVeiculos.appendChild(botao);
+    seletor.appendChild(botao);
   });
 }
 
@@ -193,43 +205,118 @@ function renderizarListaAbastecimentos(lista, rendimentos) {
   listaAbastecimentos.innerHTML = '';
   abastecimentosVazio.hidden = lista.length > 0;
 
-  lista.forEach((a) => {
-    const { km, custoKm, kmPorLitro } = rendimentos.get(a.id);
-    const litros = litrosDe(a);
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'mini-lista-item';
-
-    const textos = document.createElement('span');
-    textos.className = 'parcela-textos';
-    const titulo = document.createElement('span');
-    titulo.className = 'parcela-descricao';
-    titulo.textContent = `${formatarData(a.Data)} · ${a.Combustivel}`;
-    const info = document.createElement('span');
-    info.className = 'parcela-info';
-    const partesInfo = [];
-    if (litros) partesInfo.push(`${umaCasa(litros)} L a ${formatarMoeda(a.PrecoLitro)}`);
-    else partesInfo.push(`parcial ${formatarKm(a.Km)}`);
-    info.textContent = partesInfo.join(' · ');
-    textos.append(titulo, info);
-
-    const direita = document.createElement('span');
-    direita.className = 'abast-direita';
-    const valor = document.createElement('span');
-    valor.className = 'mini-lista-valor';
-    valor.textContent = formatarMoeda(a.Valor);
-    const rendimento = document.createElement('span');
-    rendimento.className = km > 0 ? 'abast-rendimento' : 'abast-rendimento abast-em-uso';
-    rendimento.textContent = km > 0
-      ? `${formatarKm(km)} · ${kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`}`
-      : 'em uso';
-    direita.append(valor, rendimento);
-
-    item.append(textos, direita);
-    item.addEventListener('click', () => abrirGavetaAbastecimento(a));
-    listaAbastecimentos.appendChild(item);
-  });
+  lista.forEach((a) => listaAbastecimentos.appendChild(criarItemAbastecimento(a, rendimentos)));
 }
+
+function criarItemAbastecimento(a, rendimentos) {
+  const { km, custoKm, kmPorLitro } = rendimentos.get(a.id);
+  const litros = litrosDe(a);
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = 'mini-lista-item';
+
+  const textos = document.createElement('span');
+  textos.className = 'parcela-textos';
+  const titulo = document.createElement('span');
+  titulo.className = 'parcela-descricao';
+  titulo.textContent = `${formatarData(a.Data)} · ${a.Combustivel}`;
+  const info = document.createElement('span');
+  info.className = 'parcela-info';
+  const partesInfo = [];
+  if (litros) partesInfo.push(`${umaCasa(litros)} L a ${formatarMoeda(a.PrecoLitro)}`);
+  else partesInfo.push(`parcial ${formatarKm(a.Km)}`);
+  info.textContent = partesInfo.join(' · ');
+  textos.append(titulo, info);
+
+  const direita = document.createElement('span');
+  direita.className = 'abast-direita';
+  const valor = document.createElement('span');
+  valor.className = 'mini-lista-valor';
+  valor.textContent = formatarMoeda(a.Valor);
+  const rendimento = document.createElement('span');
+  rendimento.className = km > 0 ? 'abast-rendimento' : 'abast-rendimento abast-em-uso';
+  rendimento.textContent = km > 0
+    ? `${formatarKm(km)} · ${kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`}`
+    : 'em uso';
+  direita.append(valor, rendimento);
+
+  item.append(textos, direita);
+  item.addEventListener('click', () => abrirGavetaAbastecimento(a));
+  return item;
+}
+
+// ---------- Calendário ----------
+
+let mesCalendarioComb = mesAtual();
+let diaCalendarioComb = null; // dia tocado (YYYY-MM-DD)
+
+function renderizarCalendarioCombustivel(lista, rendimentos) {
+  const mes = mesCalendarioComb;
+  const [ano, m] = mes.split('-').map(Number);
+  const nome = nomeMes(mes);
+  combCalMes.textContent = nome.charAt(0).toUpperCase() + nome.slice(1);
+
+  const doMes = lista.filter((a) => a.Data.slice(0, 7) === mes);
+  const porDia = {};
+  doMes.forEach((a) => { (porDia[a.Data] = porDia[a.Data] || []).push(a); });
+  const totalMes = doMes.reduce((soma, a) => soma + a.Valor, 0);
+  combCalResumo.textContent = doMes.length
+    ? `${doMes.length} ${doMes.length === 1 ? 'abastecimento' : 'abastecimentos'} · ${formatarMoeda(totalMes)}`
+    : 'Nenhum abastecimento';
+  if (diaCalendarioComb && !porDia[diaCalendarioComb]) diaCalendarioComb = null;
+
+  combCalendario.innerHTML = '';
+  DIAS_SEMANA.forEach((dia) => {
+    const cabecalho = document.createElement('span');
+    cabecalho.className = 'calendario-cabecalho';
+    cabecalho.textContent = dia;
+    combCalendario.appendChild(cabecalho);
+  });
+  const vazias = (new Date(ano, m - 1, 1).getDay() + 6) % 7; // semana começa na segunda
+  for (let i = 0; i < vazias; i += 1) combCalendario.appendChild(document.createElement('span'));
+
+  const hoje = formatarIso(new Date());
+  const diasNoMes = new Date(ano, m, 0).getDate();
+  for (let dia = 1; dia <= diasNoMes; dia += 1) {
+    const iso = `${mes}-${String(dia).padStart(2, '0')}`;
+    const doDia = porDia[iso];
+    const celula = document.createElement(doDia ? 'button' : 'span');
+    celula.className = 'calendario-dia';
+    celula.textContent = String(dia);
+    if (iso === hoje) celula.classList.add('calendario-hoje');
+    if (doDia) {
+      celula.type = 'button';
+      celula.classList.add('calendario-com-gasto');
+      celula.style.setProperty('--intensidade', '0.85');
+      const valor = doDia.reduce((soma, a) => soma + a.Valor, 0);
+      celula.title = `${formatarData(iso)}: ${formatarMoeda(valor)}`;
+      celula.setAttribute('aria-label', celula.title);
+      celula.setAttribute('aria-pressed', String(iso === diaCalendarioComb));
+      if (iso === diaCalendarioComb) celula.classList.add('calendario-selecionado');
+      celula.addEventListener('click', () => {
+        diaCalendarioComb = diaCalendarioComb === iso ? null : iso;
+        renderizarCombustivel();
+      });
+    }
+    combCalendario.appendChild(celula);
+  }
+
+  combCalDetalhe.innerHTML = '';
+  combCalDetalhe.hidden = !diaCalendarioComb;
+  if (diaCalendarioComb) {
+    porDia[diaCalendarioComb].forEach((a) => combCalDetalhe.appendChild(criarItemAbastecimento(a, rendimentos)));
+  }
+}
+
+document.getElementById('comb-cal-anterior').addEventListener('click', () => {
+  mesCalendarioComb = somarMeses(mesCalendarioComb, -1);
+  renderizarCombustivel();
+});
+
+document.getElementById('comb-cal-proximo').addEventListener('click', () => {
+  mesCalendarioComb = somarMeses(mesCalendarioComb, 1);
+  renderizarCombustivel();
+});
 
 // ---------- Gaveta de abastecimento ----------
 
@@ -415,6 +502,7 @@ function removerAbastecimento(abastecimento) {
 // ---------- Cadastro no núcleo ----------
 
 registrarAba(abaCombustivel, secaoCombustivel, carregarAbastecimentos);
+registrarAba(abaCombCalendario, secaoCombCalendario, carregarAbastecimentos);
 
 registrarModulo({
   id: 'combustivel',
