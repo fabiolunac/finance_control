@@ -236,9 +236,16 @@ function valoresUnicos(campo) {
   return [...new Set(todosGastos.map((g) => g[campo]))];
 }
 
+// Gasto soma e Pagamento (dinheiro que volta: reembolso, estorno) desconta.
+// Todas as telas somam por aqui, pra darem o mesmo número.
+function valorLiquido(gasto) {
+  if (gasto.tipo === 'Gasto') return gasto.Valor;
+  if (gasto.tipo === 'Pagamento') return -gasto.Valor;
+  return 0;
+}
+
 function calcularTotalGasto(gastos) {
-  const soma = (tipo) => gastos.filter((g) => g.tipo === tipo).reduce((s, g) => s + g.Valor, 0);
-  return soma('Gasto') - soma('Pagamento');
+  return gastos.reduce((soma, g) => soma + valorLiquido(g), 0);
 }
 
 // ---------- Cor por categoria geral ----------
@@ -583,8 +590,8 @@ function atualizarGraficosDoMes() {
 
 function renderizarGraficoCategoriasGerais(gastosMes) {
   const totais = {};
-  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
-    totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + g.Valor;
+  gastosMes.forEach((g) => {
+    totais[g['Categoria Geral']] = (totais[g['Categoria Geral']] || 0) + valorLiquido(g);
   });
 
   const categorias = Object.keys(totais).sort((a, b) => totais[b] - totais[a]);
@@ -617,7 +624,7 @@ function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
     trilha.className = 'barra-trilha';
     const barra = document.createElement('div');
     barra.className = 'barra';
-    barra.style.width = maximo ? `${(valorTotal / maximo) * 100}%` : '0%';
+    barra.style.width = maximo > 0 ? `${(Math.max(valorTotal, 0) / maximo) * 100}%` : '0%';
     trilha.appendChild(barra);
 
     const valor = document.createElement('span');
@@ -643,7 +650,7 @@ function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
 
 function gastosFiltradosGrafico() {
   return gastosConsiderados().filter((g) =>
-    g.tipo === 'Gasto' &&
+    (g.tipo === 'Gasto' || g.tipo === 'Pagamento') &&
     multiSelectCombina(graficoCategoria, g.Categoria) &&
     multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(graficoLocal, g.Local)
@@ -655,7 +662,7 @@ function renderizarGrafico() {
 
   const totais = {};
   filtrados.forEach((g) => {
-    totais[g['Mês']] = (totais[g['Mês']] || 0) + g.Valor;
+    totais[g['Mês']] = (totais[g['Mês']] || 0) + valorLiquido(g);
   });
 
   const meses = Object.keys(totais).sort();
@@ -684,7 +691,7 @@ function renderizarGraficoDiario() {
   const totais = {};
   filtrados.forEach((g) => {
     const data = g.Data.slice(0, 10);
-    totais[data] = (totais[data] || 0) + g.Valor;
+    totais[data] = (totais[data] || 0) + valorLiquido(g);
   });
 
   const datas = Object.keys(totais).sort();
@@ -809,8 +816,8 @@ const LIMITE_CATEGORIAS = 10;
 function renderizarGraficoSubcategorias(gastosMes) {
   const totais = {};
   const geraisPorCategoria = {}; // pra pintar a barra com a cor da categoria geral
-  gastosMes.filter((g) => g.tipo === 'Gasto').forEach((g) => {
-    totais[g.Categoria] = (totais[g.Categoria] || 0) + g.Valor;
+  gastosMes.forEach((g) => {
+    totais[g.Categoria] = (totais[g.Categoria] || 0) + valorLiquido(g);
     const gerais = (geraisPorCategoria[g.Categoria] = geraisPorCategoria[g.Categoria] || {});
     gerais[g['Categoria Geral']] = (gerais[g['Categoria Geral']] || 0) + 1;
   });
@@ -887,13 +894,10 @@ function renderizarMetaSemanal() {
   const inicioIso = formatarIso(inicio);
   const fimIso = formatarIso(fim);
 
-  const gastoSemana = gastosConsiderados()
-    .filter((g) => g.tipo === 'Gasto')
-    .filter((g) => {
-      const data = g.Data.slice(0, 10);
-      return data >= inicioIso && data <= fimIso;
-    })
-    .reduce((soma, g) => soma + g.Valor, 0);
+  const gastoSemana = calcularTotalGasto(gastosConsiderados().filter((g) => {
+    const data = g.Data.slice(0, 10);
+    return data >= inicioIso && data <= fimIso;
+  }));
 
   const fracao = gastoSemana / TETO_SEMANAL;
   metaSemanaBarra.style.width = `${Math.min(fracao, 1) * 100}%`;
@@ -961,12 +965,13 @@ function preencherFiltroVisao() {
 
 function renderizarGraficoSemanal() {
   const mes = mesSelecionado();
-  const gastosMes = gastosConsiderados().filter((g) => g.tipo === 'Gasto' && g['Mês'] === mes);
+  const gastosMes = gastosConsiderados().filter((g) =>
+    (g.tipo === 'Gasto' || g.tipo === 'Pagamento') && g['Mês'] === mes);
 
   const totais = {};
   gastosMes.forEach((g) => {
     const chave = formatarIso(inicioSemana(dataLocal(g.Data.slice(0, 10))));
-    totais[chave] = (totais[chave] || 0) + g.Valor;
+    totais[chave] = (totais[chave] || 0) + valorLiquido(g);
   });
 
   graficoSemanalVazio.hidden = gastosMes.length > 0;
@@ -1004,10 +1009,10 @@ function renderizarCalendario() {
   // Soma por dia, pela data do gasto (o dia precisa existir no mês mostrado)
   const totaisPorDia = {};
   gastosConsiderados().forEach((g) => {
-    if (g.tipo !== 'Gasto') return;
+    if (g.tipo !== 'Gasto' && g.tipo !== 'Pagamento') return;
     const data = g.Data.slice(0, 10);
     if (data.slice(0, 7) !== mes) return;
-    totaisPorDia[data] = (totaisPorDia[data] || 0) + g.Valor;
+    totaisPorDia[data] = (totaisPorDia[data] || 0) + valorLiquido(g);
   });
 
   const maximo = Math.max(0, ...Object.values(totaisPorDia));
@@ -1032,17 +1037,18 @@ function renderizarCalendario() {
   for (let dia = 1; dia <= diasNoMes; dia += 1) {
     const iso = formatarIso(new Date(ano, m - 1, dia));
     const total = totaisPorDia[iso];
-    const celula = document.createElement(total ? 'button' : 'span');
+    const temLancamento = total !== undefined;
+    const celula = document.createElement(temLancamento ? 'button' : 'span');
     celula.className = 'calendario-dia';
     celula.textContent = String(dia);
 
     if (iso === hoje) celula.classList.add('calendario-hoje');
 
     // Dia com gasto: cor mais forte quanto maior o total, e tocável
-    if (total) {
+    if (temLancamento) {
       celula.type = 'button';
       celula.classList.add('calendario-com-gasto');
-      celula.style.setProperty('--intensidade', (total / maximo).toFixed(2));
+      celula.style.setProperty('--intensidade', (maximo > 0 ? Math.max(total, 0) / maximo : 0).toFixed(2));
       celula.title = `${formatarData(iso)}: ${formatarMoeda(total)}`;
       celula.setAttribute('aria-label', celula.title);
       celula.setAttribute('aria-pressed', String(iso === diaCalendario));
@@ -1059,7 +1065,8 @@ function renderizarCalendario() {
 // Lista abaixo do calendário com os gastos do dia tocado
 function renderizarDetalheCalendario() {
   const gastosDia = diaCalendario
-    ? gastosConsiderados().filter((g) => g.tipo === 'Gasto' && g.Data.slice(0, 10) === diaCalendario)
+    ? gastosConsiderados().filter((g) =>
+      (g.tipo === 'Gasto' || g.tipo === 'Pagamento') && g.Data.slice(0, 10) === diaCalendario)
     : [];
   calendarioDetalhe.innerHTML = '';
   calendarioDetalhe.hidden = gastosDia.length === 0;
@@ -1084,7 +1091,9 @@ function renderizarDetalheCalendario() {
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
     const valor = document.createElement('span');
     valor.className = 'mini-lista-valor';
-    valor.textContent = formatarMoeda(gasto.Valor);
+    // Pagamento aparece como valor que volta: sinal de menos e verde
+    valor.textContent = formatarMoeda(valorLiquido(gasto));
+    valor.classList.toggle('valor-que-volta', gasto.tipo === 'Pagamento');
     item.append(local, valor);
     item.addEventListener('click', () => abrirGaveta(gasto));
     calendarioDetalhe.appendChild(item);

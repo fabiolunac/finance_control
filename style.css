@@ -2168,3 +2168,6 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 .modulo-vazio-icone svg { width: 28px; height: 28px; }
 
 .modulo-vazio-texto { font-size: 0.9rem; color: var(--tinta-muda); }
+
+/* Pagamento (reembolso, estorno) em listas: valor negativo em verde */
+.valor-que-volta { color: var(--sucesso); }
