@@ -833,7 +833,8 @@ body {
 .novo-gasto input,
 .novo-gasto select,
 .form-gasto input:not([type="radio"]),
-.pendente input {
+.pendente input,
+.fatura-pagar input {
   font: inherit;
   font-size: 0.95rem;
   padding: 13px 16px;
@@ -850,12 +851,14 @@ body {
 
 .novo-gasto input::placeholder,
 .form-gasto input::placeholder,
-.pendente input::placeholder { color: var(--tinta-muda); }
+.pendente input::placeholder,
+.fatura-pagar input::placeholder { color: var(--tinta-muda); }
 
 .novo-gasto input:focus,
 .novo-gasto select:focus,
 .form-gasto input:not([type="radio"]):focus,
-.pendente input:focus {
+.pendente input:focus,
+.fatura-pagar input:focus {
   border-color: var(--acento);
   box-shadow: 0 0 0 3px var(--acento-suave);
 }
@@ -1745,4 +1748,189 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 @media (max-width: 640px) {
   .pendente-campos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pendente-campos .botao-primario { grid-column: 1 / -1; }
+}
+
+/* ---------- Fatura do cartão ---------- */
+
+.fatura-navegacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.fatura-navegacao .botao-topo { width: 44px; height: 44px; }
+
+.fatura-mes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.fatura-mes .metrica-rotulo { margin-bottom: 2px; }
+
+.fatura-mes-nome {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cartao-resumo.fatura-resumo {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.fatura-sem-cartao {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.fatura-sem-cartao .vazio { padding: 8px 0 14px; }
+
+.fatura-cartoes {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.fatura-cartao-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fatura-cartao-nome { font-size: 1.05rem; font-weight: 700; }
+
+.fatura-cartao-datas {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--tinta-muda);
+}
+
+.fatura-cartao-total {
+  font-family: var(--fonte-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fatura-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.fatura-status:empty { display: none; }
+
+.fatura-paga {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--sucesso-suave);
+  color: var(--sucesso);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.fatura-aviso {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--aviso);
+}
+
+/* Data e banco do pagamento, abertos pelo "Marcar como paga" */
+.fatura-pagar {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.fatura-pagar input { padding: 10px 12px; font-size: 0.9rem; }
+
+.parcela-textos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.parcela-descricao {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parcela-info {
+  font-size: 0.75rem;
+  color: var(--tinta-muda);
+}
+
+.vazio-pequeno {
+  padding: 8px 6px;
+  font-size: 0.85rem;
+  color: var(--tinta-muda);
+}
+
+/* Gaveta de compra: rótulo pequeno em cima de cada campo */
+.campo-rotulado {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.campo-rotulado > span {
+  padding-left: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tinta-muda);
+}
+
+.campo-rotulado .select-basico { width: 100%; }
+
+.compra-previa {
+  min-height: 1.3em;
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-align: center;
+  color: var(--acento-claro);
+}
+
+/* Cartões em Configurações */
+.cartao-cartoes { margin-top: 16px; }
+
+.form-cartao { margin-top: 10px; border-style: dashed; }
+
+.cartao-campos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, .8fr) minmax(0, .8fr) auto;
+  gap: 8px;
+}
+
+@media (min-width: 860px) {
+  .fatura-cartoes { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .cartao-resumo.fatura-resumo { grid-template-columns: 1fr; }
+  .fatura-pagar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .fatura-pagar .botao-primario { grid-column: 1 / -1; }
+  .cartao-campos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cartao-campos input[type="text"],
+  .cartao-campos .botao-primario { grid-column: 1 / -1; }
+}
+
+/* Com a aba Fatura a barra tem quatro abas e o "+": aperta um pouco no celular */
+@media (max-width: 420px) {
+  .abas { gap: 2px; }
+  .aba { padding: 8px 9px; }
 }

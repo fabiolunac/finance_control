@@ -65,6 +65,10 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg>
         <span class="aba-rotulo">Tabela</span>
       </button>
+      <button id="aba-fatura" class="aba" type="button">
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+        <span class="aba-rotulo">Fatura</span>
+      </button>
       <button id="botao-adicionar" class="aba-mais" type="button" aria-label="Adicionar gasto" title="Adicionar gasto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -222,6 +226,44 @@
 
     </section>
 
+    <section id="secao-fatura" hidden>
+
+      <div class="fatura-navegacao">
+        <button id="fatura-anterior" class="botao-topo" type="button" aria-label="Fatura anterior">
+          <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="fatura-mes">
+          <span class="metrica-rotulo">Fatura de</span>
+          <span id="fatura-mes-nome" class="fatura-mes-nome"></span>
+        </div>
+        <button id="fatura-proxima" class="botao-topo" type="button" aria-label="Próxima fatura">
+          <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <div class="cartao-resumo fatura-resumo">
+        <div>
+          <span class="metrica-rotulo">Total da fatura</span>
+          <span class="resumo-valor" id="fatura-total"></span>
+          <span class="resumo-sub" id="fatura-sub"></span>
+        </div>
+        <button id="botao-nova-compra" class="botao-primario" type="button">+ Nova compra</button>
+      </div>
+
+      <div id="fatura-sem-cartao" class="cartao-grafico fatura-sem-cartao" hidden>
+        <p class="vazio">Cadastre seus cartões, com dia de fechamento e vencimento, pra começar.</p>
+        <button id="botao-ir-cartoes" class="botao-chip" type="button">Cadastrar cartão</button>
+      </div>
+
+      <div id="fatura-cartoes" class="fatura-cartoes"></div>
+
+      <div class="cartao-grafico fatura-futuro">
+        <h2 class="titulo-grafico">Próximas faturas</h2>
+        <div id="grafico-fatura-futuro" class="grafico"></div>
+      </div>
+
+    </section>
+
     <section id="secao-configuracoes" hidden>
 
       <div class="cartao-grafico cartao-tema">
@@ -229,6 +271,21 @@
         <div id="seletor-cor" class="seletor-cor" role="group" aria-label="Cor do tema"></div>
         <label class="faixa-matiz-rotulo" for="faixa-matiz">Personalizada</label>
         <input id="faixa-matiz" class="faixa-matiz" type="range" min="0" max="359" step="1">
+      </div>
+
+      <div id="cartao-cartoes" class="cartao-grafico cartao-cartoes">
+        <h2 class="titulo-grafico">Cartões</h2>
+        <p class="pendentes-ajuda">Fechamento: compras feitas a partir desse dia vão pra fatura seguinte. Vencimento: dia de pagar.</p>
+        <div id="lista-cartoes" class="lista-pendentes"></div>
+        <form id="form-cartao" class="pendente form-cartao">
+          <span class="pendente-local">Novo cartão</span>
+          <div class="cartao-campos">
+            <input id="cartao-nome" type="text" placeholder="Nome (ex.: Nubank)" maxlength="60" autocomplete="off" required aria-label="Nome do cartão">
+            <input id="cartao-fechamento" type="number" inputmode="numeric" min="1" max="31" placeholder="Fecha dia" required aria-label="Dia de fechamento">
+            <input id="cartao-vencimento" type="number" inputmode="numeric" min="1" max="31" placeholder="Vence dia" required aria-label="Dia de vencimento">
+            <button class="botao-primario" type="submit">Adicionar</button>
+          </div>
+        </form>
       </div>
 
     </section>
@@ -310,6 +367,48 @@
 
       <!-- Lançados em sequência com "Adicionar e continuar" -->
       <div id="lote-gastos" class="lote" hidden></div>
+    </div>
+  </dialog>
+
+  <dialog id="gaveta-compra" class="gaveta" aria-labelledby="gaveta-compra-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-compra-titulo" class="titulo-grafico">Nova compra</h2>
+        <button id="botao-fechar-compra" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-compra" class="form-gasto">
+        <label class="campo-valor-grande">
+          <span class="campo-valor-moeda">R$</span>
+          <input id="compra-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Valor total da compra" required>
+        </label>
+
+        <input id="compra-descricao" type="text" placeholder="Descrição" autocomplete="off" maxlength="120" aria-label="Descrição" required>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Data da compra</span>
+            <input id="compra-data" type="date" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>Parcelas</span>
+            <input id="compra-parcelas" type="number" inputmode="numeric" min="1" max="48" step="1" value="1" required>
+          </label>
+        </div>
+
+        <label class="campo-rotulado">
+          <span>Cartão</span>
+          <select id="compra-cartao" class="select-basico" required></select>
+        </label>
+
+        <p id="compra-previa" class="compra-previa"></p>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-compra" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-salvar-compra" class="botao-primario" type="submit">Adicionar</button>
+        </div>
+      </form>
+
+      <p id="erro-compra" class="erro" hidden></p>
     </div>
   </dialog>
 

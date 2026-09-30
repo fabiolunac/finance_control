@@ -20,11 +20,13 @@ const abaGraficos = document.getElementById('aba-graficos');
 const abaVisaoGeral = document.getElementById('aba-visao-geral');
 const abaParametros = document.getElementById('botao-parametros');
 const abaConfiguracoes = document.getElementById('botao-configuracoes');
+const abaFatura = document.getElementById('aba-fatura');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
 const secaoParametros = document.getElementById('secao-parametros');
 const secaoConfiguracoes = document.getElementById('secao-configuracoes');
+const secaoFatura = document.getElementById('secao-fatura');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
@@ -150,7 +152,12 @@ async function requisitar(metodo, caminho, corpo, mensagemErro) {
     localStorage.removeItem('apiToken');
     throw new Error('Código de acesso inválido. Recarregue a página.');
   }
-  if (!resposta.ok) throw new Error(mensagemErro);
+  if (!resposta.ok) {
+    // Se o servidor explicou o motivo (ex.: 409), mostra ele; senão, a mensagem padrão
+    let detalhe = null;
+    try { detalhe = (await resposta.json()).detail; } catch (e) {}
+    throw new Error(typeof detalhe === 'string' ? detalhe : mensagemErro);
+  }
   return resposta;
 }
 
@@ -207,6 +214,7 @@ async function carregar() {
 botaoAtualizar.addEventListener('click', () => {
   carregar();
   if (!secaoParametros.hidden) carregarParametros();
+  if (!secaoFatura.hidden || !secaoConfiguracoes.hidden) carregarFatura();
 });
 
 function renderizarTudo() {
@@ -522,6 +530,7 @@ const abas = [
   [abaVisaoGeral, secaoVisaoGeral],
   [abaParametros, secaoParametros],
   [abaConfiguracoes, secaoConfiguracoes],
+  [abaFatura, secaoFatura],
 ];
 
 function selecionarAba(abaEscolhida) {
@@ -533,6 +542,7 @@ function selecionarAba(abaEscolhida) {
   if (abaEscolhida === abaGraficos) atualizarGraficos();
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
   if (abaEscolhida === abaParametros) carregarParametros();
+  if (abaEscolhida === abaFatura || abaEscolhida === abaConfiguracoes) carregarFatura();
 }
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
@@ -1275,7 +1285,11 @@ botaoExcluirGasto.addEventListener('click', () => {
   removerGasto(gasto);
 });
 
-botaoAdicionar.addEventListener('click', () => abrirGaveta());
+// Na aba Fatura o "+" lança uma compra no cartão; nas outras, um gasto
+botaoAdicionar.addEventListener('click', () => {
+  if (!secaoFatura.hidden && cartoes.length) abrirGavetaCompra();
+  else abrirGaveta();
+});
 botaoFecharGaveta.addEventListener('click', () => gavetaAdicionar.close());
 
 // Clique no fundo escurecido (fora do corpo da gaveta) fecha
@@ -1289,12 +1303,13 @@ let notificacaoTimer = null;
 
 // A gaveta aberta fica acima de tudo; pra aparecer, o aviso entra nela
 function moverNotificacao() {
-  const destino = gavetaAdicionar.open ? gavetaAdicionar : document.body;
+  const gavetaAberta = document.querySelector('dialog[open]');
+  const destino = gavetaAberta || document.body;
   if (notificacao.parentElement !== destino) destino.appendChild(notificacao);
-  notificacao.classList.toggle('notificacao-na-gaveta', gavetaAdicionar.open);
+  notificacao.classList.toggle('notificacao-na-gaveta', Boolean(gavetaAberta));
 }
 
-gavetaAdicionar.addEventListener('close', moverNotificacao);
+document.querySelectorAll('dialog').forEach((gaveta) => gaveta.addEventListener('close', moverNotificacao));
 
 function esconderNotificacao() {
   clearTimeout(notificacaoTimer);
@@ -1924,6 +1939,607 @@ async function salvarEdicaoParam(td, param, campo, novoValorBruto, valorOriginal
     cancelar();
     erro.textContent = e.message;
     erro.hidden = false;
+  }
+}
+
+// ---------- Fatura do cartão ----------
+
+// Compras parceladas por cartão; cada fatura é identificada pelo mês de
+// vencimento (YYYY-MM), como no app do banco
+let cartoes = [];
+let compras = [];
+let faturasPagas = [];
+let mesFatura = null; // fatura mostrada na aba
+const comprasRemovendo = new Set();
+
+const faturaMesNome = document.getElementById('fatura-mes-nome');
+const faturaTotal = document.getElementById('fatura-total');
+const faturaSub = document.getElementById('fatura-sub');
+const faturaCartoes = document.getElementById('fatura-cartoes');
+const faturaSemCartao = document.getElementById('fatura-sem-cartao');
+const graficoFaturaFuturo = document.getElementById('grafico-fatura-futuro');
+const botaoNovaCompra = document.getElementById('botao-nova-compra');
+
+const gavetaCompra = document.getElementById('gaveta-compra');
+const gavetaCompraTitulo = document.getElementById('gaveta-compra-titulo');
+const formCompra = document.getElementById('form-compra');
+const compraValor = document.getElementById('compra-valor');
+const compraDescricao = document.getElementById('compra-descricao');
+const compraData = document.getElementById('compra-data');
+const compraParcelas = document.getElementById('compra-parcelas');
+const compraCartao = document.getElementById('compra-cartao');
+const compraPrevia = document.getElementById('compra-previa');
+const botaoSalvarCompra = document.getElementById('botao-salvar-compra');
+const botaoExcluirCompra = document.getElementById('botao-excluir-compra');
+const erroCompra = document.getElementById('erro-compra');
+
+const listaCartoes = document.getElementById('lista-cartoes');
+const formCartao = document.getElementById('form-cartao');
+
+async function carregarFatura() {
+  erro.hidden = true;
+  try {
+    const resposta = await requisitar('GET', '/api/fatura', null, 'Erro ao carregar a fatura.');
+    const dados = await resposta.json();
+    cartoes = dados.cartoes;
+    compras = dados.compras.filter((c) => !comprasRemovendo.has(c.id));
+    faturasPagas = dados.pagas;
+    if (!mesFatura) mesFatura = proximaFaturaAVencer();
+    renderizarFatura();
+    renderizarCartoes();
+  } catch (e) {
+    mostrarErro(e.message);
+  }
+}
+
+// ----- Contas de meses e parcelas
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function somarMeses(mes, n) {
+  const [ano, m] = mes.split('-').map(Number);
+  return formatarIso(new Date(ano, m - 1 + n, 1)).slice(0, 7);
+}
+
+function mesesEntre(de, ate) {
+  const [a1, m1] = de.split('-').map(Number);
+  const [a2, m2] = ate.split('-').map(Number);
+  return (a2 - a1) * 12 + (m2 - m1);
+}
+
+function nomeMes(mes) {
+  const [ano, m] = mes.split('-').map(Number);
+  return `${MESES[m - 1]} de ${ano}`;
+}
+
+function nomeMesCurto(mes) {
+  const [ano, m] = mes.split('-').map(Number);
+  return `${MESES[m - 1].slice(0, 3)}/${String(ano).slice(2)}`;
+}
+
+// Dia 31 num mês de 30 dias vira 30, e assim por diante
+function diaNoMes(mes, dia) {
+  const [ano, m] = mes.split('-').map(Number);
+  return Math.min(dia, new Date(ano, m, 0).getDate());
+}
+
+// Fatura da 1ª parcela: compra a partir do dia de fechamento vai pra fatura
+// seguinte; se o vencimento vem antes do fechamento no calendário, a fatura
+// fechada num mês vence no mês seguinte
+function primeiraFatura(dataCompra, cartao) {
+  const [ano, m, dia] = dataCompra.split('-').map(Number);
+  let fechamento = `${ano}-${pad2(m)}`;
+  if (dia >= diaNoMes(fechamento, cartao.Fechamento)) fechamento = somarMeses(fechamento, 1);
+  return cartao.Vencimento > cartao.Fechamento ? fechamento : somarMeses(fechamento, 1);
+}
+
+// Divide em centavos; a última parcela leva a sobra do arredondamento
+function valorDaParcela(total, parcelas, numero) {
+  const centavos = Math.round(total * 100);
+  const base = Math.floor(centavos / parcelas);
+  return (numero === parcelas ? centavos - base * (parcelas - 1) : base) / 100;
+}
+
+function parcelasDaFatura(mes, cartaoId) {
+  const cartao = cartoes.find((c) => c.id === cartaoId);
+  if (!cartao) return [];
+  return compras
+    .filter((compra) => compra.Cartao === cartaoId)
+    .map((compra) => {
+      const indice = mesesEntre(primeiraFatura(compra.Data, cartao), mes);
+      if (indice < 0 || indice >= compra.Parcelas) return null;
+      return { compra, numero: indice + 1, valor: valorDaParcela(compra.Valor, compra.Parcelas, indice + 1) };
+    })
+    .filter(Boolean);
+}
+
+const somarParcelas = (parcelas) => parcelas.reduce((soma, p) => soma + p.valor, 0);
+
+// Fatura mais próxima que ainda não venceu, considerando todos os cartões
+function proximaFaturaAVencer() {
+  const mes = mesAtual();
+  if (!cartoes.length) return mes;
+  const hoje = new Date().getDate();
+  return cartoes
+    .map((c) => (hoje <= diaNoMes(mes, c.Vencimento) ? mes : somarMeses(mes, 1)))
+    .sort()[0];
+}
+
+function textoParcelas(n) {
+  return `${n} ${n === 1 ? 'parcela' : 'parcelas'}`;
+}
+
+// ----- Tela da fatura
+
+function renderizarFatura() {
+  const nome = nomeMes(mesFatura);
+  faturaMesNome.textContent = nome.charAt(0).toUpperCase() + nome.slice(1);
+  faturaSemCartao.hidden = cartoes.length > 0;
+  botaoNovaCompra.disabled = cartoes.length === 0;
+
+  let total = 0;
+  let aPagar = 0;
+  let quantidade = 0;
+  faturaCartoes.innerHTML = '';
+
+  cartoes.forEach((cartao) => {
+    const parcelas = parcelasDaFatura(mesFatura, cartao.id);
+    const totalCartao = somarParcelas(parcelas);
+    const paga = faturasPagas.find((p) => p.Cartao === cartao.id && p.Mes === mesFatura);
+    total += totalCartao;
+    quantidade += parcelas.length;
+    if (!paga) aPagar += totalCartao;
+    faturaCartoes.appendChild(criarBlocoCartao(cartao, parcelas, totalCartao, paga));
+  });
+
+  animarValor(faturaTotal, total);
+  const partes = [textoParcelas(quantidade)];
+  if (total > 0 && aPagar < 0.005) partes.push('tudo pago');
+  else if (aPagar < total - 0.005) partes.push(`${formatarMoeda(aPagar)} a pagar`);
+  faturaSub.textContent = cartoes.length ? partes.join(' · ') : '';
+
+  renderizarFaturaFutura();
+}
+
+function dataCurta(mes, dia) {
+  return `${pad2(diaNoMes(mes, dia))}/${mes.slice(5)}`;
+}
+
+function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
+  const bloco = document.createElement('div');
+  bloco.className = 'cartao-grafico fatura-cartao';
+
+  const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mesFatura : somarMeses(mesFatura, -1);
+  const cabecalho = document.createElement('div');
+  cabecalho.className = 'fatura-cartao-cabecalho';
+  const titulo = document.createElement('div');
+  const nome = document.createElement('h3');
+  nome.className = 'fatura-cartao-nome';
+  nome.textContent = cartao.Nome;
+  const datas = document.createElement('span');
+  datas.className = 'fatura-cartao-datas';
+  datas.textContent = `vence ${dataCurta(mesFatura, cartao.Vencimento)} · fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`;
+  titulo.append(nome, datas);
+  const valor = document.createElement('span');
+  valor.className = 'fatura-cartao-total';
+  valor.textContent = formatarMoeda(totalCartao);
+  cabecalho.append(titulo, valor);
+  bloco.appendChild(cabecalho);
+
+  bloco.appendChild(criarStatusFatura(cartao, totalCartao, paga));
+
+  if (!parcelas.length) {
+    const vazioBloco = document.createElement('p');
+    vazioBloco.className = 'vazio-pequeno';
+    vazioBloco.textContent = 'Nenhuma parcela nesta fatura.';
+    bloco.appendChild(vazioBloco);
+    return bloco;
+  }
+
+  parcelas
+    .sort((a, b) => b.compra.Data.localeCompare(a.compra.Data))
+    .forEach(({ compra, numero, valor: valorParcela }) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'mini-lista-item';
+      const textos = document.createElement('span');
+      textos.className = 'parcela-textos';
+      const descricao = document.createElement('span');
+      descricao.className = 'parcela-descricao';
+      descricao.textContent = compra.Descricao;
+      const info = document.createElement('span');
+      info.className = 'parcela-info';
+      info.textContent = `${compra.Parcelas > 1 ? `${numero}/${compra.Parcelas}` : 'à vista'} · compra em ${formatarData(compra.Data).slice(0, 5)}`;
+      textos.append(descricao, info);
+      const valorItem = document.createElement('span');
+      valorItem.className = 'mini-lista-valor';
+      valorItem.textContent = formatarMoeda(valorParcela);
+      item.append(textos, valorItem);
+      item.addEventListener('click', () => abrirGavetaCompra(compra));
+      bloco.appendChild(item);
+    });
+
+  return bloco;
+}
+
+// Paga: selo verde e "Desfazer". Não paga: botão que abre data e banco do pagamento
+function criarStatusFatura(cartao, totalCartao, paga) {
+  const status = document.createElement('div');
+  status.className = 'fatura-status';
+
+  if (paga) {
+    const selo = document.createElement('span');
+    selo.className = 'fatura-paga';
+    selo.textContent = `✓ Paga em ${formatarData(paga.Data).slice(0, 5)}`;
+    const desfazer = document.createElement('button');
+    desfazer.type = 'button';
+    desfazer.className = 'multiselect-acao';
+    desfazer.textContent = 'Desfazer';
+    desfazer.addEventListener('click', () => desfazerPagamento(paga));
+    status.append(selo, desfazer);
+
+    // Compras mudaram depois do pagamento: o gasto lançado não bate mais
+    if (Math.abs(paga.Valor - totalCartao) >= 0.005) {
+      const aviso = document.createElement('span');
+      aviso.className = 'fatura-aviso';
+      aviso.textContent = `Pago ${formatarMoeda(paga.Valor)}, mas o total atual é ${formatarMoeda(totalCartao)}.`;
+      status.appendChild(aviso);
+    }
+    return status;
+  }
+
+  if (totalCartao <= 0) return status;
+
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.className = 'botao-secundario';
+  botao.textContent = 'Marcar como paga';
+
+  const form = document.createElement('form');
+  form.className = 'fatura-pagar';
+  form.hidden = true;
+  const campoDataPagamento = document.createElement('input');
+  campoDataPagamento.type = 'date';
+  campoDataPagamento.required = true;
+  campoDataPagamento.value = formatarIso(new Date());
+  campoDataPagamento.setAttribute('aria-label', 'Data do pagamento');
+  const campoBancoPagamento = document.createElement('input');
+  campoBancoPagamento.type = 'text';
+  campoBancoPagamento.setAttribute('list', 'opcoes-banco');
+  campoBancoPagamento.placeholder = 'Pago com (banco)';
+  campoBancoPagamento.autocomplete = 'off';
+  campoBancoPagamento.required = true;
+  campoBancoPagamento.value = lerUltimoBanco();
+  campoBancoPagamento.setAttribute('aria-label', 'Banco do pagamento');
+  const confirmar = document.createElement('button');
+  confirmar.type = 'submit';
+  confirmar.className = 'botao-primario';
+  confirmar.textContent = `Pagar ${formatarMoeda(totalCartao)}`;
+  form.append(campoDataPagamento, campoBancoPagamento, confirmar);
+
+  botao.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    botao.hidden = !form.hidden;
+  });
+  form.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    pagarFatura(cartao, totalCartao, campoDataPagamento.value, campoBancoPagamento.value.trim(), confirmar);
+  });
+
+  status.append(botao, form);
+  return status;
+}
+
+function renderizarFaturaFutura() {
+  const entradas = [];
+  for (let i = 0; i < 6; i += 1) {
+    const mes = somarMeses(mesFatura, i);
+    const total = cartoes.reduce((soma, c) => soma + somarParcelas(parcelasDaFatura(mes, c.id)), 0);
+    entradas.push([nomeMesCurto(mes), total]);
+  }
+  renderizarBarras(graficoFaturaFuturo, entradas);
+}
+
+document.getElementById('fatura-anterior').addEventListener('click', () => {
+  mesFatura = somarMeses(mesFatura, -1);
+  renderizarFatura();
+});
+
+document.getElementById('fatura-proxima').addEventListener('click', () => {
+  mesFatura = somarMeses(mesFatura, 1);
+  renderizarFatura();
+});
+
+document.getElementById('botao-ir-cartoes').addEventListener('click', () => {
+  selecionarAba(abaConfiguracoes);
+  document.getElementById('cartao-cartoes').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// ----- Pagamento
+
+async function pagarFatura(cartao, total, data, banco, botao) {
+  if (!data || !banco) return;
+  erro.hidden = true;
+  botao.disabled = true;
+  try {
+    await requisitar('POST', '/api/faturas/pagar',
+      { Cartao: cartao.id, Mes: mesFatura, Valor: Math.round(total * 100) / 100, Data: data, banco },
+      'Erro ao marcar a fatura como paga.');
+    salvarUltimoBanco(banco);
+    mostrarNotificacao(`Fatura ${cartao.Nome} paga · ${formatarMoeda(total)} lançado nos gastos`);
+    await Promise.all([carregarFatura(), carregar()]);
+  } catch (e) {
+    mostrarErro(e.message);
+    botao.disabled = false;
+  }
+}
+
+async function desfazerPagamento(paga) {
+  erro.hidden = true;
+  try {
+    await requisitar('DELETE', `/api/faturas/pagas/${paga.id}`, null, 'Erro ao desfazer o pagamento.');
+    mostrarNotificacao('Pagamento desfeito; o gasto da fatura foi removido');
+    await Promise.all([carregarFatura(), carregar()]);
+  } catch (e) {
+    mostrarErro(e.message);
+  }
+}
+
+// ----- Gaveta de compra
+
+let compraEditando = null;
+
+function preencherOpcoesCartao() {
+  compraCartao.innerHTML = '';
+  cartoes.forEach((cartao) => {
+    const opcao = document.createElement('option');
+    opcao.value = cartao.id;
+    opcao.textContent = cartao.Nome;
+    compraCartao.appendChild(opcao);
+  });
+}
+
+function lerUltimoCartao() {
+  try { return Number(localStorage.getItem('ultimoCartao')); } catch (e) { return null; }
+}
+
+function abrirGavetaCompra(compra = null) {
+  compraEditando = compra;
+  erroCompra.hidden = true;
+  gavetaCompraTitulo.textContent = compra ? 'Editar compra' : 'Nova compra';
+  botaoSalvarCompra.textContent = compra ? 'Salvar' : 'Adicionar';
+  botaoExcluirCompra.hidden = !compra;
+  preencherOpcoesCartao();
+
+  if (compra) {
+    compraValor.value = String(compra.Valor).replace('.', ',');
+    compraDescricao.value = compra.Descricao;
+    compraData.value = compra.Data;
+    compraParcelas.value = compra.Parcelas;
+    compraCartao.value = compra.Cartao;
+  } else {
+    compraValor.value = '';
+    compraDescricao.value = '';
+    compraData.value = formatarIso(new Date());
+    compraParcelas.value = 1;
+    const ultimo = lerUltimoCartao();
+    if (cartoes.some((c) => c.id === ultimo)) compraCartao.value = ultimo;
+  }
+
+  atualizarPreviaCompra();
+  gavetaCompra.showModal();
+  if (!compra) compraValor.focus();
+}
+
+// Mostra como a compra vai se espalhar antes de salvar
+function atualizarPreviaCompra() {
+  const total = lerValor(compraValor.value);
+  const parcelas = parseInt(compraParcelas.value, 10);
+  const cartao = cartoes.find((c) => c.id === Number(compraCartao.value));
+  if (!cartao || !compraData.value || !(parcelas >= 1) || !(total > 0)) {
+    compraPrevia.textContent = '';
+    return;
+  }
+  const primeira = primeiraFatura(compraData.value, cartao);
+  compraPrevia.textContent = parcelas === 1
+    ? `À vista · fatura de ${nomeMes(primeira)}`
+    : `${parcelas}× de ${formatarMoeda(valorDaParcela(total, parcelas, 1))} · de ${nomeMes(primeira)} a ${nomeMes(somarMeses(primeira, parcelas - 1))}`;
+}
+
+[compraValor, compraParcelas, compraData, compraCartao].forEach((campo) => {
+  campo.addEventListener('input', atualizarPreviaCompra);
+});
+
+async function salvarCompra(evento) {
+  evento.preventDefault();
+  erroCompra.hidden = true;
+
+  const compra = {
+    Data: compraData.value,
+    Descricao: compraDescricao.value.trim(),
+    Valor: lerValor(compraValor.value),
+    Parcelas: parseInt(compraParcelas.value, 10),
+    Cartao: Number(compraCartao.value),
+  };
+
+  if (!(compra.Valor > 0)) {
+    erroCompra.textContent = 'Valor inválido. Use algo como 1.200,00.';
+    erroCompra.hidden = false;
+    return;
+  }
+  if (!compra.Data || !compra.Descricao || !(compra.Parcelas >= 1 && compra.Parcelas <= 48) || !compra.Cartao) return;
+
+  const editando = compraEditando;
+  botaoSalvarCompra.disabled = true;
+  try {
+    if (editando) {
+      await requisitar('PUT', `/api/compras/${editando.id}`, compra, 'Erro ao salvar a compra.');
+    } else {
+      await requisitar('POST', '/api/compras', compra, 'Erro ao gravar a compra.');
+    }
+    try { localStorage.setItem('ultimoCartao', String(compra.Cartao)); } catch (e) {}
+    gavetaCompra.close();
+    const primeira = primeiraFatura(compra.Data, cartoes.find((c) => c.id === compra.Cartao));
+    mostrarNotificacao(editando
+      ? 'Compra atualizada'
+      : `${compra.Descricao} · 1ª parcela na fatura de ${nomeMes(primeira)}`);
+    await carregarFatura();
+  } catch (e) {
+    erroCompra.textContent = e.message;
+    erroCompra.hidden = false;
+  } finally {
+    botaoSalvarCompra.disabled = false;
+  }
+}
+
+formCompra.addEventListener('submit', salvarCompra);
+botaoNovaCompra.addEventListener('click', () => abrirGavetaCompra());
+document.getElementById('botao-fechar-compra').addEventListener('click', () => gavetaCompra.close());
+gavetaCompra.addEventListener('click', (evento) => {
+  if (evento.target === gavetaCompra) gavetaCompra.close();
+});
+
+botaoExcluirCompra.addEventListener('click', () => {
+  const compra = compraEditando;
+  gavetaCompra.close();
+  removerCompra(compra);
+});
+
+function removerCompra(compra) {
+  erro.hidden = true;
+  removerComDesfazer(`Compra removida: ${compra.Descricao}`, {
+    tirar: () => {
+      comprasRemovendo.add(compra.id);
+      compras = compras.filter((c) => c.id !== compra.id);
+      renderizarFatura();
+    },
+    devolver: () => {
+      comprasRemovendo.delete(compra.id);
+      compras = [...compras, compra];
+      renderizarFatura();
+    },
+    enviar: async () => {
+      try {
+        await requisitar('DELETE', `/api/compras/${compra.id}`, null, 'Erro ao remover a compra.');
+      } catch (e) {
+        mostrarErro(e.message);
+        comprasRemovendo.delete(compra.id);
+        carregarFatura();
+        return;
+      }
+      comprasRemovendo.delete(compra.id);
+    },
+  });
+}
+
+// ----- Cartões (em Configurações)
+
+function lerCamposCartao(nome, fechamento, vencimento) {
+  return {
+    Nome: nome.value.trim(),
+    Fechamento: parseInt(fechamento.value, 10),
+    Vencimento: parseInt(vencimento.value, 10),
+  };
+}
+
+function criarCampoNumero(valor, placeholder) {
+  const campo = document.createElement('input');
+  campo.type = 'number';
+  campo.inputMode = 'numeric';
+  campo.min = 1;
+  campo.max = 31;
+  campo.required = true;
+  campo.placeholder = placeholder;
+  campo.value = valor;
+  campo.setAttribute('aria-label', placeholder);
+  return campo;
+}
+
+function renderizarCartoes() {
+  listaCartoes.innerHTML = '';
+  cartoes.forEach((cartao) => {
+    const form = document.createElement('form');
+    form.className = 'pendente';
+
+    const info = document.createElement('div');
+    info.className = 'pendente-info';
+    const nome = document.createElement('span');
+    nome.className = 'pendente-local';
+    nome.textContent = cartao.Nome;
+    const remover = document.createElement('button');
+    remover.type = 'button';
+    remover.className = 'botao-remover';
+    remover.textContent = '×';
+    remover.setAttribute('aria-label', `Remover cartão ${cartao.Nome}`);
+    remover.addEventListener('click', () => removerCartao(cartao));
+    info.append(nome, remover);
+
+    const campoNome = document.createElement('input');
+    campoNome.type = 'text';
+    campoNome.maxLength = 60;
+    campoNome.required = true;
+    campoNome.value = cartao.Nome;
+    campoNome.setAttribute('aria-label', 'Nome do cartão');
+    const campoFechamento = criarCampoNumero(cartao.Fechamento, 'Fecha dia');
+    const campoVencimento = criarCampoNumero(cartao.Vencimento, 'Vence dia');
+    const salvar = document.createElement('button');
+    salvar.type = 'submit';
+    salvar.className = 'botao-primario';
+    salvar.textContent = 'Salvar';
+
+    const campos = document.createElement('div');
+    campos.className = 'cartao-campos';
+    campos.append(campoNome, campoFechamento, campoVencimento, salvar);
+    form.append(info, campos);
+
+    form.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      salvar.disabled = true;
+      try {
+        await requisitar('PUT', `/api/cartoes/${cartao.id}`,
+          lerCamposCartao(campoNome, campoFechamento, campoVencimento), 'Erro ao salvar o cartão.');
+        mostrarNotificacao('Cartão atualizado');
+        await carregarFatura();
+      } catch (e) {
+        mostrarErro(e.message);
+      } finally {
+        salvar.disabled = false;
+      }
+    });
+
+    listaCartoes.appendChild(form);
+  });
+}
+
+formCartao.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const campos = lerCamposCartao(
+    document.getElementById('cartao-nome'),
+    document.getElementById('cartao-fechamento'),
+    document.getElementById('cartao-vencimento'));
+  if (!campos.Nome || !(campos.Fechamento >= 1) || !(campos.Vencimento >= 1)) return;
+
+  erro.hidden = true;
+  try {
+    await requisitar('POST', '/api/cartoes', campos, 'Erro ao gravar o cartão.');
+    formCartao.reset();
+    mostrarNotificacao(`Cartão ${campos.Nome} adicionado`);
+    mesFatura = null; // recalcula a próxima fatura com o cartão novo
+    await carregarFatura();
+  } catch (e) {
+    mostrarErro(e.message);
+  }
+});
+
+// O servidor recusa remover cartão com compras; a mensagem dele aparece no erro
+async function removerCartao(cartao) {
+  erro.hidden = true;
+  try {
+    await requisitar('DELETE', `/api/cartoes/${cartao.id}`, null, 'Erro ao remover o cartão.');
+    mostrarNotificacao(`Cartão ${cartao.Nome} removido`);
+    await carregarFatura();
+  } catch (e) {
+    mostrarErro(e.message);
   }
 }
 
