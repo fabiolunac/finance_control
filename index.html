@@ -387,6 +387,24 @@
         </div>
       </div>
 
+      <div class="cartao-grafico cafeina-mensal">
+        <div class="fatura-navegacao">
+          <button id="cafeina-mes-anterior" class="botao-topo" type="button" aria-label="Mês anterior">
+            <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="fatura-mes">
+            <span class="metrica-rotulo">Cafeína por dia</span>
+            <span id="cafeina-mes-nome" class="fatura-mes-nome"></span>
+          </div>
+          <button id="cafeina-mes-proximo" class="botao-topo" type="button" aria-label="Próximo mês">
+            <svg class="botao-topo-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div id="cafeina-grafico" class="cafeina-grafico"></div>
+        <p id="cafeina-dia-escolhido" class="cafeina-dia-escolhido"></p>
+        <p id="cafeina-mes-resumo" class="resumo-sub cafeina-mes-resumo"></p>
+      </div>
+
     </section>
 
     <section id="secao-configuracoes" hidden>

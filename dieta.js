@@ -8,9 +8,9 @@
    quandoAbrir, requisitar, mostrarNotificacao, removerComDesfazer.
    ============================================================ */
 
-// Referência da FDA pra adultos saudáveis: até ~400 mg/dia costuma não
-// trazer efeitos negativos. Não é recomendação médica; é só a régua da barra.
-const LIMITE_CAFEINA_MG = 400;
+// Limite diário escolhido (a FDA cita ~400 mg/dia como o que adultos saudáveis
+// costumam tolerar). Não é recomendação médica; é a régua da barra e do gráfico.
+const LIMITE_CAFEINA_MG = 500;
 
 const abaDietaComida = document.getElementById('aba-dieta-comida');
 const secaoDietaComida = document.getElementById('secao-dieta-comida');
@@ -23,6 +23,10 @@ const cafeinaHojeBarra = document.getElementById('cafeina-hoje-barra');
 const cafeinaHojeLista = document.getElementById('cafeina-hoje-lista');
 const cafeinaRapidoBotoes = document.getElementById('cafeina-rapido-botoes');
 const cafeinaSemBebida = document.getElementById('cafeina-sem-bebida');
+const cafeinaGrafico = document.getElementById('cafeina-grafico');
+const cafeinaMesNome = document.getElementById('cafeina-mes-nome');
+const cafeinaMesResumo = document.getElementById('cafeina-mes-resumo');
+const cafeinaDiaEscolhido = document.getElementById('cafeina-dia-escolhido');
 
 const gavetaCafeina = document.getElementById('gaveta-cafeina');
 const gavetaCafeinaTitulo = document.getElementById('gaveta-cafeina-titulo');
@@ -86,7 +90,7 @@ function renderizarCafeina() {
   const total = hoje.reduce((soma, c) => soma + c.Cafeina, 0);
 
   cafeinaHojeTotal.textContent = textoMg(total);
-  cafeinaHojeSub.textContent = `de ${textoMg(LIMITE_CAFEINA_MG)} de referência · ` +
+  cafeinaHojeSub.textContent = `de ${textoMg(LIMITE_CAFEINA_MG)} de limite · ` +
     `${hoje.length} ${hoje.length === 1 ? 'bebida' : 'bebidas'}`;
 
   const fracao = total / LIMITE_CAFEINA_MG;
@@ -117,7 +121,108 @@ function renderizarCafeina() {
   });
 
   renderizarBotoesRapidos();
+  renderizarGraficoCafeina();
 }
+
+// ---------- Gráfico de cafeína por dia ----------
+
+let mesCafeina = mesAtual();
+let diaCafeinaEscolhido = null; // dia do mês tocado no gráfico
+
+// Colunas verticais (uma por dia) e uma linha tracejada na altura do limite
+function renderizarGraficoCafeina() {
+  const mes = mesCafeina;
+  const [ano, m] = mes.split('-').map(Number);
+  const nome = nomeMes(mes);
+  cafeinaMesNome.textContent = nome.charAt(0).toUpperCase() + nome.slice(1);
+
+  const totais = {}; // dia do mês → mg
+  consumosCafeina
+    .filter((c) => c.DataHora.slice(0, 7) === mes)
+    .forEach((c) => {
+      const dia = Number(c.DataHora.slice(8, 10));
+      totais[dia] = (totais[dia] || 0) + c.Cafeina;
+    });
+
+  // Escala com folga acima do maior valor, e nunca abaixo do limite (a linha sempre aparece)
+  const maior = Math.max(0, ...Object.values(totais));
+  const escala = Math.max(maior, LIMITE_CAFEINA_MG) * 1.1;
+  const diasNoMes = new Date(ano, m, 0).getDate();
+  const hoje = formatarIso(new Date());
+  if (diaCafeinaEscolhido && !totais[diaCafeinaEscolhido]) diaCafeinaEscolhido = null;
+
+  const area = document.createElement('div');
+  area.className = 'cafeina-area';
+  const linha = document.createElement('div');
+  linha.className = 'cafeina-limite';
+  linha.style.bottom = `${(LIMITE_CAFEINA_MG / escala) * 100}%`;
+  const rotuloLinha = document.createElement('span');
+  rotuloLinha.textContent = textoMg(LIMITE_CAFEINA_MG);
+  linha.appendChild(rotuloLinha);
+  area.appendChild(linha);
+
+  const eixo = document.createElement('div');
+  eixo.className = 'cafeina-eixo';
+
+  for (let dia = 1; dia <= diasNoMes; dia += 1) {
+    const total = totais[dia] || 0;
+    const iso = `${mes}-${String(dia).padStart(2, '0')}`;
+    const coluna = document.createElement(total ? 'button' : 'div');
+    coluna.className = 'cafeina-coluna';
+    if (total) {
+      coluna.type = 'button';
+      coluna.title = `${formatarData(iso).slice(0, 5)}: ${textoMg(total)}`;
+      coluna.setAttribute('aria-label', coluna.title);
+      coluna.classList.toggle('cafeina-coluna-escolhida', dia === diaCafeinaEscolhido);
+      coluna.addEventListener('click', () => {
+        diaCafeinaEscolhido = diaCafeinaEscolhido === dia ? null : dia;
+        renderizarGraficoCafeina();
+      });
+    }
+    const barra = document.createElement('div');
+    barra.className = 'cafeina-barra';
+    barra.classList.toggle('cafeina-barra-acima', total > LIMITE_CAFEINA_MG);
+    barra.style.height = `${(total / escala) * 100}%`;
+    coluna.appendChild(barra);
+    area.appendChild(coluna);
+
+    // Número só no dia 1 e de 5 em 5, pra caber no celular; hoje sempre
+    const marca = document.createElement('span');
+    const ehHoje = iso === hoje;
+    marca.textContent = dia === 1 || dia % 5 === 0 || ehHoje ? String(dia) : '';
+    marca.classList.toggle('cafeina-eixo-hoje', ehHoje);
+    eixo.appendChild(marca);
+  }
+
+  cafeinaGrafico.innerHTML = '';
+  cafeinaGrafico.append(area, eixo);
+
+  cafeinaDiaEscolhido.textContent = diaCafeinaEscolhido
+    ? `${formatarData(`${mes}-${String(diaCafeinaEscolhido).padStart(2, '0')}`).slice(0, 5)}: ${textoMg(totais[diaCafeinaEscolhido])}`
+    : '';
+
+  const dias = Object.keys(totais).length;
+  if (!dias) {
+    cafeinaMesResumo.textContent = 'Nenhum registro neste mês';
+    return;
+  }
+  const soma = Object.values(totais).reduce((a, b) => a + b, 0);
+  const acima = Object.values(totais).filter((t) => t > LIMITE_CAFEINA_MG).length;
+  cafeinaMesResumo.textContent = `Média ${textoMg(soma / dias)} por dia com registro · ` +
+    `${acima} ${acima === 1 ? 'dia' : 'dias'} acima de ${textoMg(LIMITE_CAFEINA_MG)}`;
+}
+
+document.getElementById('cafeina-mes-anterior').addEventListener('click', () => {
+  mesCafeina = somarMeses(mesCafeina, -1);
+  diaCafeinaEscolhido = null;
+  renderizarGraficoCafeina();
+});
+
+document.getElementById('cafeina-mes-proximo').addEventListener('click', () => {
+  mesCafeina = somarMeses(mesCafeina, 1);
+  diaCafeinaEscolhido = null;
+  renderizarGraficoCafeina();
+});
 
 // Um botão por bebida: um toque registra uma unidade agora
 function renderizarBotoesRapidos() {
