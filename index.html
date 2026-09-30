@@ -257,6 +257,12 @@
 
       <div id="fatura-cartoes" class="fatura-cartoes"></div>
 
+      <!-- Quanto cada pessoa deve nas compras divididas ou de outra pessoa -->
+      <div id="fatura-receber" class="cartao-grafico fatura-receber" hidden>
+        <h2 class="titulo-grafico">A receber nesta fatura</h2>
+        <div id="lista-receber"></div>
+      </div>
+
       <div class="cartao-grafico fatura-futuro">
         <h2 class="titulo-grafico">Próximas faturas</h2>
         <div id="grafico-fatura-futuro" class="grafico"></div>
@@ -399,6 +405,18 @@
           <span>Cartão</span>
           <select id="compra-cartao" class="select-basico" required></select>
         </label>
+
+        <div class="tipo-segmentado divisao-segmentado" role="radiogroup" aria-label="De quem é a compra">
+          <label><input type="radio" name="divisao" value="minha" checked><span>Só minha</span></label>
+          <label><input type="radio" name="divisao" value="dividida"><span>Dividida</span></label>
+          <label><input type="radio" name="divisao" value="outra"><span>Outra pessoa</span></label>
+        </div>
+
+        <label id="campo-pessoas" class="campo-rotulado" hidden>
+          <span id="rotulo-pessoas">Com quem (separe por vírgula)</span>
+          <input id="compra-pessoas" type="text" list="opcoes-pessoas" autocomplete="off" maxlength="200" placeholder="Ex.: Ana, Bia">
+        </label>
+        <datalist id="opcoes-pessoas"></datalist>
 
         <p id="compra-previa" class="compra-previa"></p>
 

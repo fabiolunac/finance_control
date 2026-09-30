@@ -1,5 +1,7 @@
+import json
 import os
 from contextlib import contextmanager
+from typing import List, Literal, Optional
 
 import libsql_client
 import pandas as pd
@@ -191,7 +193,8 @@ TABELAS_FATURA = [
         Fechamento INTEGER NOT NULL, Vencimento INTEGER NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS compras_cartao (
         id INTEGER PRIMARY KEY, Data TEXT NOT NULL, Descricao TEXT NOT NULL,
-        Valor REAL NOT NULL, Parcelas INTEGER NOT NULL, Cartao INTEGER NOT NULL)""",
+        Valor REAL NOT NULL, Parcelas INTEGER NOT NULL, Cartao INTEGER NOT NULL,
+        Divisao TEXT)""",
     """CREATE TABLE IF NOT EXISTS faturas_pagas (
         id INTEGER PRIMARY KEY, Cartao INTEGER NOT NULL, Mes TEXT NOT NULL,
         Valor REAL NOT NULL, Data TEXT NOT NULL, GastoRowid INTEGER)""",
@@ -203,6 +206,10 @@ def garantir_tabelas_fatura(client):
     global _tabelas_fatura_prontas
     if not _tabelas_fatura_prontas:
         client.batch(TABELAS_FATURA)
+        # Tabela criada antes da divisão existir: acrescenta a coluna
+        colunas = [row[1] for row in client.execute("PRAGMA table_info(compras_cartao)").rows]
+        if "Divisao" not in colunas:
+            client.execute("ALTER TABLE compras_cartao ADD COLUMN Divisao TEXT")
         _tabelas_fatura_prontas = True
 
 
@@ -220,12 +227,26 @@ class NovoCartao(BaseModel):
     Vencimento: int = Field(ge=1, le=31)
 
 
+class DivisaoCompra(BaseModel):
+    # "dividida": partes iguais entre você e as pessoas; "outra": a compra é toda da pessoa
+    tipo: Literal["dividida", "outra"]
+    pessoas: List[str] = Field(min_length=1, max_length=10)
+
+
 class NovaCompra(BaseModel):
     Data: str = Field(pattern=DATA_ISO)
     Descricao: str = Field(min_length=1, max_length=120)
     Valor: float = Field(gt=0)  # valor total; o app divide pelas parcelas
     Parcelas: int = Field(ge=1, le=48)
     Cartao: int
+    Divisao: Optional[DivisaoCompra] = None  # ausente = compra só sua
+
+
+def divisao_para_texto(divisao):
+    if divisao is None:
+        return None
+    pessoas = [p.strip() for p in divisao.pessoas if p.strip()]
+    return json.dumps({"tipo": divisao.tipo, "pessoas": pessoas}, ensure_ascii=False) if pessoas else None
 
 
 class PagarFatura(BaseModel):
@@ -242,10 +263,13 @@ def listar_fatura(_=Depends(checar_token)):
         garantir_tabelas_fatura(client)
         cartoes, compras, pagas = client.batch([
             "SELECT id, Nome, Fechamento, Vencimento FROM cartoes ORDER BY Nome",
-            "SELECT id, Data, Descricao, Valor, Parcelas, Cartao FROM compras_cartao ORDER BY Data DESC, id DESC",
+            "SELECT id, Data, Descricao, Valor, Parcelas, Cartao, Divisao FROM compras_cartao ORDER BY Data DESC, id DESC",
             "SELECT id, Cartao, Mes, Valor, Data, GastoRowid FROM faturas_pagas",
         ])
-    return {"cartoes": linhas(cartoes), "compras": linhas(compras), "pagas": linhas(pagas)}
+    lista_compras = linhas(compras)
+    for compra in lista_compras:
+        compra["Divisao"] = json.loads(compra["Divisao"]) if compra["Divisao"] else None
+    return {"cartoes": linhas(cartoes), "compras": lista_compras, "pagas": linhas(pagas)}
 
 
 @app.post("/api/cartoes", status_code=201)
@@ -285,8 +309,9 @@ def adicionar_compra(compra: NovaCompra, _=Depends(checar_token)):
     with conectar() as client:
         garantir_tabelas_fatura(client)
         rs = client.execute(
-            "INSERT INTO compras_cartao (Data, Descricao, Valor, Parcelas, Cartao) VALUES (?, ?, ?, ?, ?)",
-            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao],
+            "INSERT INTO compras_cartao (Data, Descricao, Valor, Parcelas, Cartao, Divisao) VALUES (?, ?, ?, ?, ?, ?)",
+            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao,
+             divisao_para_texto(compra.Divisao)],
         )
     return {"ok": True, "id": rs.last_insert_rowid}
 
@@ -296,8 +321,9 @@ def atualizar_compra(id: int, compra: NovaCompra, _=Depends(checar_token)):
     with conectar() as client:
         garantir_tabelas_fatura(client)
         client.execute(
-            "UPDATE compras_cartao SET Data = ?, Descricao = ?, Valor = ?, Parcelas = ?, Cartao = ? WHERE id = ?",
-            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao, id],
+            "UPDATE compras_cartao SET Data = ?, Descricao = ?, Valor = ?, Parcelas = ?, Cartao = ?, Divisao = ? WHERE id = ?",
+            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao,
+             divisao_para_texto(compra.Divisao), id],
         )
     return {"ok": True}
 

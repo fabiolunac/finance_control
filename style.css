@@ -1898,6 +1898,7 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 .campo-rotulado .select-basico { width: 100%; }
 
 .compra-previa {
+  white-space: pre-line;
   min-height: 1.3em;
   font-size: 0.86rem;
   font-weight: 500;
@@ -1934,3 +1935,35 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
   .abas { gap: 2px; }
   .aba { padding: 8px 9px; }
 }
+
+/* ---------- Divisão de compras ---------- */
+
+.divisao-segmentado { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.fatura-cartao-totais {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.fatura-cartao-parte {
+  font-size: 0.78rem;
+  color: var(--acento-claro);
+  white-space: nowrap;
+}
+
+.parcela-divisao {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--acento-claro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fatura-receber { margin-bottom: 16px; }
+
+/* Linha só informativa: sem cara de botão */
+.receber-item { cursor: default; }
+.receber-item:hover { background: none; }

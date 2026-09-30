@@ -1972,6 +1972,12 @@ const compraPrevia = document.getElementById('compra-previa');
 const botaoSalvarCompra = document.getElementById('botao-salvar-compra');
 const botaoExcluirCompra = document.getElementById('botao-excluir-compra');
 const erroCompra = document.getElementById('erro-compra');
+const campoPessoas = document.getElementById('campo-pessoas');
+const rotuloPessoas = document.getElementById('rotulo-pessoas');
+const compraPessoas = document.getElementById('compra-pessoas');
+const opcoesPessoas = document.getElementById('opcoes-pessoas');
+const faturaReceber = document.getElementById('fatura-receber');
+const listaReceber = document.getElementById('lista-receber');
 
 const listaCartoes = document.getElementById('lista-cartoes');
 const formCartao = document.getElementById('form-cartao');
@@ -2048,12 +2054,41 @@ function parcelasDaFatura(mes, cartaoId) {
     .map((compra) => {
       const indice = mesesEntre(primeiraFatura(compra.Data, cartao), mes);
       if (indice < 0 || indice >= compra.Parcelas) return null;
-      return { compra, numero: indice + 1, valor: valorDaParcela(compra.Valor, compra.Parcelas, indice + 1) };
+      const valor = valorDaParcela(compra.Valor, compra.Parcelas, indice + 1);
+      return { compra, numero: indice + 1, valor, partes: partesDaParcela(compra, valor) };
     })
     .filter(Boolean);
 }
 
 const somarParcelas = (parcelas) => parcelas.reduce((soma, p) => soma + p.valor, 0);
+const somarMinhaParte = (parcelas) => parcelas.reduce((soma, p) => soma + p.partes.minha, 0);
+
+// Quanto da parcela é seu e quanto é de cada pessoa. "dividida": partes iguais
+// entre você e as pessoas (a sobra dos centavos fica com você); "outra": tudo
+// das pessoas, e a sobra fica com a primeira
+function partesDaParcela(compra, valor) {
+  const divisao = compra.Divisao;
+  if (!divisao || !divisao.pessoas || !divisao.pessoas.length) return { minha: valor, outros: {} };
+
+  const pessoas = divisao.pessoas;
+  const centavos = Math.round(valor * 100);
+  const cabecas = divisao.tipo === 'dividida' ? pessoas.length + 1 : pessoas.length;
+  const base = Math.floor(centavos / cabecas);
+  const sobra = centavos - base * cabecas;
+
+  const outros = {};
+  pessoas.forEach((pessoa) => { outros[pessoa] = base / 100; });
+  if (divisao.tipo === 'dividida') return { minha: (base + sobra) / 100, outros };
+  outros[pessoas[0]] = (base + sobra) / 100;
+  return { minha: 0, outros };
+}
+
+function textoDivisao(divisao) {
+  if (!divisao) return '';
+  return divisao.tipo === 'dividida'
+    ? `Dividida com ${divisao.pessoas.join(', ')}`
+    : `De ${divisao.pessoas.join(', ')}`;
+}
 
 // Fatura mais próxima que ainda não venceu, considerando todos os cartões
 function proximaFaturaAVencer() {
@@ -2079,7 +2114,9 @@ function renderizarFatura() {
 
   let total = 0;
   let aPagar = 0;
+  let minhaParte = 0;
   let quantidade = 0;
+  const aReceber = {}; // pessoa → { valor, compras }
   faturaCartoes.innerHTML = '';
 
   cartoes.forEach((cartao) => {
@@ -2087,16 +2124,27 @@ function renderizarFatura() {
     const totalCartao = somarParcelas(parcelas);
     const paga = faturasPagas.find((p) => p.Cartao === cartao.id && p.Mes === mesFatura);
     total += totalCartao;
+    minhaParte += somarMinhaParte(parcelas);
     quantidade += parcelas.length;
     if (!paga) aPagar += totalCartao;
+    parcelas.forEach(({ partes }) => {
+      Object.entries(partes.outros).forEach(([pessoa, valor]) => {
+        const conta = (aReceber[pessoa] = aReceber[pessoa] || { valor: 0, compras: 0 });
+        conta.valor += valor;
+        conta.compras += 1;
+      });
+    });
     faturaCartoes.appendChild(criarBlocoCartao(cartao, parcelas, totalCartao, paga));
   });
 
   animarValor(faturaTotal, total);
   const partes = [textoParcelas(quantidade)];
+  if (minhaParte < total - 0.005) partes.push(`sua parte ${formatarMoeda(minhaParte)}`);
   if (total > 0 && aPagar < 0.005) partes.push('tudo pago');
   else if (aPagar < total - 0.005) partes.push(`${formatarMoeda(aPagar)} a pagar`);
   faturaSub.textContent = cartoes.length ? partes.join(' · ') : '';
+
+  renderizarAReceber(aReceber);
 
   renderizarFaturaFutura();
 }
@@ -2120,10 +2168,20 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
   datas.className = 'fatura-cartao-datas';
   datas.textContent = `vence ${dataCurta(mesFatura, cartao.Vencimento)} · fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`;
   titulo.append(nome, datas);
+  const totais = document.createElement('div');
+  totais.className = 'fatura-cartao-totais';
   const valor = document.createElement('span');
   valor.className = 'fatura-cartao-total';
   valor.textContent = formatarMoeda(totalCartao);
-  cabecalho.append(titulo, valor);
+  totais.appendChild(valor);
+  const minha = somarMinhaParte(parcelas);
+  if (minha < totalCartao - 0.005) {
+    const parte = document.createElement('span');
+    parte.className = 'fatura-cartao-parte';
+    parte.textContent = `sua parte ${formatarMoeda(minha)}`;
+    totais.appendChild(parte);
+  }
+  cabecalho.append(titulo, totais);
   bloco.appendChild(cabecalho);
 
   bloco.appendChild(criarStatusFatura(cartao, totalCartao, paga));
@@ -2138,7 +2196,7 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
 
   parcelas
     .sort((a, b) => b.compra.Data.localeCompare(a.compra.Data))
-    .forEach(({ compra, numero, valor: valorParcela }) => {
+    .forEach(({ compra, numero, valor: valorParcela, partes }) => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'mini-lista-item';
@@ -2151,6 +2209,14 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
       info.className = 'parcela-info';
       info.textContent = `${compra.Parcelas > 1 ? `${numero}/${compra.Parcelas}` : 'à vista'} · compra em ${formatarData(compra.Data).slice(0, 5)}`;
       textos.append(descricao, info);
+      if (compra.Divisao) {
+        const divisao = document.createElement('span');
+        divisao.className = 'parcela-divisao';
+        divisao.textContent = compra.Divisao.tipo === 'dividida'
+          ? `${textoDivisao(compra.Divisao)} · sua parte ${formatarMoeda(partes.minha)}`
+          : textoDivisao(compra.Divisao);
+        textos.appendChild(divisao);
+      }
       const valorItem = document.createElement('span');
       valorItem.className = 'mini-lista-valor';
       valorItem.textContent = formatarMoeda(valorParcela);
@@ -2230,6 +2296,30 @@ function criarStatusFatura(cartao, totalCartao, paga) {
   return status;
 }
 
+function renderizarAReceber(aReceber) {
+  const pessoas = Object.keys(aReceber).sort((a, b) => aReceber[b].valor - aReceber[a].valor);
+  faturaReceber.hidden = pessoas.length === 0;
+  listaReceber.innerHTML = '';
+  pessoas.forEach((pessoa) => {
+    const linha = document.createElement('div');
+    linha.className = 'mini-lista-item receber-item';
+    const textos = document.createElement('span');
+    textos.className = 'parcela-textos';
+    const nome = document.createElement('span');
+    nome.className = 'parcela-descricao';
+    nome.textContent = pessoa;
+    const info = document.createElement('span');
+    info.className = 'parcela-info';
+    info.textContent = textoParcelas(aReceber[pessoa].compras);
+    textos.append(nome, info);
+    const valor = document.createElement('span');
+    valor.className = 'mini-lista-valor';
+    valor.textContent = formatarMoeda(aReceber[pessoa].valor);
+    linha.append(textos, valor);
+    listaReceber.appendChild(linha);
+  });
+}
+
 function renderizarFaturaFutura() {
   const entradas = [];
   for (let i = 0; i < 6; i += 1) {
@@ -2303,6 +2393,42 @@ function lerUltimoCartao() {
   try { return Number(localStorage.getItem('ultimoCartao')); } catch (e) { return null; }
 }
 
+function lerPessoas() {
+  const nomes = compraPessoas.value.split(',').map((p) => p.trim()).filter(Boolean);
+  return [...new Set(nomes)];
+}
+
+// "Só minha" esconde o campo de pessoas; os outros dois mostram com o rótulo certo
+function atualizarCampoPessoas() {
+  const tipo = formCompra.elements.divisao.value;
+  campoPessoas.hidden = tipo === 'minha';
+  compraPessoas.required = tipo !== 'minha';
+  rotuloPessoas.textContent = tipo === 'outra' ? 'De quem é' : 'Com quem (separe por vírgula)';
+  compraPessoas.placeholder = tipo === 'outra' ? 'Ex.: Ana' : 'Ex.: Ana, Bia';
+}
+
+function divisaoDoFormulario() {
+  const tipo = formCompra.elements.divisao.value;
+  if (tipo === 'minha') return null;
+  const pessoas = lerPessoas();
+  return pessoas.length ? { tipo, pessoas } : null;
+}
+
+// Nomes já usados em outras compras, pra sugerir
+function preencherOpcoesPessoas() {
+  const nomes = new Set();
+  compras.forEach((c) => (c.Divisao ? c.Divisao.pessoas : []).forEach((p) => nomes.add(p)));
+  preencherDatalist(opcoesPessoas, [...nomes].sort((a, b) => a.localeCompare(b)));
+}
+
+formCompra.querySelectorAll('input[name="divisao"]').forEach((opcao) => {
+  opcao.addEventListener('change', () => {
+    atualizarCampoPessoas();
+    atualizarPreviaCompra();
+  });
+});
+compraPessoas.addEventListener('input', atualizarPreviaCompra);
+
 function abrirGavetaCompra(compra = null) {
   compraEditando = compra;
   erroCompra.hidden = true;
@@ -2317,15 +2443,21 @@ function abrirGavetaCompra(compra = null) {
     compraData.value = compra.Data;
     compraParcelas.value = compra.Parcelas;
     compraCartao.value = compra.Cartao;
+    formCompra.elements.divisao.value = compra.Divisao ? compra.Divisao.tipo : 'minha';
+    compraPessoas.value = compra.Divisao ? compra.Divisao.pessoas.join(', ') : '';
   } else {
     compraValor.value = '';
     compraDescricao.value = '';
     compraData.value = formatarIso(new Date());
     compraParcelas.value = 1;
+    formCompra.elements.divisao.value = 'minha';
+    compraPessoas.value = '';
     const ultimo = lerUltimoCartao();
     if (cartoes.some((c) => c.id === ultimo)) compraCartao.value = ultimo;
   }
 
+  preencherOpcoesPessoas();
+  atualizarCampoPessoas();
   atualizarPreviaCompra();
   gavetaCompra.showModal();
   if (!compra) compraValor.focus();
@@ -2341,9 +2473,20 @@ function atualizarPreviaCompra() {
     return;
   }
   const primeira = primeiraFatura(compraData.value, cartao);
-  compraPrevia.textContent = parcelas === 1
+  const valorParcela = valorDaParcela(total, parcelas, 1);
+  const linhas = [parcelas === 1
     ? `À vista · fatura de ${nomeMes(primeira)}`
-    : `${parcelas}× de ${formatarMoeda(valorDaParcela(total, parcelas, 1))} · de ${nomeMes(primeira)} a ${nomeMes(somarMeses(primeira, parcelas - 1))}`;
+    : `${parcelas}× de ${formatarMoeda(valorParcela)} · de ${nomeMes(primeira)} a ${nomeMes(somarMeses(primeira, parcelas - 1))}`];
+
+  const divisao = divisaoDoFormulario();
+  if (divisao) {
+    const partes = partesDaParcela({ Divisao: divisao }, valorParcela);
+    const porParcela = parcelas > 1 ? ' por parcela' : '';
+    linhas.push(divisao.tipo === 'dividida'
+      ? `Sua parte ${formatarMoeda(partes.minha)}${porParcela} · ${divisao.pessoas.length === 1 ? divisao.pessoas[0] : 'cada um'} ${formatarMoeda(partes.outros[divisao.pessoas[0]])}`
+      : `Você não paga nada · ${divisao.pessoas.join(', ')} ${formatarMoeda(partes.outros[divisao.pessoas[0]])}${divisao.pessoas.length > 1 ? ' cada' : ''}${porParcela}`);
+  }
+  compraPrevia.textContent = linhas.join('\n');
 }
 
 [compraValor, compraParcelas, compraData, compraCartao].forEach((campo) => {
@@ -2360,7 +2503,14 @@ async function salvarCompra(evento) {
     Valor: lerValor(compraValor.value),
     Parcelas: parseInt(compraParcelas.value, 10),
     Cartao: Number(compraCartao.value),
+    Divisao: divisaoDoFormulario(),
   };
+
+  if (formCompra.elements.divisao.value !== 'minha' && !compra.Divisao) {
+    erroCompra.textContent = 'Informe com quem a compra é dividida, ou de quem ela é.';
+    erroCompra.hidden = false;
+    return;
+  }
 
   if (!(compra.Valor > 0)) {
     erroCompra.textContent = 'Valor inválido. Use algo como 1.200,00.';
