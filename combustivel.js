@@ -35,7 +35,9 @@ const botaoExcluirAbast = document.getElementById('botao-excluir-abast');
 const erroAbast = document.getElementById('erro-abast');
 
 let abastecimentos = [];
-let veiculoFiltro = null; // null = todos
+// Veículo mostrado na tela: cada um tem seu resumo e sua lista (km/l de
+// carro e de moto não se misturam). Lembrado entre aberturas do app.
+let veiculoFiltro = null;
 let abastecimentoEditando = null;
 let precoDigitado = false; // mexeu no preço nesta abertura: não troca mais sozinho
 const abastecimentosRemovendo = new Set();
@@ -116,39 +118,51 @@ function veiculosCadastrados() {
 
 // ---------- Tela ----------
 
-function renderizarCombustivel() {
-  const veiculos = veiculosCadastrados();
-  if (veiculoFiltro && !veiculos.includes(veiculoFiltro)) veiculoFiltro = null;
-  renderizarChipsVeiculos(veiculos);
-
-  const lista = abastecimentos.filter((a) => !veiculoFiltro || a.Veiculo === veiculoFiltro);
-  const rendimentos = calcularRendimentos();
-  renderizarResumoCombustivel(lista, rendimentos);
-  renderizarListaAbastecimentos(lista, rendimentos, veiculos.length > 1);
+function escolherVeiculo(veiculo) {
+  veiculoFiltro = veiculo;
+  salvarPreferencia('veiculoVisto', veiculo);
 }
 
-function renderizarChipsVeiculos(veiculos) {
+function renderizarCombustivel() {
+  const veiculos = veiculosCadastrados();
+  // Sem escolha válida: o último visto, senão o último abastecido, senão o primeiro
+  if (!veiculos.includes(veiculoFiltro)) {
+    const candidatos = [lerPreferencia('veiculoVisto'), lerPreferencia('ultimoVeiculo')];
+    veiculoFiltro = candidatos.find((v) => veiculos.includes(v)) || veiculos[0] || null;
+  }
+  renderizarSeletorVeiculos(veiculos);
+
+  const lista = abastecimentos.filter((a) => a.Veiculo === veiculoFiltro);
+  const rendimentos = calcularRendimentos();
+  renderizarResumoCombustivel(lista, rendimentos);
+  renderizarListaAbastecimentos(lista, rendimentos);
+}
+
+// Botões lado a lado, um por veículo; só aparece com mais de um
+function renderizarSeletorVeiculos(veiculos) {
   combustivelVeiculos.hidden = veiculos.length < 2;
   combustivelVeiculos.innerHTML = '';
-  [null, ...veiculos].forEach((veiculo) => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'botao-chip';
-    chip.textContent = veiculo || 'Todos';
-    chip.classList.toggle('botao-filtros-ativo', veiculo === veiculoFiltro);
-    chip.setAttribute('aria-pressed', String(veiculo === veiculoFiltro));
-    chip.addEventListener('click', () => {
-      veiculoFiltro = veiculo;
+  combustivelVeiculos.style.setProperty('--colunas', veiculos.length);
+  veiculos.forEach((veiculo) => {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'seletor-veiculo-opcao';
+    botao.textContent = veiculo;
+    botao.classList.toggle('seletor-veiculo-ativo', veiculo === veiculoFiltro);
+    botao.setAttribute('aria-pressed', String(veiculo === veiculoFiltro));
+    botao.addEventListener('click', () => {
+      escolherVeiculo(veiculo);
       renderizarCombustivel();
     });
-    combustivelVeiculos.appendChild(chip);
+    combustivelVeiculos.appendChild(botao);
   });
 }
 
 // Média só dos abastecimentos já fechados (que têm o km do seguinte)
 function renderizarResumoCombustivel(lista, rendimentos) {
   const fechados = lista.filter((a) => rendimentos.get(a.id).km > 0);
-  combMediaRotulo.textContent = 'Consumo médio';
+  const doVeiculo = veiculoFiltro ? ` · ${veiculoFiltro}` : '';
+  combMediaRotulo.textContent = `Consumo médio${doVeiculo}`;
   if (!fechados.length) {
     combMediaKm.textContent = '—';
     combMediaSub.textContent = lista.length
@@ -170,12 +184,12 @@ function renderizarResumoCombustivel(lista, rendimentos) {
       `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
     return;
   }
-  combMediaRotulo.textContent = 'Cada abastecimento rende';
+  combMediaRotulo.textContent = `Cada abastecimento rende${doVeiculo}`;
   combMediaKm.textContent = formatarKm(kmTotal / fechados.length);
   combMediaSub.textContent = `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
 }
 
-function renderizarListaAbastecimentos(lista, rendimentos, mostrarVeiculo) {
+function renderizarListaAbastecimentos(lista, rendimentos) {
   listaAbastecimentos.innerHTML = '';
   abastecimentosVazio.hidden = lista.length > 0;
 
@@ -194,7 +208,6 @@ function renderizarListaAbastecimentos(lista, rendimentos, mostrarVeiculo) {
     const info = document.createElement('span');
     info.className = 'parcela-info';
     const partesInfo = [];
-    if (mostrarVeiculo) partesInfo.push(a.Veiculo);
     if (litros) partesInfo.push(`${umaCasa(litros)} L a ${formatarMoeda(a.PrecoLitro)}`);
     else partesInfo.push(`parcial ${formatarKm(a.Km)}`);
     info.textContent = partesInfo.join(' · ');
@@ -344,6 +357,8 @@ async function salvarAbastecimento(evento) {
     }
     salvarPreferencia('ultimoVeiculo', abastecimento.Veiculo);
     salvarPreferencia('ultimoCombustivel', abastecimento.Combustivel);
+    // Mostra o veículo do que acabou de salvar (pode ser o outro)
+    escolherVeiculo(abastecimento.Veiculo);
     gavetaAbastecimento.close();
     mostrarNotificacao(editando
       ? 'Abastecimento atualizado'

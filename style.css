@@ -2142,7 +2142,40 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 
 /* ---------- Combustível ---------- */
 
-.combustivel-veiculos { margin-bottom: 14px; }
+/* Seletor Carro | Moto no topo da aba (--colunas vem do script) */
+.seletor-veiculo {
+  display: grid;
+  grid-template-columns: repeat(var(--colunas, 2), minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 4px;
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.seletor-veiculo-opcao {
+  padding: 11px 10px;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  color: var(--tinta-muda);
+  font: inherit;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida);
+}
+
+.seletor-veiculo-opcao:hover { color: var(--tinta); }
+
+.seletor-veiculo-ativo,
+.seletor-veiculo-ativo:hover {
+  background: var(--gradiente);
+  color: #fff;
+}
 
 .combustivel-resumo { margin-bottom: 16px; }
 
