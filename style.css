@@ -1967,3 +1967,29 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 /* Linha só informativa: sem cara de botão */
 .receber-item { cursor: default; }
 .receber-item:hover { background: none; }
+
+/* Expandir/recolher os lançamentos de um cartão na fatura */
+.alternar-parcelas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--borda);
+  background: none;
+  color: var(--acento-claro);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--t-rapida);
+}
+
+.alternar-parcelas:hover { color: #fff; }
+
+.alternar-parcelas-seta { display: flex; width: 16px; height: 16px; transition: transform var(--t-base); }
+.alternar-parcelas-seta svg { width: 100%; height: 100%; }
+.alternar-parcelas-aberta .alternar-parcelas-seta { transform: rotate(180deg); }

@@ -2194,6 +2194,9 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
     return bloco;
   }
 
+  const lista = document.createElement('div');
+  lista.className = 'fatura-parcelas';
+
   parcelas
     .sort((a, b) => b.compra.Data.localeCompare(a.compra.Data))
     .forEach(({ compra, numero, valor: valorParcela, partes }) => {
@@ -2222,10 +2225,52 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
       valorItem.textContent = formatarMoeda(valorParcela);
       item.append(textos, valorItem);
       item.addEventListener('click', () => abrirGavetaCompra(compra));
-      bloco.appendChild(item);
+      lista.appendChild(item);
     });
 
+  bloco.append(lista, criarAlternadorParcelas(cartao.id, parcelas.length, lista));
   return bloco;
+}
+
+// Lista de lançamentos de cada cartão pode ser recolhida. Sem escolha salva,
+// começa aberta até 5 lançamentos e recolhida acima disso.
+const LANCAMENTOS_ABERTOS_POR_PADRAO = 5;
+
+let listasFatura = (() => {
+  try { return JSON.parse(localStorage.getItem('listasFatura')) || {}; } catch (e) { return {}; }
+})();
+
+function listaFaturaAberta(cartaoId, quantidade) {
+  const salvo = listasFatura[cartaoId];
+  return salvo === undefined ? quantidade <= LANCAMENTOS_ABERTOS_POR_PADRAO : salvo;
+}
+
+function criarAlternadorParcelas(cartaoId, quantidade, lista) {
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.className = 'alternar-parcelas';
+  const texto = document.createElement('span');
+  const seta = document.createElement('span');
+  seta.className = 'alternar-parcelas-seta';
+  seta.setAttribute('aria-hidden', 'true');
+  seta.innerHTML = SETA_SVG;
+  botao.append(texto, seta);
+
+  const aplicar = (aberta) => {
+    lista.hidden = !aberta;
+    botao.classList.toggle('alternar-parcelas-aberta', aberta);
+    botao.setAttribute('aria-expanded', String(aberta));
+    texto.textContent = aberta ? 'Recolher lançamentos' : `Ver ${textoLancamentos(quantidade)}`;
+  };
+  aplicar(listaFaturaAberta(cartaoId, quantidade));
+
+  botao.addEventListener('click', () => {
+    const aberta = lista.hidden;
+    listasFatura[cartaoId] = aberta;
+    try { localStorage.setItem('listasFatura', JSON.stringify(listasFatura)); } catch (e) {}
+    aplicar(aberta);
+  });
+  return botao;
 }
 
 // Paga: selo verde e "Desfazer". Não paga: botão que abre data e banco do pagamento
