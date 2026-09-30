@@ -2139,3 +2139,32 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 
 .botao-voltar:hover { background: var(--acento-suave); }
 .botao-voltar svg { width: 18px; height: 18px; }
+
+/* ---------- Módulo sem conteúdo ainda ---------- */
+
+.modulo-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.modulo-vazio .titulo-grafico { margin-bottom: 0; }
+
+.modulo-vazio-icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+}
+
+.modulo-vazio-icone svg { width: 28px; height: 28px; }
+
+.modulo-vazio-texto { font-size: 0.9rem; color: var(--tinta-muda); }

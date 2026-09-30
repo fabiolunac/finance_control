@@ -77,6 +77,10 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
         <span class="aba-rotulo">Fatura</span>
       </button>
+      <button id="aba-combustivel" data-modulo="combustivel" class="aba" type="button" hidden>
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
+        <span class="aba-rotulo">Início</span>
+      </button>
       <button id="botao-adicionar" class="aba-mais" type="button" aria-label="Adicionar gasto" title="Adicionar gasto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -278,6 +282,19 @@
 
     </section>
 
+    <!-- ========== Módulo Combustível (combustivel.js) ========== -->
+    <section id="secao-combustivel" hidden>
+
+      <div class="cartao-grafico modulo-vazio">
+        <span class="modulo-vazio-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
+        </span>
+        <h2 class="titulo-grafico">Combustível</h2>
+        <p class="modulo-vazio-texto">Ainda vazio. Os abastecimentos vão aparecer aqui.</p>
+      </div>
+
+    </section>
+
     <section id="secao-configuracoes" hidden>
 
       <h2 class="titulo-secao">Geral</h2>
@@ -462,6 +479,8 @@
   </div>
 
   <script src="script.js"></script>
+  <!-- Módulos: cada um num arquivo, depois do núcleo -->
+  <script src="combustivel.js"></script>
 
   <!-- Registro do Service Worker: é isso que torna o site um PWA -->
   <script>

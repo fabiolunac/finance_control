@@ -550,6 +550,12 @@ function selecionarAba(abaEscolhida) {
 
 abas.forEach(([aba]) => aba.addEventListener('click', () => selecionarAba(aba)));
 
+// Pra módulos em outros arquivos acrescentarem suas abas
+function registrarAba(aba, secao) {
+  abas.push([aba, secao]);
+  aba.addEventListener('click', () => selecionarAba(aba));
+}
+
 document.getElementById('voltar-configuracoes').addEventListener('click', () => selecionarAba(abaConfiguracoes));
 
 // ---------- Gráficos ----------
@@ -1290,8 +1296,10 @@ botaoExcluirGasto.addEventListener('click', () => {
   removerGasto(gasto);
 });
 
-// O "+" faz o que o módulo ativo definir (ver MODULOS)
-botaoAdicionar.addEventListener('click', () => moduloAtual.aoAdicionar());
+// O "+" faz o que o módulo ativo definir (ver MODULOS); sem ação, ele some
+botaoAdicionar.addEventListener('click', () => {
+  if (moduloAtual.aoAdicionar) moduloAtual.aoAdicionar();
+});
 botaoFecharGaveta.addEventListener('click', () => gavetaAdicionar.close());
 
 // Clique no fundo escurecido (fora do corpo da gaveta) fecha
@@ -2859,11 +2867,12 @@ const botaoModulo = document.getElementById('botao-modulo');
 const nomeModulo = document.getElementById('nome-modulo');
 const menuModulos = document.getElementById('menu-modulos');
 
-let moduloAtual = (() => {
-  let salvo = null;
-  try { salvo = localStorage.getItem('modulo'); } catch (e) {}
-  return MODULOS.find((m) => m.id === salvo) || MODULOS[0];
-})();
+let moduloAtual = MODULOS[0];
+
+// Pra módulos em outros arquivos (combustivel.js, ...) se cadastrarem
+function registrarModulo(modulo) {
+  MODULOS.push(modulo);
+}
 
 function fecharMenuModulos() {
   menuModulos.hidden = true;
@@ -2900,6 +2909,7 @@ function aplicarModulo(modulo, abrir) {
   document.querySelectorAll('.abas [data-modulo]').forEach((aba) => {
     aba.hidden = aba.dataset.modulo !== modulo.id;
   });
+  botaoAdicionar.hidden = !modulo.aoAdicionar;
   renderizarMenuModulos();
   if (abrir) selecionarAba(modulo.abaInicial);
 }
@@ -2917,7 +2927,14 @@ document.addEventListener('keydown', (evento) => {
   if (evento.key === 'Escape') fecharMenuModulos();
 });
 
-aplicarModulo(moduloAtual, moduloAtual !== MODULOS[0]);
+// Só depois de todos os scripts: os outros módulos precisam ter se cadastrado
+// antes de restaurar o último módulo aberto
+document.addEventListener('DOMContentLoaded', () => {
+  let salvo = null;
+  try { salvo = localStorage.getItem('modulo'); } catch (e) {}
+  const modulo = MODULOS.find((m) => m.id === salvo) || MODULOS[0];
+  aplicarModulo(modulo, modulo !== MODULOS[0]);
+});
 
 // ---------- Indicador online/offline ----------
 
