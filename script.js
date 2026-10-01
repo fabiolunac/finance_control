@@ -702,11 +702,12 @@ function preencherFiltroDiario() {
   meses.forEach((mes) => {
     const opcao = document.createElement('option');
     opcao.value = mes;
-    opcao.textContent = mes;
+    opcao.textContent = nomeMesTitulo(mes);
     graficoDiaMes.appendChild(opcao);
   });
 
   if (meses.includes(atual)) graficoDiaMes.value = atual;
+  atualizarPassoMes(graficoDiaMes);
 }
 
 function renderizarGraficoDiario() {
@@ -728,12 +729,42 @@ function renderizarGraficoDiario() {
   renderizarBarras(graficoDiario, entradas);
 }
 
-graficoDiaMes.addEventListener('change', atualizarGraficosDoMes);
+ligarPassoMes(graficoDiaMes, atualizarGraficosDoMes);
 
 botaoMesAtualDia.addEventListener('click', () => {
   graficoDiaMes.value = mesAtual();
+  atualizarPassoMes(graficoDiaMes);
   atualizarGraficosDoMes();
 });
+
+// ---------- Seletor de mês com setas ----------
+// As opções vêm do mais novo pro mais antigo: "anterior" (data-passo=1) desce na lista
+
+function ligarPassoMes(select, aoMudar) {
+  const setas = select.parentElement.querySelectorAll('.passo-mes-seta');
+  setas.forEach((seta) => seta.addEventListener('click', () => {
+    const indice = select.selectedIndex + Number(seta.dataset.passo);
+    if (indice < 0 || indice >= select.options.length) return;
+    select.selectedIndex = indice;
+    atualizarPassoMes(select);
+    aoMudar();
+  }));
+  select.addEventListener('change', () => {
+    atualizarPassoMes(select);
+    aoMudar();
+  });
+}
+
+function atualizarPassoMes(select) {
+  const [anterior, proximo] = select.parentElement.querySelectorAll('.passo-mes-seta');
+  anterior.disabled = select.selectedIndex >= select.options.length - 1;
+  proximo.disabled = select.selectedIndex <= 0;
+}
+
+function nomeMesTitulo(mes) {
+  const nome = nomeMes(mes);
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
 
 // ---------- Visão geral ----------
 
@@ -826,10 +857,11 @@ function renderizarVisaoGeral() {
   renderizarGraficoSemanal();
 }
 
-visaoMes.addEventListener('change', renderizarVisaoGeral);
+ligarPassoMes(visaoMes, renderizarVisaoGeral);
 
 botaoMesAtualVisao.addEventListener('click', () => {
   visaoMes.value = mesAtual();
+  atualizarPassoMes(visaoMes);
   renderizarVisaoGeral();
 });
 
@@ -1001,12 +1033,13 @@ function preencherFiltroVisao() {
   meses.forEach((mes) => {
     const opcao = document.createElement('option');
     opcao.value = mes;
-    opcao.textContent = mes;
+    opcao.textContent = nomeMesTitulo(mes);
     visaoMes.appendChild(opcao);
   });
 
   if (meses.includes(atual)) visaoMes.value = atual;
   else if (meses.includes(mesAtual())) visaoMes.value = mesAtual();
+  atualizarPassoMes(visaoMes);
 }
 
 function renderizarGraficoSemanal() {

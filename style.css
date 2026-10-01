@@ -1170,6 +1170,74 @@ body {
 
 .filtros-dia { align-items: center; }
 
+/* Seletor de mês: setas nas pontas e o nome do mês no meio (clicável pra pular) */
+.passo-mes {
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+  max-width: 340px;
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid var(--borda);
+  border-radius: 99px;
+  background: var(--cartao);
+  transition: border-color var(--t-rapida), box-shadow var(--t-rapida);
+}
+
+.passo-mes:hover { border-color: var(--borda-forte); }
+
+.passo-mes:focus-within {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+.passo-mes-seta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tinta-fraca);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida), opacity var(--t-rapida), transform var(--t-rapida);
+}
+
+.passo-mes-seta svg { width: 18px; height: 18px; }
+.passo-mes-seta:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento-claro); }
+.passo-mes-seta:active:not(:disabled) { transform: scale(.92); }
+.passo-mes-seta:disabled { opacity: .25; cursor: default; }
+.passo-mes-seta:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+
+.passo-mes-select {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+  font-family: var(--fonte-titulo);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+  color-scheme: dark;
+  outline: none;
+}
+
+.passo-mes-select option { background: var(--cartao-solido); color: var(--tinta); font-family: inherit; }
+
 .botao-chip {
   flex: 0 0 auto;
   font: inherit;

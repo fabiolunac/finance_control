@@ -169,7 +169,11 @@
 
       <!-- Mês dos gráficos abaixo (por dia e por categoria) -->
       <div class="filtros filtros-dia filtros-mes-graficos">
-        <select id="grafico-dia-mes" class="select-basico" aria-label="Mês dos gráficos por dia e por categoria"></select>
+        <div class="passo-mes">
+          <button class="passo-mes-seta" type="button" data-passo="1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <select id="grafico-dia-mes" class="passo-mes-select" aria-label="Mês dos gráficos por dia e por categoria"></select>
+          <button class="passo-mes-seta" type="button" data-passo="-1" aria-label="Próximo mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
         <button id="botao-mes-atual-dia" class="botao-chip" type="button">Mês atual</button>
       </div>
 
@@ -198,7 +202,11 @@
     <section id="secao-visao-geral">
 
       <div class="filtros filtros-dia filtros-visao">
-        <select id="visao-mes" class="select-basico" aria-label="Selecionar mês"></select>
+        <div class="passo-mes">
+          <button class="passo-mes-seta" type="button" data-passo="1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <select id="visao-mes" class="passo-mes-select" aria-label="Selecionar mês"></select>
+          <button class="passo-mes-seta" type="button" data-passo="-1" aria-label="Próximo mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
         <button id="botao-mes-atual-visao" class="botao-chip" type="button">Mês atual</button>
         <button class="botao-chip botao-fatura" type="button" aria-pressed="false">Com fatura</button>
       </div>
