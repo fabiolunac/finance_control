@@ -29,9 +29,9 @@ TABELA_ODOMETROS = """CREATE TABLE IF NOT EXISTS odometros (
     Veiculo TEXT PRIMARY KEY, Km REAL NOT NULL, Parcial REAL NOT NULL DEFAULT 0,
     Data TEXT NOT NULL, UltimoId INTEGER NOT NULL DEFAULT 0)"""
 
-# Leituras informadas em 01/10/2026, gravadas só quando a tabela nasce.
-# O nome do veículo é livre: casa por "carro" e "moto" no nome.
-LEITURAS_INICIAIS = {"carro": 65751, "moto": 19732}
+# Leituras informadas em 01/10/2026 (Mobi é o carro, CG a moto), gravadas
+# só enquanto a tabela estiver vazia. O nome do veículo é livre: casa por pedaço do nome.
+LEITURAS_INICIAIS = {"mobi": 65751, "cg": 19732}
 DATA_LEITURAS_INICIAIS = "2026-10-01"
 
 
@@ -63,10 +63,8 @@ def criar_rotas(conectar, checar_token):
             colunas = [row[1] for row in client.execute("PRAGMA table_info(abastecimentos)").rows]
             if "PrecoLitro" not in colunas:
                 client.execute("ALTER TABLE abastecimentos ADD COLUMN PrecoLitro REAL")
-            existia = client.execute(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'odometros'").rows
             client.execute(TABELA_ODOMETROS)
-            if not existia:
+            if not client.execute("SELECT 1 FROM odometros LIMIT 1").rows:
                 semear_odometros(client)
             tabela_pronta = True
 

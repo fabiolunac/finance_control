@@ -25,8 +25,11 @@ const combCalMes = document.getElementById('comb-cal-mes');
 const combCalResumo = document.getElementById('comb-cal-resumo');
 const combCalDetalhe = document.getElementById('comb-cal-detalhe');
 const abastecimentosVazio = document.getElementById('abastecimentos-vazio');
-const combOdometrosCartao = document.getElementById('comb-odometros-cartao');
-const combOdometros = document.getElementById('comb-odometros');
+const combOdometroCartao = document.getElementById('comb-odometro-cartao');
+const combOdometroRotulo = document.getElementById('comb-odometro-rotulo');
+const combOdometroKm = document.getElementById('comb-odometro-km');
+const combOdometroSub = document.getElementById('comb-odometro-sub');
+const botaoOdometro = document.getElementById('botao-odometro');
 
 const gavetaOdometro = document.getElementById('gaveta-odometro');
 const gavetaOdometroTitulo = document.getElementById('gaveta-odometro-titulo');
@@ -168,7 +171,7 @@ function renderizarCombustivel() {
   const lista = abastecimentos.filter((a) => a.Veiculo === veiculoFiltro);
   const rendimentos = calcularRendimentos();
   renderizarResumoCombustivel(lista, rendimentos);
-  renderizarOdometros(veiculos);
+  renderizarOdometro();
   renderizarListaAbastecimentos(lista, rendimentos);
   renderizarCalendarioCombustivel(lista, rendimentos);
 }
@@ -228,40 +231,20 @@ function renderizarResumoCombustivel(lista, rendimentos) {
   combMediaSub.textContent = `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
 }
 
-// Uma linha por veículo, os dois sempre à vista; tocar abre a gaveta pra nova leitura
-function renderizarOdometros(veiculos) {
-  const todos = [...new Set([...veiculos, ...odometros.map((o) => o.Veiculo)])]
-    .sort((a, b) => a.localeCompare(b));
-  combOdometrosCartao.hidden = !todos.length;
-  combOdometros.innerHTML = '';
-
-  todos.forEach((veiculo) => {
-    const atual = odometroAtual(veiculo);
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'mini-lista-item';
-
-    const textos = document.createElement('span');
-    textos.className = 'parcela-textos';
-    const nome = document.createElement('span');
-    nome.className = 'parcela-descricao';
-    nome.textContent = veiculo;
-    const info = document.createElement('span');
-    info.className = 'parcela-info';
-    if (!atual) info.textContent = 'Toque pra informar o odômetro';
-    else if (atual.ultimo) info.textContent = `Atualizado pelo abastecimento de ${formatarData(atual.ultimo.Data).slice(0, 5)}`;
-    else info.textContent = `Informado em ${formatarData(atual.leitura.Data).slice(0, 5)}`;
-    textos.append(nome, info);
-
-    const valor = document.createElement('span');
-    valor.className = 'mini-lista-valor';
-    valor.textContent = atual ? formatarKm(atual.km) : '—';
-
-    item.append(textos, valor);
-    item.addEventListener('click', () => abrirGavetaOdometro(veiculo));
-    combOdometros.appendChild(item);
-  });
+// Odômetro só do veículo escolhido, como o resto da tela
+function renderizarOdometro() {
+  combOdometroCartao.hidden = !veiculoFiltro;
+  if (!veiculoFiltro) return;
+  const atual = odometroAtual(veiculoFiltro);
+  combOdometroRotulo.textContent = `Odômetro · ${veiculoFiltro}`;
+  combOdometroKm.textContent = atual ? formatarKm(atual.km) : '—';
+  if (!atual) combOdometroSub.textContent = 'Ainda não informado';
+  else if (atual.ultimo) combOdometroSub.textContent = `Atualizado pelo abastecimento de ${formatarData(atual.ultimo.Data).slice(0, 5)}`;
+  else combOdometroSub.textContent = `Informado em ${formatarData(atual.leitura.Data).slice(0, 5)}`;
+  botaoOdometro.textContent = atual ? 'Atualizar' : 'Informar';
 }
+
+botaoOdometro.addEventListener('click', () => abrirGavetaOdometro(veiculoFiltro));
 
 function abrirGavetaOdometro(veiculo) {
   veiculoOdometro = veiculo;

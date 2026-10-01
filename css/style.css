@@ -2266,7 +2266,10 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 }
 
 .combustivel-resumo { margin-bottom: 16px; }
-.comb-odometros { margin-bottom: 16px; }
+.cartao-resumo.comb-odometro {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
 
 /* Valor em cima e o que o abastecimento rendeu embaixo, à direita */
 .abast-direita {

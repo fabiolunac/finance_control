@@ -326,10 +326,14 @@
         </div>
       </div>
 
-      <!-- Odômetro de cada veículo: última leitura + parciais registrados depois -->
-      <div id="comb-odometros-cartao" class="cartao-grafico comb-odometros" hidden>
-        <h2 class="titulo-grafico">Odômetro</h2>
-        <div id="comb-odometros"></div>
+      <!-- Odômetro do veículo escolhido: última leitura + parciais registrados depois -->
+      <div id="comb-odometro-cartao" class="cartao-resumo comb-odometro" hidden>
+        <div>
+          <span class="metrica-rotulo" id="comb-odometro-rotulo">Odômetro</span>
+          <span class="resumo-valor" id="comb-odometro-km"></span>
+          <span class="resumo-sub" id="comb-odometro-sub"></span>
+        </div>
+        <button id="botao-odometro" class="botao-chip" type="button">Atualizar</button>
       </div>
 
       <div class="cartao-grafico">
