@@ -39,6 +39,21 @@ const odometroParcial = document.getElementById('odometro-parcial');
 const botaoSalvarOdometro = document.getElementById('botao-salvar-odometro');
 const erroOdometro = document.getElementById('erro-odometro');
 
+const combManutencaoCartao = document.getElementById('comb-manutencao-cartao');
+const combManutencoes = document.getElementById('comb-manutencoes');
+const combManutencaoVazio = document.getElementById('comb-manutencao-vazio');
+const gavetaManutencao = document.getElementById('gaveta-manutencao');
+const gavetaManutencaoTitulo = document.getElementById('gaveta-manutencao-titulo');
+const formManutencao = document.getElementById('form-manutencao');
+const manutencaoNome = document.getElementById('manutencao-nome');
+const manutencaoIntervalo = document.getElementById('manutencao-intervalo');
+const manutencaoUltima = document.getElementById('manutencao-ultima');
+const manutencaoPrevia = document.getElementById('manutencao-previa');
+const botaoSalvarManutencao = document.getElementById('botao-salvar-manutencao');
+const botaoExcluirManutencao = document.getElementById('botao-excluir-manutencao');
+const botaoFeitaAgora = document.getElementById('botao-feita-agora');
+const erroManutencao = document.getElementById('erro-manutencao');
+
 const gavetaAbastecimento = document.getElementById('gaveta-abastecimento');
 const gavetaAbastTitulo = document.getElementById('gaveta-abast-titulo');
 const formAbastecimento = document.getElementById('form-abastecimento');
@@ -48,6 +63,7 @@ const abastKm = document.getElementById('abast-km');
 const abastCombustivel = document.getElementById('abast-combustivel');
 const abastPreco = document.getElementById('abast-preco');
 const abastVeiculo = document.getElementById('abast-veiculo');
+const abastBanco = document.getElementById('abast-banco');
 const opcoesVeiculos = document.getElementById('opcoes-veiculos');
 const abastPrevia = document.getElementById('abast-previa');
 const botaoSalvarAbast = document.getElementById('botao-salvar-abast');
@@ -57,6 +73,8 @@ const erroAbast = document.getElementById('erro-abast');
 let abastecimentos = [];
 let odometros = []; // última leitura de cada veículo
 let veiculoOdometro = null; // veículo aberto na gaveta do odômetro
+let manutencoes = [];
+let manutencaoEditando = null;
 // Veículo mostrado na tela: cada um tem seu resumo e sua lista (km/l de
 // carro e de moto não se misturam). Lembrado entre aberturas do app.
 let veiculoFiltro = null;
@@ -71,6 +89,7 @@ async function carregarAbastecimentos() {
     const dados = await resposta.json();
     abastecimentos = dados.abastecimentos.filter((a) => !abastecimentosRemovendo.has(a.id));
     odometros = dados.odometros || [];
+    manutencoes = dados.manutencoes || [];
     renderizarCombustivel();
   } catch (e) {
     mostrarErro(e.message);
@@ -81,6 +100,12 @@ async function carregarAbastecimentos() {
 
 function formatarKm(km) {
   return `${Math.round(km).toLocaleString('pt-BR')} km`;
+}
+
+// Km inteiro (odômetro, intervalo): "65.751" é sessenta e cinco mil, não 65,751
+function lerKmInteiro(texto) {
+  const digitos = texto.replace(/\D/g, '');
+  return digitos ? Number(digitos) : NaN;
 }
 
 const umaCasa = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -172,6 +197,7 @@ function renderizarCombustivel() {
   const rendimentos = calcularRendimentos();
   renderizarResumoCombustivel(lista, rendimentos);
   renderizarOdometro();
+  renderizarManutencoes();
   renderizarListaAbastecimentos(lista, rendimentos);
   renderizarCalendarioCombustivel(lista, rendimentos);
 }
@@ -262,9 +288,7 @@ async function salvarOdometro(evento) {
   evento.preventDefault();
   erroOdometro.hidden = true;
 
-  // Odômetro é inteiro: "65.751" é sessenta e cinco mil, não 65,751
-  const digitos = odometroKm.value.replace(/\D/g, '');
-  const km = digitos ? Number(digitos) : NaN;
+  const km = lerKmInteiro(odometroKm.value);
   const parcial = odometroParcial.value.trim() ? lerValor(odometroParcial.value) : 0;
   if (Number.isNaN(km)) {
     erroOdometro.textContent = 'Odômetro inválido. Use só o número, como 65751.';
@@ -296,6 +320,194 @@ formOdometro.addEventListener('submit', salvarOdometro);
 document.getElementById('botao-fechar-odometro').addEventListener('click', () => gavetaOdometro.close());
 gavetaOdometro.addEventListener('click', (evento) => {
   if (evento.target === gavetaOdometro) gavetaOdometro.close();
+});
+
+// ---------- Manutenção ----------
+
+// Falta (positivo) ou passou (negativo) em km; null sem odômetro
+function kmAteManutencao(manutencao) {
+  const atual = odometroAtual(manutencao.Veiculo);
+  return atual ? manutencao.UltimaKm + manutencao.IntervaloKm - atual.km : null;
+}
+
+// Mais urgente primeiro; sem odômetro, pela ordem do nome
+function renderizarManutencoes() {
+  combManutencaoCartao.hidden = !veiculoFiltro;
+  if (!veiculoFiltro) return;
+  const doVeiculo = manutencoes
+    .filter((m) => m.Veiculo === veiculoFiltro)
+    .sort((a, b) => (kmAteManutencao(a) ?? Infinity) - (kmAteManutencao(b) ?? Infinity) ||
+      a.Nome.localeCompare(b.Nome));
+  combManutencaoVazio.hidden = doVeiculo.length > 0;
+  combManutencoes.innerHTML = '';
+  doVeiculo.forEach((m) => combManutencoes.appendChild(criarItemManutencao(m)));
+}
+
+function criarItemManutencao(manutencao) {
+  const falta = kmAteManutencao(manutencao);
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = 'mini-lista-item manutencao-item';
+
+  const textos = document.createElement('span');
+  textos.className = 'parcela-textos';
+  const nome = document.createElement('span');
+  nome.className = 'parcela-descricao';
+  nome.textContent = manutencao.Nome;
+  const info = document.createElement('span');
+  info.className = 'parcela-info';
+  info.textContent = `a cada ${formatarKm(manutencao.IntervaloKm)} · feita com ${formatarKm(manutencao.UltimaKm)}`;
+  textos.append(nome, info);
+
+  const valor = document.createElement('span');
+  valor.className = 'mini-lista-valor';
+  if (falta == null) valor.textContent = 'sem odômetro';
+  else if (falta < 0) valor.textContent = `passou ${formatarKm(-falta)}`;
+  else valor.textContent = `faltam ${formatarKm(falta)}`;
+  item.append(textos, valor);
+
+  // Barra do quanto do intervalo já foi rodado: amarela nos últimos 10%, vermelha ao vencer
+  if (falta != null) {
+    const usado = 1 - falta / manutencao.IntervaloKm;
+    const trilha = document.createElement('span');
+    trilha.className = 'progresso-trilha manutencao-trilha';
+    const barra = document.createElement('span');
+    barra.className = 'progresso-barra ' +
+      (usado >= 1 ? 'progresso-critico' : usado >= 0.9 ? 'progresso-alerta' : 'progresso-ok');
+    barra.style.width = `${Math.min(Math.max(usado, 0), 1) * 100}%`;
+    trilha.appendChild(barra);
+    item.appendChild(trilha);
+    valor.classList.toggle('manutencao-vencida', falta < 0);
+  }
+
+  item.addEventListener('click', () => abrirGavetaManutencao(manutencao));
+  return item;
+}
+
+function abrirGavetaManutencao(manutencao = null) {
+  manutencaoEditando = manutencao;
+  erroManutencao.hidden = true;
+  const veiculo = manutencao ? manutencao.Veiculo : veiculoFiltro;
+  gavetaManutencaoTitulo.textContent = `${manutencao ? 'Editar' : 'Nova'} manutenção · ${veiculo}`;
+  botaoSalvarManutencao.textContent = manutencao ? 'Salvar' : 'Adicionar';
+  botaoExcluirManutencao.hidden = !manutencao;
+  const atual = odometroAtual(veiculo);
+  botaoFeitaAgora.hidden = !manutencao || !atual;
+
+  manutencaoNome.value = manutencao ? manutencao.Nome : '';
+  manutencaoIntervalo.value = manutencao ? String(Math.round(manutencao.IntervaloKm)) : '';
+  manutencaoUltima.value = manutencao
+    ? String(Math.round(manutencao.UltimaKm))
+    : atual ? String(Math.round(atual.km)) : '';
+  atualizarPreviaManutencao();
+  gavetaManutencao.showModal();
+  if (!manutencao) manutencaoNome.focus();
+}
+
+function veiculoDaGavetaManutencao() {
+  return manutencaoEditando ? manutencaoEditando.Veiculo : veiculoFiltro;
+}
+
+function atualizarPreviaManutencao() {
+  const intervalo = lerKmInteiro(manutencaoIntervalo.value);
+  const ultima = lerKmInteiro(manutencaoUltima.value);
+  if (!(intervalo > 0) || Number.isNaN(ultima)) {
+    manutencaoPrevia.textContent = '';
+    return;
+  }
+  const proxima = ultima + intervalo;
+  const atual = odometroAtual(veiculoDaGavetaManutencao());
+  let texto = `Próxima com ${formatarKm(proxima)}`;
+  if (atual) {
+    const falta = proxima - atual.km;
+    texto += falta >= 0 ? ` · faltam ${formatarKm(falta)}` : ` · passou ${formatarKm(-falta)}`;
+  }
+  manutencaoPrevia.textContent = texto;
+}
+
+[manutencaoIntervalo, manutencaoUltima].forEach((campo) => {
+  campo.addEventListener('input', atualizarPreviaManutencao);
+});
+
+async function enviarManutencao(ultimaKm) {
+  erroManutencao.hidden = true;
+  const manutencao = {
+    Veiculo: veiculoDaGavetaManutencao(),
+    Nome: manutencaoNome.value.trim(),
+    IntervaloKm: lerKmInteiro(manutencaoIntervalo.value),
+    UltimaKm: ultimaKm,
+  };
+  if (!manutencao.Nome) return;
+  if (!(manutencao.IntervaloKm > 0)) {
+    erroManutencao.textContent = 'Intervalo inválido. Use os km entre uma e outra, como 1000.';
+    erroManutencao.hidden = false;
+    return;
+  }
+  if (Number.isNaN(manutencao.UltimaKm)) {
+    erroManutencao.textContent = 'Odômetro inválido. Use só o número, como 19200.';
+    erroManutencao.hidden = false;
+    return;
+  }
+
+  const editando = manutencaoEditando;
+  botaoSalvarManutencao.disabled = true;
+  botaoFeitaAgora.disabled = true;
+  try {
+    if (editando) {
+      await requisitar('PUT', `/api/abastecimentos/manutencoes/${editando.id}`, manutencao, 'Erro ao salvar a manutenção.');
+    } else {
+      await requisitar('POST', '/api/abastecimentos/manutencoes', manutencao, 'Erro ao gravar a manutenção.');
+    }
+    gavetaManutencao.close();
+    mostrarNotificacao(editando ? `${manutencao.Nome} atualizada` : `${manutencao.Nome} cadastrada`);
+    await carregarAbastecimentos();
+  } catch (e) {
+    erroManutencao.textContent = e.message;
+    erroManutencao.hidden = false;
+  } finally {
+    botaoSalvarManutencao.disabled = false;
+    botaoFeitaAgora.disabled = false;
+  }
+}
+
+formManutencao.addEventListener('submit', (evento) => {
+  evento.preventDefault();
+  enviarManutencao(lerKmInteiro(manutencaoUltima.value));
+});
+
+// Acabou de fazer: a próxima conta a partir do odômetro de agora
+botaoFeitaAgora.addEventListener('click', () => {
+  const atual = odometroAtual(veiculoDaGavetaManutencao());
+  if (atual) enviarManutencao(Math.round(atual.km));
+});
+
+botaoExcluirManutencao.addEventListener('click', () => {
+  const manutencao = manutencaoEditando;
+  gavetaManutencao.close();
+  removerComDesfazer(`${manutencao.Nome} removida`, {
+    tirar: () => {
+      manutencoes = manutencoes.filter((m) => m.id !== manutencao.id);
+      renderizarCombustivel();
+    },
+    devolver: () => {
+      manutencoes = [...manutencoes, manutencao];
+      renderizarCombustivel();
+    },
+    enviar: async () => {
+      try {
+        await requisitar('DELETE', `/api/abastecimentos/manutencoes/${manutencao.id}`, null, 'Erro ao remover a manutenção.');
+      } catch (e) {
+        mostrarErro(e.message);
+        carregarAbastecimentos();
+      }
+    },
+  });
+});
+
+document.getElementById('botao-nova-manutencao').addEventListener('click', () => abrirGavetaManutencao());
+document.getElementById('botao-fechar-manutencao').addEventListener('click', () => gavetaManutencao.close());
+gavetaManutencao.addEventListener('click', (evento) => {
+  if (evento.target === gavetaManutencao) gavetaManutencao.close();
 });
 
 function renderizarListaAbastecimentos(lista, rendimentos) {
@@ -432,6 +644,7 @@ function abrirGavetaAbastecimento(abastecimento = null) {
   botaoSalvarAbast.textContent = abastecimento ? 'Salvar' : 'Adicionar';
   botaoExcluirAbast.hidden = !abastecimento;
   preencherDatalist(opcoesVeiculos, veiculosCadastrados());
+  preencherDatalist(opcoesBanco, valoresUnicos('banco').filter(Boolean).sort((a, b) => a.localeCompare(b)));
 
   if (abastecimento) {
     abastValor.value = String(abastecimento.Valor).replace('.', ',');
@@ -440,6 +653,7 @@ function abrirGavetaAbastecimento(abastecimento = null) {
     abastCombustivel.value = abastecimento.Combustivel;
     abastVeiculo.value = abastecimento.Veiculo;
     abastPreco.value = abastecimento.PrecoLitro ? String(abastecimento.PrecoLitro).replace('.', ',') : '';
+    abastBanco.value = abastecimento.Banco || '';
   } else {
     abastValor.value = '';
     abastData.value = formatarIso(new Date());
@@ -447,6 +661,7 @@ function abrirGavetaAbastecimento(abastecimento = null) {
     // Sugere o veículo e o combustível da última vez (ou o veículo filtrado)
     abastVeiculo.value = veiculoFiltro || lerPreferencia('ultimoVeiculo');
     abastCombustivel.value = lerPreferencia('ultimoCombustivel') || 'Gasolina';
+    abastBanco.value = bancoSugerido();
     preencherPrecoBase();
   }
   precoDigitado = false;
@@ -454,6 +669,17 @@ function abrirGavetaAbastecimento(abastecimento = null) {
   atualizarPreviaAbastecimento();
   gavetaAbastecimento.showModal();
   if (!abastecimento) abastValor.focus();
+}
+
+// O que foi usado no último abastecimento (vazio vale: não lançou); na
+// primeira vez, o último banco usado em Finanças
+function bancoSugerido() {
+  try {
+    const salvo = localStorage.getItem('ultimoBancoComb');
+    return salvo !== null ? salvo : lerUltimoBanco();
+  } catch (e) {
+    return '';
+  }
 }
 
 function preencherPrecoBase() {
@@ -486,10 +712,16 @@ function atualizarPreviaAbastecimento() {
       linhas.push(inicio + rendeu);
     }
   }
+  const banco = abastBanco.value.trim();
+  if (banco && veiculo) {
+    linhas.push(`Lança em Finanças como "Combustível ${veiculo}" · ${banco}`);
+  } else if (!banco) {
+    linhas.push('Não lança em Finanças');
+  }
   abastPrevia.textContent = linhas.join('\n');
 }
 
-[abastValor, abastData, abastKm, abastVeiculo, abastPreco].forEach((campo) => {
+[abastValor, abastData, abastKm, abastVeiculo, abastPreco, abastBanco].forEach((campo) => {
   campo.addEventListener('input', atualizarPreviaAbastecimento);
 });
 
@@ -512,6 +744,7 @@ async function salvarAbastecimento(evento) {
     Combustivel: abastCombustivel.value,
     Veiculo: abastVeiculo.value.trim(),
     PrecoLitro: lerValor(abastPreco.value),
+    Banco: abastBanco.value.trim() || null,
   };
 
   if (!(abastecimento.Valor > 0)) {
@@ -541,6 +774,7 @@ async function salvarAbastecimento(evento) {
     }
     salvarPreferencia('ultimoVeiculo', abastecimento.Veiculo);
     salvarPreferencia('ultimoCombustivel', abastecimento.Combustivel);
+    if (!editando) salvarPreferencia('ultimoBancoComb', abastecimento.Banco || '');
     // Mostra o veículo do que acabou de salvar (pode ser o outro)
     escolherVeiculo(abastecimento.Veiculo);
     gavetaAbastecimento.close();
@@ -548,6 +782,8 @@ async function salvarAbastecimento(evento) {
       ? 'Abastecimento atualizado'
       : `Abastecimento de ${formatarMoeda(abastecimento.Valor)} registrado`);
     await carregarAbastecimentos();
+    // O gasto ligado mudou em Finanças: recarrega a tabela de gastos
+    if (abastecimento.Banco || (editando && editando.GastoRowid)) carregar();
   } catch (e) {
     erroAbast.textContent = e.message;
     erroAbast.hidden = false;
@@ -592,6 +828,7 @@ function removerAbastecimento(abastecimento) {
         return;
       }
       abastecimentosRemovendo.delete(abastecimento.id);
+      if (abastecimento.GastoRowid) carregar(); // o gasto ligado também saiu
     },
   });
 }

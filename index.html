@@ -336,6 +336,16 @@
         <button id="botao-odometro" class="botao-chip" type="button">Atualizar</button>
       </div>
 
+      <!-- Manutenções do veículo escolhido: quanto falta pelo odômetro -->
+      <div id="comb-manutencao-cartao" class="cartao-grafico comb-manutencao" hidden>
+        <div class="comb-manutencao-cabecalho">
+          <h2 class="titulo-grafico">Manutenção</h2>
+          <button id="botao-nova-manutencao" class="botao-chip" type="button">+ Adicionar</button>
+        </div>
+        <div id="comb-manutencoes"></div>
+        <p id="comb-manutencao-vazio" class="vazio-pequeno" hidden>Cadastre a troca de óleo, os pneus e o que mais tiver prazo em km.</p>
+      </div>
+
       <div class="cartao-grafico">
         <h2 class="titulo-grafico">Abastecimentos</h2>
         <div id="lista-abastecimentos"></div>
@@ -667,6 +677,11 @@
         </label>
         <datalist id="opcoes-veiculos"></datalist>
 
+        <label class="campo-rotulado">
+          <span>Pago com (lança em Finanças)</span>
+          <input id="abast-banco" type="text" list="opcoes-banco" placeholder="Vazio: não lança, ex.: cartão de crédito" autocomplete="off" maxlength="60">
+        </label>
+
         <p id="abast-previa" class="compra-previa"></p>
 
         <div class="form-acoes">
@@ -704,6 +719,50 @@
       </form>
 
       <p id="erro-odometro" class="erro" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="gaveta-manutencao" class="gaveta" aria-labelledby="gaveta-manutencao-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-manutencao-titulo" class="titulo-grafico">Nova manutenção</h2>
+        <button id="botao-fechar-manutencao" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-manutencao" class="form-gasto">
+        <label class="campo-rotulado">
+          <span>O quê</span>
+          <input id="manutencao-nome" type="text" list="opcoes-manutencao" placeholder="Ex.: Troca de óleo" autocomplete="off" maxlength="60" required>
+        </label>
+        <datalist id="opcoes-manutencao">
+          <option>Troca de óleo</option>
+          <option>Filtro de óleo</option>
+          <option>Filtro de ar</option>
+          <option>Pneus</option>
+          <option>Relação (corrente)</option>
+          <option>Pastilhas de freio</option>
+          <option>Revisão</option>
+        </datalist>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>A cada (km)</span>
+            <input id="manutencao-intervalo" type="text" inputmode="numeric" placeholder="Ex.: 1000" autocomplete="off" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>Feita com (odômetro)</span>
+            <input id="manutencao-ultima" type="text" inputmode="numeric" placeholder="Ex.: 19200" autocomplete="off" required>
+          </label>
+        </div>
+        <p id="manutencao-previa" class="compra-previa"></p>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-manutencao" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-feita-agora" class="botao-secundario" type="button" hidden>Feita agora</button>
+          <button id="botao-salvar-manutencao" class="botao-primario" type="submit">Adicionar</button>
+        </div>
+      </form>
+
+      <p id="erro-manutencao" class="erro" hidden></p>
     </div>
   </dialog>
 
