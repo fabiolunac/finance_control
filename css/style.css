@@ -2448,4 +2448,10 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
   font-weight: 600;
 }
 
+.cafeina-dia-lista {
+  margin: 8px 0 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--borda);
+}
+
 .cafeina-mes-resumo { text-align: center; }

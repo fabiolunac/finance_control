@@ -27,6 +27,7 @@ const cafeinaGrafico = document.getElementById('cafeina-grafico');
 const cafeinaMesNome = document.getElementById('cafeina-mes-nome');
 const cafeinaMesResumo = document.getElementById('cafeina-mes-resumo');
 const cafeinaDiaEscolhido = document.getElementById('cafeina-dia-escolhido');
+const cafeinaDiaLista = document.getElementById('cafeina-dia-lista');
 
 const gavetaCafeina = document.getElementById('gaveta-cafeina');
 const gavetaCafeinaTitulo = document.getElementById('gaveta-cafeina-titulo');
@@ -99,29 +100,32 @@ function renderizarCafeina() {
     (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
 
   cafeinaHojeLista.innerHTML = '';
-  hoje.forEach((consumo) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'mini-lista-item';
-    const textos = document.createElement('span');
-    textos.className = 'parcela-textos';
-    const nome = document.createElement('span');
-    nome.className = 'parcela-descricao';
-    nome.textContent = consumo.Bebida;
-    const info = document.createElement('span');
-    info.className = 'parcela-info';
-    info.textContent = `${consumo.DataHora.slice(11, 16)} · ${textoMl(consumo.Ml)}`;
-    textos.append(nome, info);
-    const mg = document.createElement('span');
-    mg.className = 'mini-lista-valor';
-    mg.textContent = textoMg(consumo.Cafeina);
-    item.append(textos, mg);
-    item.addEventListener('click', () => abrirGavetaCafeina(consumo));
-    cafeinaHojeLista.appendChild(item);
-  });
+  hoje.forEach((consumo) => cafeinaHojeLista.appendChild(itemConsumo(consumo)));
 
   renderizarBotoesRapidos();
   renderizarGraficoCafeina();
+}
+
+// Linha de uma bebida (hora, ml e mg); tocar abre a gaveta pra editar
+function itemConsumo(consumo) {
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = 'mini-lista-item';
+  const textos = document.createElement('span');
+  textos.className = 'parcela-textos';
+  const nome = document.createElement('span');
+  nome.className = 'parcela-descricao';
+  nome.textContent = consumo.Bebida;
+  const info = document.createElement('span');
+  info.className = 'parcela-info';
+  info.textContent = `${consumo.DataHora.slice(11, 16)} · ${textoMl(consumo.Ml)}`;
+  textos.append(nome, info);
+  const mg = document.createElement('span');
+  mg.className = 'mini-lista-valor';
+  mg.textContent = textoMg(consumo.Cafeina);
+  item.append(textos, mg);
+  item.addEventListener('click', () => abrirGavetaCafeina(consumo));
+  return item;
 }
 
 // ---------- Gráfico de cafeína por dia ----------
@@ -197,9 +201,7 @@ function renderizarGraficoCafeina() {
   cafeinaGrafico.innerHTML = '';
   cafeinaGrafico.append(area, eixo);
 
-  cafeinaDiaEscolhido.textContent = diaCafeinaEscolhido
-    ? `${formatarData(`${mes}-${String(diaCafeinaEscolhido).padStart(2, '0')}`).slice(0, 5)}: ${textoMg(totais[diaCafeinaEscolhido])}`
-    : '';
+  renderizarDiaCafeina(mes, totais);
 
   const dias = Object.keys(totais).length;
   if (!dias) {
@@ -210,6 +212,24 @@ function renderizarGraficoCafeina() {
   const acima = Object.values(totais).filter((t) => t > LIMITE_CAFEINA_MG).length;
   cafeinaMesResumo.textContent = `Média ${textoMg(soma / dias)} por dia com registro · ` +
     `${acima} ${acima === 1 ? 'dia' : 'dias'} acima de ${textoMg(LIMITE_CAFEINA_MG)}`;
+}
+
+// Dia tocado no gráfico: total e a lista das bebidas, igual à de hoje
+function renderizarDiaCafeina(mes, totais) {
+  cafeinaDiaLista.innerHTML = '';
+  cafeinaDiaLista.hidden = !diaCafeinaEscolhido;
+  if (!diaCafeinaEscolhido) {
+    cafeinaDiaEscolhido.textContent = '';
+    return;
+  }
+
+  const iso = `${mes}-${String(diaCafeinaEscolhido).padStart(2, '0')}`;
+  const doDia = consumosCafeina
+    .filter((c) => c.DataHora.startsWith(iso))
+    .sort((a, b) => a.DataHora.localeCompare(b.DataHora));
+  cafeinaDiaEscolhido.textContent = `${formatarData(iso).slice(0, 5)}: ${textoMg(totais[diaCafeinaEscolhido])} · ` +
+    `${doDia.length} ${doDia.length === 1 ? 'bebida' : 'bebidas'}`;
+  doDia.forEach((consumo) => cafeinaDiaLista.appendChild(itemConsumo(consumo)));
 }
 
 document.getElementById('cafeina-mes-anterior').addEventListener('click', () => {
