@@ -2932,6 +2932,107 @@ faixaMatiz.addEventListener('input', () => aplicarMatiz(Number(faixaMatiz.value)
 
 aplicarMatiz(lerMatizSalvo(), false);
 
+// ---------- Notificações push ----------
+// O servidor manda o push (ex.: cafeína perto do limite); aqui só ativa,
+// testa e desativa neste aparelho. No iPhone, só com o app na tela de início.
+
+const notifEstado = document.getElementById('notif-estado');
+const botaoNotifAtivar = document.getElementById('botao-notif-ativar');
+const botaoNotifTeste = document.getElementById('botao-notif-teste');
+const botaoNotifDesativar = document.getElementById('botao-notif-desativar');
+
+const pushSuportado = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+// Chave VAPID em base64url → bytes, como o pushManager.subscribe pede
+function chaveParaBytes(base64url) {
+  const base64 = (base64url + '='.repeat((4 - (base64url.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+}
+
+async function inscricaoAtual() {
+  const registro = await navigator.serviceWorker.ready;
+  return registro.pushManager.getSubscription();
+}
+
+async function atualizarEstadoNotificacoes() {
+  [botaoNotifAtivar, botaoNotifTeste, botaoNotifDesativar].forEach((b) => { b.hidden = true; });
+  if (!pushSuportado) {
+    notifEstado.textContent = 'Este navegador não recebe notificações. No iPhone, abra pelo app instalado na tela de início.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    notifEstado.textContent = 'Notificações bloqueadas. Libere em Ajustes > Notificações > Controle.';
+    return;
+  }
+  const inscricao = await inscricaoAtual();
+  if (inscricao && Notification.permission === 'granted') {
+    notifEstado.textContent = 'Ativadas neste aparelho. Avisa quando a cafeína do dia chega a 80% e a 100% do limite.';
+    botaoNotifTeste.hidden = false;
+    botaoNotifDesativar.hidden = false;
+  } else {
+    notifEstado.textContent = 'Desativadas neste aparelho.';
+    botaoNotifAtivar.hidden = false;
+  }
+}
+
+botaoNotifAtivar.addEventListener('click', async () => {
+  botaoNotifAtivar.disabled = true;
+  try {
+    // A permissão precisa ser pedida direto no toque (o iPhone exige)
+    const permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') {
+      await atualizarEstadoNotificacoes();
+      return;
+    }
+    const resposta = await requisitar('GET', '/api/push/chave', null, 'Erro ao buscar a chave de notificação.');
+    const { chave } = await resposta.json();
+    if (!chave) throw new Error('O servidor ainda não tem as chaves de notificação.');
+    const registro = await navigator.serviceWorker.ready;
+    const inscricao = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: chaveParaBytes(chave),
+    });
+    await requisitar('POST', '/api/push/inscricao', inscricao.toJSON(), 'Erro ao ativar as notificações.');
+    mostrarNotificacao('Notificações ativadas');
+  } catch (e) {
+    mostrarErro(e.message);
+  } finally {
+    botaoNotifAtivar.disabled = false;
+    atualizarEstadoNotificacoes();
+  }
+});
+
+botaoNotifTeste.addEventListener('click', async () => {
+  botaoNotifTeste.disabled = true;
+  try {
+    await requisitar('POST', '/api/push/teste', null, 'Erro ao enviar o teste.');
+    mostrarNotificacao('Teste enviado. Deve chegar em alguns segundos.');
+  } catch (e) {
+    mostrarErro(e.message);
+  } finally {
+    botaoNotifTeste.disabled = false;
+  }
+});
+
+botaoNotifDesativar.addEventListener('click', async () => {
+  botaoNotifDesativar.disabled = true;
+  try {
+    const inscricao = await inscricaoAtual();
+    if (inscricao) {
+      await requisitar('POST', '/api/push/cancelar', { endpoint: inscricao.endpoint }, 'Erro ao desativar.');
+      await inscricao.unsubscribe();
+    }
+    mostrarNotificacao('Notificações desativadas');
+  } catch (e) {
+    mostrarErro(e.message);
+  } finally {
+    botaoNotifDesativar.disabled = false;
+    atualizarEstadoNotificacoes();
+  }
+});
+
+atualizarEstadoNotificacoes();
+
 // ---------- Módulos ----------
 
 // Cada módulo tem suas sub-abas na barra de baixo (botões com data-modulo

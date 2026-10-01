@@ -7,7 +7,7 @@
    A VERSAO só serve para limpar caches antigos na ativação.
    ============================================================ */
 
-const VERSAO = 'controle-gastos-v69';
+const VERSAO = 'controle-gastos-v70';
 
 const ARQUIVOS = [
   './',
@@ -59,5 +59,31 @@ self.addEventListener('fetch', (evento) => {
         return respostaRede;
       })
       .catch(() => caches.match(evento.request))
+  );
+});
+
+// Push: o servidor manda { titulo, corpo, url } e vira notificação
+self.addEventListener('push', (evento) => {
+  let dados = {};
+  try { dados = evento.data ? evento.data.json() : {}; } catch (e) {}
+  evento.waitUntil(
+    self.registration.showNotification(dados.titulo || 'Controle Pessoal', {
+      body: dados.corpo || '',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      data: { url: dados.url || './' },
+    })
+  );
+});
+
+// Toque na notificação: volta pro app aberto ou abre um novo
+self.addEventListener('notificationclick', (evento) => {
+  evento.notification.close();
+  const destino = new URL(evento.notification.data?.url || './', self.registration.scope).href;
+  evento.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((janelas) => {
+      const aberta = janelas.find((janela) => janela.url.startsWith(self.registration.scope));
+      return aberta ? aberta.focus() : self.clients.openWindow(destino);
+    })
   );
 });

@@ -1674,6 +1674,8 @@ body {
 /* ---------- Seletor de cor do tema ---------- */
 
 .cartao-tema { margin-bottom: 16px; }
+.cartao-notificacoes { margin-bottom: 16px; }
+.notif-botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 .seletor-cor {
   display: flex;

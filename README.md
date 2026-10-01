@@ -20,6 +20,7 @@ GitHub Pages (frontend estático)  --HTTPS-->  Render (API FastAPI + pandas)  --
 | `commit.sh` | Commit + pull --rebase + push numa linha só |
 | `server/main.py` | API FastAPI que devolve a tabela tratada |
 | `server/combustivel.py`, `server/dieta.py` | Rotas dos módulos Combustível e Dieta |
+| `server/notificacoes.py` | Notificações push: inscrição dos aparelhos, teste e envio (usado pelo aviso de cafeína) |
 | `server/transform_db.py` | Pré-processamento com pandas: Categoria, Categoria Geral e Mês (calendário) |
 | `finance_control.db`, `local_param.db` | Bancos originais da fase Suíça (fora do git) — hoje preservados no Turso como `gastos_ch`/`param_ch` |
 
@@ -50,6 +51,7 @@ Web Service apontando pra este repositório:
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - Env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `API_TOKEN` (código de acesso do app), `ALLOWED_ORIGIN` (URL do GitHub Pages)
+- Notificações push (opcional): `VAPID_PRIVATE_KEY` e `VAPID_PUBLIC_KEY` (par de chaves VAPID em base64url). O contato exigido pela Apple sai de `ALLOWED_ORIGIN`, ou de `VAPID_SUBJECT` se definida. Sem as chaves, o app só mostra que o servidor não tem notificações.
 
 ### 3. Frontend no GitHub Pages
 
