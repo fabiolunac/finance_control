@@ -2266,6 +2266,7 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 }
 
 .combustivel-resumo { margin-bottom: 16px; }
+.comb-odometros { margin-bottom: 16px; }
 
 /* Valor em cima e o que o abastecimento rendeu embaixo, à direita */
 .abast-direita {

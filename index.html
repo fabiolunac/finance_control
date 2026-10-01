@@ -326,6 +326,12 @@
         </div>
       </div>
 
+      <!-- Odômetro de cada veículo: última leitura + parciais registrados depois -->
+      <div id="comb-odometros-cartao" class="cartao-grafico comb-odometros" hidden>
+        <h2 class="titulo-grafico">Odômetro</h2>
+        <div id="comb-odometros"></div>
+      </div>
+
       <div class="cartao-grafico">
         <h2 class="titulo-grafico">Abastecimentos</h2>
         <div id="lista-abastecimentos"></div>
@@ -666,6 +672,34 @@
       </form>
 
       <p id="erro-abast" class="erro" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="gaveta-odometro" class="gaveta" aria-labelledby="gaveta-odometro-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-odometro-titulo" class="titulo-grafico">Odômetro</h2>
+        <button id="botao-fechar-odometro" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-odometro" class="form-gasto">
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Odômetro agora</span>
+            <input id="odometro-km" type="text" inputmode="numeric" placeholder="Ex.: 65751" autocomplete="off" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>Parcial agora</span>
+            <input id="odometro-parcial" type="text" inputmode="decimal" placeholder="Opcional" autocomplete="off">
+          </label>
+        </div>
+        <p class="compra-previa">O parcial do painel (km desde o último abastecimento) evita contar duas vezes o que já foi rodado quando o próximo abastecimento for registrado.</p>
+
+        <div class="form-acoes">
+          <button id="botao-salvar-odometro" class="botao-primario" type="submit">Salvar</button>
+        </div>
+      </form>
+
+      <p id="erro-odometro" class="erro" hidden></p>
     </div>
   </dialog>
 

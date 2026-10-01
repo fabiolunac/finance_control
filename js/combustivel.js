@@ -25,6 +25,16 @@ const combCalMes = document.getElementById('comb-cal-mes');
 const combCalResumo = document.getElementById('comb-cal-resumo');
 const combCalDetalhe = document.getElementById('comb-cal-detalhe');
 const abastecimentosVazio = document.getElementById('abastecimentos-vazio');
+const combOdometrosCartao = document.getElementById('comb-odometros-cartao');
+const combOdometros = document.getElementById('comb-odometros');
+
+const gavetaOdometro = document.getElementById('gaveta-odometro');
+const gavetaOdometroTitulo = document.getElementById('gaveta-odometro-titulo');
+const formOdometro = document.getElementById('form-odometro');
+const odometroKm = document.getElementById('odometro-km');
+const odometroParcial = document.getElementById('odometro-parcial');
+const botaoSalvarOdometro = document.getElementById('botao-salvar-odometro');
+const erroOdometro = document.getElementById('erro-odometro');
 
 const gavetaAbastecimento = document.getElementById('gaveta-abastecimento');
 const gavetaAbastTitulo = document.getElementById('gaveta-abast-titulo');
@@ -42,6 +52,8 @@ const botaoExcluirAbast = document.getElementById('botao-excluir-abast');
 const erroAbast = document.getElementById('erro-abast');
 
 let abastecimentos = [];
+let odometros = []; // última leitura de cada veículo
+let veiculoOdometro = null; // veículo aberto na gaveta do odômetro
 // Veículo mostrado na tela: cada um tem seu resumo e sua lista (km/l de
 // carro e de moto não se misturam). Lembrado entre aberturas do app.
 let veiculoFiltro = null;
@@ -55,6 +67,7 @@ async function carregarAbastecimentos() {
     const resposta = await requisitar('GET', '/api/abastecimentos', null, 'Erro ao carregar os abastecimentos.');
     const dados = await resposta.json();
     abastecimentos = dados.abastecimentos.filter((a) => !abastecimentosRemovendo.has(a.id));
+    odometros = dados.odometros || [];
     renderizarCombustivel();
   } catch (e) {
     mostrarErro(e.message);
@@ -123,6 +136,19 @@ function veiculosCadastrados() {
   return [...new Set(abastecimentos.map((a) => a.Veiculo))].sort((a, b) => a.localeCompare(b));
 }
 
+// Leitura + parciais dos abastecimentos registrados depois dela. O primeiro
+// parcial depois da leitura já inclui o que estava no painel naquela hora.
+function odometroAtual(veiculo) {
+  const leitura = odometros.find((o) => o.Veiculo === veiculo);
+  if (!leitura) return null;
+  const depois = abastecimentos.filter((a) => a.Veiculo === veiculo &&
+    (a.Data > leitura.Data || (a.Data === leitura.Data && a.id > leitura.UltimoId)));
+  if (!depois.length) return { km: leitura.Km, leitura, ultimo: null };
+  const rodado = depois.reduce((soma, a) => soma + a.Km, 0);
+  const ultimo = ordenarCronologico(depois).pop();
+  return { km: Math.max(leitura.Km, leitura.Km - (leitura.Parcial || 0) + rodado), leitura, ultimo };
+}
+
 // ---------- Tela ----------
 
 function escolherVeiculo(veiculo) {
@@ -142,6 +168,7 @@ function renderizarCombustivel() {
   const lista = abastecimentos.filter((a) => a.Veiculo === veiculoFiltro);
   const rendimentos = calcularRendimentos();
   renderizarResumoCombustivel(lista, rendimentos);
+  renderizarOdometros(veiculos);
   renderizarListaAbastecimentos(lista, rendimentos);
   renderizarCalendarioCombustivel(lista, rendimentos);
 }
@@ -200,6 +227,93 @@ function renderizarResumoCombustivel(lista, rendimentos) {
   combMediaKm.textContent = formatarKm(kmTotal / fechados.length);
   combMediaSub.textContent = `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
 }
+
+// Uma linha por veículo, os dois sempre à vista; tocar abre a gaveta pra nova leitura
+function renderizarOdometros(veiculos) {
+  const todos = [...new Set([...veiculos, ...odometros.map((o) => o.Veiculo)])]
+    .sort((a, b) => a.localeCompare(b));
+  combOdometrosCartao.hidden = !todos.length;
+  combOdometros.innerHTML = '';
+
+  todos.forEach((veiculo) => {
+    const atual = odometroAtual(veiculo);
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'mini-lista-item';
+
+    const textos = document.createElement('span');
+    textos.className = 'parcela-textos';
+    const nome = document.createElement('span');
+    nome.className = 'parcela-descricao';
+    nome.textContent = veiculo;
+    const info = document.createElement('span');
+    info.className = 'parcela-info';
+    if (!atual) info.textContent = 'Toque pra informar o odômetro';
+    else if (atual.ultimo) info.textContent = `Atualizado pelo abastecimento de ${formatarData(atual.ultimo.Data).slice(0, 5)}`;
+    else info.textContent = `Informado em ${formatarData(atual.leitura.Data).slice(0, 5)}`;
+    textos.append(nome, info);
+
+    const valor = document.createElement('span');
+    valor.className = 'mini-lista-valor';
+    valor.textContent = atual ? formatarKm(atual.km) : '—';
+
+    item.append(textos, valor);
+    item.addEventListener('click', () => abrirGavetaOdometro(veiculo));
+    combOdometros.appendChild(item);
+  });
+}
+
+function abrirGavetaOdometro(veiculo) {
+  veiculoOdometro = veiculo;
+  erroOdometro.hidden = true;
+  gavetaOdometroTitulo.textContent = `Odômetro · ${veiculo}`;
+  const atual = odometroAtual(veiculo);
+  odometroKm.value = atual ? String(Math.round(atual.km)) : '';
+  odometroParcial.value = '';
+  gavetaOdometro.showModal();
+  odometroKm.focus();
+  odometroKm.select();
+}
+
+async function salvarOdometro(evento) {
+  evento.preventDefault();
+  erroOdometro.hidden = true;
+
+  // Odômetro é inteiro: "65.751" é sessenta e cinco mil, não 65,751
+  const digitos = odometroKm.value.replace(/\D/g, '');
+  const km = digitos ? Number(digitos) : NaN;
+  const parcial = odometroParcial.value.trim() ? lerValor(odometroParcial.value) : 0;
+  if (Number.isNaN(km)) {
+    erroOdometro.textContent = 'Odômetro inválido. Use só o número, como 65751.';
+    erroOdometro.hidden = false;
+    return;
+  }
+  if (Number.isNaN(parcial) || parcial > km) {
+    erroOdometro.textContent = 'Parcial inválido. Use o número do painel, como 212 ou 212,5.';
+    erroOdometro.hidden = false;
+    return;
+  }
+
+  botaoSalvarOdometro.disabled = true;
+  try {
+    await requisitar('PUT', `/api/abastecimentos/odometro/${encodeURIComponent(veiculoOdometro)}`,
+      { Km: km, Parcial: parcial, Data: formatarIso(new Date()) }, 'Erro ao salvar o odômetro.');
+    gavetaOdometro.close();
+    mostrarNotificacao(`Odômetro do ${veiculoOdometro}: ${formatarKm(km)}`);
+    await carregarAbastecimentos();
+  } catch (e) {
+    erroOdometro.textContent = e.message;
+    erroOdometro.hidden = false;
+  } finally {
+    botaoSalvarOdometro.disabled = false;
+  }
+}
+
+formOdometro.addEventListener('submit', salvarOdometro);
+document.getElementById('botao-fechar-odometro').addEventListener('click', () => gavetaOdometro.close());
+gavetaOdometro.addEventListener('click', (evento) => {
+  if (evento.target === gavetaOdometro) gavetaOdometro.close();
+});
 
 function renderizarListaAbastecimentos(lista, rendimentos) {
   listaAbastecimentos.innerHTML = '';
