@@ -7,19 +7,19 @@
    A VERSAO só serve para limpar caches antigos na ativação.
    ============================================================ */
 
-const VERSAO = 'controle-gastos-v64';
+const VERSAO = 'controle-gastos-v65';
 
 const ARQUIVOS = [
   './',
   './index.html',
-  './style.css',
-  './script.js',
-  './combustivel.js',
-  './dieta.js',
+  './css/style.css',
+  './js/script.js',
+  './js/combustivel.js',
+  './js/dieta.js',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-512-maskable.png'
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-512-maskable.png'
 ];
 
 // Instalação: baixa e guarda todos os arquivos no cache

@@ -11,9 +11,15 @@ GitHub Pages (frontend estático)  --HTTPS-->  Render (API FastAPI + pandas)  --
 
 | Arquivo/pasta | Para que serve |
 |---|---|
-| `index.html`, `style.css`, `script.js` | O site: uma página só, com a tabela final |
-| `manifest.json`, `sw.js` | Deixam o app instalável e com cache dos arquivos estáticos |
-| `server/main.py` | API FastAPI: um endpoint (`GET /api/gastos`) que devolve a tabela tratada |
+| `index.html` | O site: uma página só, com todos os módulos |
+| `css/style.css` | Estilos |
+| `js/script.js` | Finanças, configurações e a estrutura geral do app |
+| `js/combustivel.js`, `js/dieta.js` | Módulos Combustível e Dieta |
+| `icons/` | Ícones do app (`icon.png` é a origem dos demais) |
+| `manifest.json`, `sw.js` | Deixam o app instalável e com cache dos arquivos estáticos (ficam na raiz pro service worker cobrir o site todo) |
+| `commit.sh` | Commit + pull --rebase + push numa linha só |
+| `server/main.py` | API FastAPI que devolve a tabela tratada |
+| `server/combustivel.py`, `server/dieta.py` | Rotas dos módulos Combustível e Dieta |
 | `server/transform_db.py` | Pré-processamento com pandas: Categoria, Categoria Geral e Mês (calendário) |
 | `finance_control.db`, `local_param.db` | Bancos originais da fase Suíça (fora do git) — hoje preservados no Turso como `gastos_ch`/`param_ch` |
 
@@ -47,7 +53,7 @@ Web Service apontando pra este repositório:
 
 ### 3. Frontend no GitHub Pages
 
-`API_URL` no [script.js](script.js) aponta pra URL do Render. Push na `main` publica.
+`API_URL` no [js/script.js](js/script.js) aponta pra URL do Render. Push na `main` publica.
 
 Na primeira vez que abrir o app, ele pede o **código de acesso** — o mesmo valor de `API_TOKEN`.
 
@@ -65,6 +71,6 @@ Frontend: `python3 -m http.server 8000` na raiz e troque `API_URL` para `http://
 
 ## Quando você atualizar o site
 
-Sempre que mudar `index.html`, `style.css`, `script.js` ou `manifest.json`, aumente a
-versão na primeira linha do `sw.js` (`controle-gastos-v5` → `v6`), pra forçar o navegador
-a baixar os arquivos novos.
+Sempre que mudar `index.html`, `css/`, `js/`, `icons/` ou `manifest.json`, aumente a
+`VERSAO` no `sw.js` (`controle-gastos-v5` → `v6`), pra forçar o navegador
+a baixar os arquivos novos. Arquivo novo no frontend também entra na lista `ARQUIVOS` do `sw.js`.
