@@ -1372,14 +1372,27 @@ body {
   .visao-grade { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
 }
 
+/* Nome do card: na cor de destaque do tema, com um ponto em gradiente na frente */
 .metrica-rotulo {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--tinta-muda);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--acento-claro);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+}
+
+.metrica-rotulo::before {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gradiente);
+  box-shadow: 0 0 8px var(--acento-media);
 }
 
 .metrica-valor {
