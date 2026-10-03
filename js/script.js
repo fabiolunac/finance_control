@@ -37,6 +37,8 @@ const araujoContagem = document.getElementById('araujo-contagem');
 const araujoDetalhe = document.getElementById('araujo-detalhe');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
+const hojeValor = document.getElementById('hoje-valor');
+const hojeDetalhe = document.getElementById('hoje-detalhe');
 const cardUltimaCompra = document.getElementById('card-ultima-compra');
 const ultimaCompraValor = document.getElementById('ultima-compra-valor');
 const ultimaCompraDetalhe = document.getElementById('ultima-compra-detalhe');
@@ -850,6 +852,7 @@ function renderizarVisaoGeral() {
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
   renderizarMetaSemanal();
+  renderizarGastoHoje();
   renderizarUltimaCompra();
   renderizarAraujo();
   renderizarUltimoCorte();
@@ -911,6 +914,22 @@ function textoDiasAtras(dataIso) {
 
 function maisRecente(gastos) {
   return gastos.reduce((a, b) => (b.Data > a.Data ? b : a));
+}
+
+// Sempre o dia de hoje, qualquer que seja o mês escolhido; segue o "Com fatura".
+// Média do mês atual por dia corrido, pra dar a referência
+function renderizarGastoHoje() {
+  const hoje = formatarIso(new Date());
+  const considerados = gastosConsiderados();
+  const doDia = considerados.filter((g) => g.Data.slice(0, 10) === hoje);
+  hojeValor.textContent = formatarMoeda(calcularTotalGasto(doDia));
+
+  const totalMes = calcularTotalGasto(considerados.filter((g) => g['Mês'] === mesAtual()));
+  const media = `média do mês ${formatarMoeda(totalMes / new Date().getDate())}/dia`;
+  const n = doDia.length;
+  hojeDetalhe.textContent = n
+    ? `${n} ${n === 1 ? 'lançamento' : 'lançamentos'} · ${media}`
+    : `Nenhum gasto hoje · ${media}`;
 }
 
 // Gasto mais recente de todo o histórico, sem contar o pagamento da fatura
