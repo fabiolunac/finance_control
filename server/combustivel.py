@@ -57,9 +57,10 @@ COLUNAS_NOVAS_MANUTENCAO = {
     "Unica": "INTEGER NOT NULL DEFAULT 0", "Valor": "REAL", "FeitaData": "TEXT", "FeitaKm": "REAL",
 }
 
-# Dominar NS400Z retirada 0 km em 05/10/2026: leitura zero e as revisões do
-# plano da Bajaj (intervalo em km, meses desde a compra, valor total com mão
-# de obra). Gravadas uma vez, enquanto não houver leitura dela.
+# Dominar NS400Z retirada 0 km em 05/10/2026: as revisões do plano da Bajaj
+# (intervalo em km, meses desde a compra, valor total com mão de obra) e,
+# se ainda não houver, a leitura zero. Vão pro veículo que já tiver "dominar"
+# no nome; gravadas enquanto ele não tiver nenhuma manutenção única.
 DOMINAR = "Dominar NS400Z"
 DATA_COMPRA_DOMINAR = "2026-10-05"
 REVISOES_DOMINAR = [
@@ -131,8 +132,7 @@ def criar_rotas(conectar, checar_token):
             client.execute(TABELA_ODOMETROS)
             if not client.execute("SELECT 1 FROM odometros LIMIT 1").rows:
                 semear_odometros(client)
-            if not client.execute("SELECT 1 FROM odometros WHERE Veiculo = ?", [DOMINAR]).rows:
-                semear_dominar(client)
+            semear_dominar(client)
             tabela_pronta = True
 
     def migrar_manutencoes(client):
@@ -152,15 +152,32 @@ def criar_rotas(conectar, checar_token):
             "ALTER TABLE manutencoes_nova RENAME TO manutencoes",
         ])
 
+    def nome_dominar(client):
+        """Nome que o usuário deu à moto: o dos abastecimentos vem antes do da carga."""
+        for tabela in ("abastecimentos", "odometros", "manutencoes"):
+            rs = client.execute(f"SELECT Veiculo FROM {tabela} WHERE lower(Veiculo) LIKE '%dominar%' "
+                                f"AND Veiculo != ? LIMIT 1", [DOMINAR])
+            if rs.rows:
+                return rs.rows[0][0]
+        return DOMINAR
+
     def semear_dominar(client):
+        veiculo = nome_dominar(client)
+        if veiculo != DOMINAR:
+            # Versão anterior da carga gravou com o nome fixo: passa pro veículo dele
+            client.execute("UPDATE manutencoes SET Veiculo = ? WHERE Veiculo = ?", [veiculo, DOMINAR])
+            client.execute("DELETE FROM odometros WHERE Veiculo = ? AND Km = 0 AND Data = ?",
+                           [DOMINAR, DATA_COMPRA_DOMINAR])
+        if client.execute("SELECT 1 FROM manutencoes WHERE Veiculo = ? AND Unica = 1 LIMIT 1", [veiculo]).rows:
+            return
         ultimo_id = client.execute("SELECT COALESCE(MAX(id), 0) FROM abastecimentos").rows[0][0]
         client.batch([
-            ("INSERT INTO odometros (Veiculo, Km, Parcial, Data, UltimoId) VALUES (?, 0, 0, ?, ?)",
-             [DOMINAR, DATA_COMPRA_DOMINAR, ultimo_id]),
+            ("INSERT OR IGNORE INTO odometros (Veiculo, Km, Parcial, Data, UltimoId) VALUES (?, 0, 0, ?, ?)",
+             [veiculo, DATA_COMPRA_DOMINAR, ultimo_id]),
         ] + [
             ("INSERT INTO manutencoes (Veiculo, Nome, IntervaloKm, UltimaKm, IntervaloMeses, UltimaData, "
              "Unica, Valor) VALUES (?, ?, ?, 0, ?, ?, 1, ?)",
-             [DOMINAR, f"Revisão {km:,} km".replace(",", "."), km, meses, DATA_COMPRA_DOMINAR, valor])
+             [veiculo, f"Revisão {km:,} km".replace(",", "."), km, meses, DATA_COMPRA_DOMINAR, valor])
             for km, meses, valor in REVISOES_DOMINAR
         ])
 
