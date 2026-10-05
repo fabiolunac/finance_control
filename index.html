@@ -323,6 +323,14 @@
       <!-- Um botão por veículo, só quando há mais de um: cada um é visto separado -->
       <div class="seletor-veiculo" role="group" aria-label="Veículo" hidden></div>
 
+      <!-- Veículo vendido: despedida com o que ele rodou registrado aqui -->
+      <div id="comb-homenagem" class="comb-homenagem" hidden>
+        <span class="metrica-rotulo" id="comb-homenagem-periodo"></span>
+        <h2 class="comb-homenagem-titulo" id="comb-homenagem-titulo"></h2>
+        <p class="comb-homenagem-texto" id="comb-homenagem-texto"></p>
+        <dl class="comb-homenagem-numeros" id="comb-homenagem-numeros"></dl>
+      </div>
+
       <div class="cartao-resumo combustivel-resumo">
         <div>
           <span class="metrica-rotulo" id="comb-media-rotulo">Consumo médio</span>
@@ -758,28 +766,39 @@
           <option>Revisão</option>
         </datalist>
 
+        <!-- Uma vez: revisões do manual (1.000 km/1 mês, 5.000 km/6 meses...), contadas da compra -->
+        <div class="tipo-segmentado" role="radiogroup" aria-label="Repetição">
+          <label><input type="radio" name="manutencao-tipo" value="recorrente" checked><span>Repete</span></label>
+          <label><input type="radio" name="manutencao-tipo" value="unica"><span>Uma vez</span></label>
+        </div>
+
         <!-- Km, meses ou os dois: vence pelo que chegar primeiro -->
         <div class="form-linha">
           <label class="campo-rotulado">
-            <span>A cada (km)</span>
+            <span id="rotulo-manutencao-intervalo">A cada (km)</span>
             <input id="manutencao-intervalo" type="text" inputmode="numeric" placeholder="Ex.: 1000" autocomplete="off">
           </label>
           <label class="campo-rotulado">
-            <span>Feita com (odômetro)</span>
+            <span id="rotulo-manutencao-ultima">Feita com (odômetro)</span>
             <input id="manutencao-ultima" type="text" inputmode="numeric" placeholder="Ex.: 19200" autocomplete="off">
           </label>
         </div>
         <div class="form-linha">
           <label class="campo-rotulado">
-            <span>Ou a cada (meses)</span>
+            <span id="rotulo-manutencao-meses">Ou a cada (meses)</span>
             <input id="manutencao-meses" type="text" inputmode="numeric" placeholder="Ex.: 6" autocomplete="off">
           </label>
           <label class="campo-rotulado">
-            <span>Feita em</span>
+            <span id="rotulo-manutencao-data">Feita em</span>
             <input id="manutencao-data" type="date">
           </label>
         </div>
+        <label class="campo-rotulado">
+          <span>Custo previsto (R$, opcional)</span>
+          <input id="manutencao-valor" type="text" inputmode="decimal" placeholder="Ex.: 456,34" autocomplete="off">
+        </label>
         <p id="manutencao-previa" class="compra-previa"></p>
+        <p id="manutencao-feita" class="compra-previa" hidden></p>
 
         <div class="form-acoes">
           <button id="botao-excluir-manutencao" class="botao-excluir" type="button" hidden>Excluir</button>

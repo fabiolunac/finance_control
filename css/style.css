@@ -2297,6 +2297,40 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 .manutencao-item { flex-wrap: wrap; row-gap: 8px; }
 .manutencao-trilha { display: block; flex: 1 1 100%; height: 6px; }
 .manutencao-vencida { color: var(--erro); }
+.manutencao-concluida { opacity: 0.55; }
+
+/* Despedida do veículo vendido */
+.comb-homenagem {
+  margin-bottom: 16px;
+  padding: 22px;
+  background:
+    radial-gradient(420px 200px at 100% 0%, hsl(var(--matiz-2) 70% 49% / .22), transparent 70%),
+    radial-gradient(420px 200px at 0% 100%, hsl(var(--matiz) 90% 66% / .16), transparent 70%),
+    var(--cartao);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-lg);
+  box-shadow: var(--sombra);
+}
+
+.comb-homenagem-titulo {
+  margin: 6px 0 8px;
+  font-family: var(--fonte-titulo);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--acento-claro);
+}
+
+.comb-homenagem-texto { margin: 0 0 18px; color: var(--tinta-fraca); line-height: 1.55; }
+
+.comb-homenagem-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.comb-homenagem-numeros dd { margin: 0; font-family: var(--fonte-mono); font-size: 1.05rem; color: var(--tinta); }
+.comb-homenagem-numeros dt { font-size: .78rem; color: var(--tinta-muda); }
 
 .cartao-resumo.comb-odometro {
   grid-template-columns: minmax(0, 1fr) auto;
