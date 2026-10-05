@@ -48,6 +48,8 @@ const formManutencao = document.getElementById('form-manutencao');
 const manutencaoNome = document.getElementById('manutencao-nome');
 const manutencaoIntervalo = document.getElementById('manutencao-intervalo');
 const manutencaoUltima = document.getElementById('manutencao-ultima');
+const manutencaoMeses = document.getElementById('manutencao-meses');
+const manutencaoData = document.getElementById('manutencao-data');
 const manutencaoPrevia = document.getElementById('manutencao-previa');
 const botaoSalvarManutencao = document.getElementById('botao-salvar-manutencao');
 const botaoExcluirManutencao = document.getElementById('botao-excluir-manutencao');
@@ -324,27 +326,90 @@ gavetaOdometro.addEventListener('click', (evento) => {
 
 // ---------- Manutenção ----------
 
-// Falta (positivo) ou passou (negativo) em km; null sem odômetro
-function kmAteManutencao(manutencao) {
-  const atual = odometroAtual(manutencao.Veiculo);
-  return atual ? manutencao.UltimaKm + manutencao.IntervaloKm - atual.km : null;
+// Soma meses mantendo o dia; 31/01 mais um mês cai em 28/02, não em 03/03
+function somarMeses(dataIso, meses) {
+  const data = dataLocal(dataIso);
+  const dia = data.getDate();
+  data.setDate(1);
+  data.setMonth(data.getMonth() + meses);
+  const ultimoDia = new Date(data.getFullYear(), data.getMonth() + 1, 0).getDate();
+  data.setDate(Math.min(dia, ultimoDia));
+  return data;
 }
 
-// Mais urgente primeiro; sem odômetro, pela ordem do nome
+function hojeMeiaNoite() {
+  const agora = new Date();
+  return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+}
+
+// Até 60 dias conta em dias; depois, em meses
+function formatarDias(dias) {
+  if (dias <= 60) return dias === 1 ? '1 dia' : `${dias} dias`;
+  const meses = Math.floor(dias / 30.4);
+  return meses === 1 ? '1 mês' : `${meses} meses`;
+}
+
+function textoFalta(falta, formatar) {
+  return falta >= 0 ? `faltam ${formatar(falta)}` : `passou ${formatar(-falta)}`;
+}
+
+// Cada prazo da manutenção (km e meses): quanto falta e que fração do intervalo já passou.
+// Prazo em km sem odômetro do veículo fica de fora.
+function prazosManutencao(manutencao) {
+  const prazos = [];
+  if (manutencao.IntervaloKm > 0 && manutencao.UltimaKm != null) {
+    const atual = odometroAtual(manutencao.Veiculo);
+    if (atual) {
+      const falta = manutencao.UltimaKm + manutencao.IntervaloKm - atual.km;
+      prazos.push({ usado: 1 - falta / manutencao.IntervaloKm, vencida: falta < 0,
+        texto: textoFalta(falta, formatarKm) });
+    }
+  }
+  if (manutencao.IntervaloMeses > 0 && manutencao.UltimaData) {
+    const inicio = dataLocal(manutencao.UltimaData);
+    const vence = somarMeses(manutencao.UltimaData, manutencao.IntervaloMeses);
+    const hoje = hojeMeiaNoite();
+    // round absorve a hora a mais ou a menos do horário de verão
+    const dias = Math.round((vence - hoje) / 86400000);
+    prazos.push({ usado: (hoje - inicio) / (vence - inicio), vencida: dias < 0,
+      texto: dias === 0 ? 'vence hoje' : textoFalta(dias, formatarDias) });
+  }
+  return prazos;
+}
+
+// O prazo que vence primeiro manda; null quando nenhum dá pra calcular
+function prazoMaisUrgente(manutencao) {
+  return prazosManutencao(manutencao).reduce((pior, p) => (!pior || p.usado > pior.usado ? p : pior), null);
+}
+
+// Mais urgente primeiro; sem prazo calculável, no fim, pela ordem do nome
 function renderizarManutencoes() {
   combManutencaoCartao.hidden = !veiculoFiltro;
   if (!veiculoFiltro) return;
+  const urgencia = (m) => prazoMaisUrgente(m)?.usado ?? -Infinity;
   const doVeiculo = manutencoes
     .filter((m) => m.Veiculo === veiculoFiltro)
-    .sort((a, b) => (kmAteManutencao(a) ?? Infinity) - (kmAteManutencao(b) ?? Infinity) ||
-      a.Nome.localeCompare(b.Nome));
+    .sort((a, b) => urgencia(b) - urgencia(a) || a.Nome.localeCompare(b.Nome));
   combManutencaoVazio.hidden = doVeiculo.length > 0;
   combManutencoes.innerHTML = '';
   doVeiculo.forEach((m) => combManutencoes.appendChild(criarItemManutencao(m)));
 }
 
+// "a cada 1.000 km ou 6 meses · feita com 19.200 km em 01/04/2026"
+function descreverManutencao(manutencao) {
+  const intervalos = [];
+  if (manutencao.IntervaloKm > 0) intervalos.push(formatarKm(manutencao.IntervaloKm));
+  if (manutencao.IntervaloMeses > 0) {
+    intervalos.push(manutencao.IntervaloMeses === 1 ? '1 mês' : `${manutencao.IntervaloMeses} meses`);
+  }
+  let feita = 'feita';
+  if (manutencao.IntervaloKm > 0 && manutencao.UltimaKm != null) feita += ` com ${formatarKm(manutencao.UltimaKm)}`;
+  if (manutencao.UltimaData) feita += ` em ${formatarData(manutencao.UltimaData)}`;
+  return `a cada ${intervalos.join(' ou ')} · ${feita}`;
+}
+
 function criarItemManutencao(manutencao) {
-  const falta = kmAteManutencao(manutencao);
+  const prazo = prazoMaisUrgente(manutencao);
   const item = document.createElement('button');
   item.type = 'button';
   item.className = 'mini-lista-item manutencao-item';
@@ -356,28 +421,25 @@ function criarItemManutencao(manutencao) {
   nome.textContent = manutencao.Nome;
   const info = document.createElement('span');
   info.className = 'parcela-info';
-  info.textContent = `a cada ${formatarKm(manutencao.IntervaloKm)} · feita com ${formatarKm(manutencao.UltimaKm)}`;
+  info.textContent = descreverManutencao(manutencao);
   textos.append(nome, info);
 
   const valor = document.createElement('span');
   valor.className = 'mini-lista-valor';
-  if (falta == null) valor.textContent = 'sem odômetro';
-  else if (falta < 0) valor.textContent = `passou ${formatarKm(-falta)}`;
-  else valor.textContent = `faltam ${formatarKm(falta)}`;
+  valor.textContent = prazo ? prazo.texto : 'sem odômetro';
   item.append(textos, valor);
 
-  // Barra do quanto do intervalo já foi rodado: amarela nos últimos 10%, vermelha ao vencer
-  if (falta != null) {
-    const usado = 1 - falta / manutencao.IntervaloKm;
+  // Barra do quanto do intervalo já passou: amarela nos últimos 10%, vermelha ao vencer
+  if (prazo) {
     const trilha = document.createElement('span');
     trilha.className = 'progresso-trilha manutencao-trilha';
     const barra = document.createElement('span');
     barra.className = 'progresso-barra ' +
-      (usado >= 1 ? 'progresso-critico' : usado >= 0.9 ? 'progresso-alerta' : 'progresso-ok');
-    barra.style.width = `${Math.min(Math.max(usado, 0), 1) * 100}%`;
+      (prazo.usado >= 1 ? 'progresso-critico' : prazo.usado >= 0.9 ? 'progresso-alerta' : 'progresso-ok');
+    barra.style.width = `${Math.min(Math.max(prazo.usado, 0), 1) * 100}%`;
     trilha.appendChild(barra);
     item.appendChild(trilha);
-    valor.classList.toggle('manutencao-vencida', falta < 0);
+    valor.classList.toggle('manutencao-vencida', prazo.vencida);
   }
 
   item.addEventListener('click', () => abrirGavetaManutencao(manutencao));
@@ -391,14 +453,19 @@ function abrirGavetaManutencao(manutencao = null) {
   gavetaManutencaoTitulo.textContent = `${manutencao ? 'Editar' : 'Nova'} manutenção · ${veiculo}`;
   botaoSalvarManutencao.textContent = manutencao ? 'Salvar' : 'Adicionar';
   botaoExcluirManutencao.hidden = !manutencao;
+  botaoFeitaAgora.hidden = !manutencao;
   const atual = odometroAtual(veiculo);
-  botaoFeitaAgora.hidden = !manutencao || !atual;
 
   manutencaoNome.value = manutencao ? manutencao.Nome : '';
-  manutencaoIntervalo.value = manutencao ? String(Math.round(manutencao.IntervaloKm)) : '';
-  manutencaoUltima.value = manutencao
-    ? String(Math.round(manutencao.UltimaKm))
-    : atual ? String(Math.round(atual.km)) : '';
+  manutencaoIntervalo.value = manutencao?.IntervaloKm ? String(Math.round(manutencao.IntervaloKm)) : '';
+  manutencaoMeses.value = manutencao?.IntervaloMeses ? String(manutencao.IntervaloMeses) : '';
+  if (manutencao) {
+    manutencaoUltima.value = manutencao.UltimaKm != null ? String(Math.round(manutencao.UltimaKm)) : '';
+    manutencaoData.value = manutencao.UltimaData || '';
+  } else {
+    manutencaoUltima.value = atual ? String(Math.round(atual.km)) : '';
+    manutencaoData.value = formatarIso(new Date());
+  }
   atualizarPreviaManutencao();
   gavetaManutencao.showModal();
   if (!manutencao) manutencaoNome.focus();
@@ -408,45 +475,65 @@ function veiculoDaGavetaManutencao() {
   return manutencaoEditando ? manutencaoEditando.Veiculo : veiculoFiltro;
 }
 
-function atualizarPreviaManutencao() {
-  const intervalo = lerKmInteiro(manutencaoIntervalo.value);
-  const ultima = lerKmInteiro(manutencaoUltima.value);
-  if (!(intervalo > 0) || Number.isNaN(ultima)) {
-    manutencaoPrevia.textContent = '';
-    return;
-  }
-  const proxima = ultima + intervalo;
-  const atual = odometroAtual(veiculoDaGavetaManutencao());
-  let texto = `Próxima com ${formatarKm(proxima)}`;
-  if (atual) {
-    const falta = proxima - atual.km;
-    texto += falta >= 0 ? ` · faltam ${formatarKm(falta)}` : ` · passou ${formatarKm(-falta)}`;
-  }
-  manutencaoPrevia.textContent = texto;
+// Campo vazio é null (prazo não usado); preenchido com lixo é NaN
+function lerCampoInteiro(campo) {
+  return campo.value.trim() ? lerKmInteiro(campo.value) : null;
 }
 
-[manutencaoIntervalo, manutencaoUltima].forEach((campo) => {
+function atualizarPreviaManutencao() {
+  const intervalo = lerCampoInteiro(manutencaoIntervalo);
+  const ultima = lerCampoInteiro(manutencaoUltima);
+  const meses = lerCampoInteiro(manutencaoMeses);
+  const partes = [];
+  if (intervalo > 0 && ultima != null && !Number.isNaN(ultima)) {
+    const proxima = ultima + intervalo;
+    const atual = odometroAtual(veiculoDaGavetaManutencao());
+    partes.push(`com ${formatarKm(proxima)}` + (atual ? ` (${textoFalta(proxima - atual.km, formatarKm)})` : ''));
+  }
+  if (meses > 0 && manutencaoData.value) {
+    const vence = somarMeses(manutencaoData.value, meses);
+    const dias = Math.round((vence - hojeMeiaNoite()) / 86400000);
+    partes.push(`em ${formatarData(formatarIso(vence))} (${dias === 0 ? 'hoje' : textoFalta(dias, formatarDias)})`);
+  }
+  manutencaoPrevia.textContent = partes.length ? `Próxima ${partes.join(' ou ')}` : '';
+}
+
+[manutencaoIntervalo, manutencaoUltima, manutencaoMeses, manutencaoData].forEach((campo) => {
   campo.addEventListener('input', atualizarPreviaManutencao);
 });
 
-async function enviarManutencao(ultimaKm) {
+function mostrarErroManutencao(texto) {
+  erroManutencao.textContent = texto;
+  erroManutencao.hidden = false;
+}
+
+// feitaAgora: a próxima conta a partir do odômetro de agora (se houver) e de hoje
+async function enviarManutencao(feitaAgora = false) {
   erroManutencao.hidden = true;
+  const atual = odometroAtual(veiculoDaGavetaManutencao());
   const manutencao = {
     Veiculo: veiculoDaGavetaManutencao(),
     Nome: manutencaoNome.value.trim(),
-    IntervaloKm: lerKmInteiro(manutencaoIntervalo.value),
-    UltimaKm: ultimaKm,
+    IntervaloKm: lerCampoInteiro(manutencaoIntervalo),
+    UltimaKm: feitaAgora && atual ? Math.round(atual.km) : lerCampoInteiro(manutencaoUltima),
+    IntervaloMeses: lerCampoInteiro(manutencaoMeses),
+    UltimaData: feitaAgora ? formatarIso(new Date()) : manutencaoData.value || null,
   };
   if (!manutencao.Nome) return;
-  if (!(manutencao.IntervaloKm > 0)) {
-    erroManutencao.textContent = 'Intervalo inválido. Use os km entre uma e outra, como 1000.';
-    erroManutencao.hidden = false;
-    return;
+  if (manutencao.IntervaloKm != null && !(manutencao.IntervaloKm > 0)) {
+    return mostrarErroManutencao('Intervalo em km inválido. Use os km entre uma e outra, como 1000.');
   }
-  if (Number.isNaN(manutencao.UltimaKm)) {
-    erroManutencao.textContent = 'Odômetro inválido. Use só o número, como 19200.';
-    erroManutencao.hidden = false;
-    return;
+  if (manutencao.IntervaloMeses != null && !(manutencao.IntervaloMeses > 0 && manutencao.IntervaloMeses <= 240)) {
+    return mostrarErroManutencao('Intervalo em meses inválido. Use só o número, como 6.');
+  }
+  if (manutencao.IntervaloKm == null && manutencao.IntervaloMeses == null) {
+    return mostrarErroManutencao('Informe a cada quantos km, quantos meses ou os dois.');
+  }
+  if (Number.isNaN(manutencao.UltimaKm) || (manutencao.IntervaloKm && manutencao.UltimaKm == null)) {
+    return mostrarErroManutencao('Odômetro inválido. Use só o número, como 19200.');
+  }
+  if (manutencao.IntervaloMeses && !manutencao.UltimaData) {
+    return mostrarErroManutencao('Informe a data da última vez que foi feita.');
   }
 
   const editando = manutencaoEditando;
@@ -462,8 +549,7 @@ async function enviarManutencao(ultimaKm) {
     mostrarNotificacao(editando ? `${manutencao.Nome} atualizada` : `${manutencao.Nome} cadastrada`);
     await carregarAbastecimentos();
   } catch (e) {
-    erroManutencao.textContent = e.message;
-    erroManutencao.hidden = false;
+    mostrarErroManutencao(e.message);
   } finally {
     botaoSalvarManutencao.disabled = false;
     botaoFeitaAgora.disabled = false;
@@ -472,14 +558,10 @@ async function enviarManutencao(ultimaKm) {
 
 formManutencao.addEventListener('submit', (evento) => {
   evento.preventDefault();
-  enviarManutencao(lerKmInteiro(manutencaoUltima.value));
+  enviarManutencao();
 });
 
-// Acabou de fazer: a próxima conta a partir do odômetro de agora
-botaoFeitaAgora.addEventListener('click', () => {
-  const atual = odometroAtual(veiculoDaGavetaManutencao());
-  if (atual) enviarManutencao(Math.round(atual.km));
-});
+botaoFeitaAgora.addEventListener('click', () => enviarManutencao(true));
 
 botaoExcluirManutencao.addEventListener('click', () => {
   const manutencao = manutencaoEditando;

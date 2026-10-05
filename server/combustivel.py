@@ -16,14 +16,15 @@ Com Banco preenchido, o abastecimento também vira um gasto em Finanças
 mexe no outro. Sem Banco, nada é lançado (ex.: pago no cartão de crédito,
 que já entra pela fatura).
 
-Manutenções (troca de óleo etc.) guardam o intervalo em km e o odômetro
-da última vez que foram feitas; quanto falta o app calcula com o odômetro.
+Manutenções (troca de óleo etc.) guardam o intervalo em km, em meses ou
+nos dois, e o odômetro e a data da última vez que foram feitas. Vence pelo
+que chegar primeiro; quanto falta o app calcula com o odômetro e o dia de hoje.
 """
 
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 COMBUSTIVEIS = Literal["Gasolina", "Gasolina aditivada", "Etanol", "Diesel", "GNV"]
 
@@ -45,7 +46,7 @@ DATA_LEITURAS_INICIAIS = "2026-10-01"
 
 TABELA_MANUTENCOES = """CREATE TABLE IF NOT EXISTS manutencoes (
     id INTEGER PRIMARY KEY, Veiculo TEXT NOT NULL, Nome TEXT NOT NULL,
-    IntervaloKm REAL NOT NULL, UltimaKm REAL NOT NULL)"""
+    IntervaloKm REAL, UltimaKm REAL, IntervaloMeses INTEGER, UltimaData TEXT)"""
 
 # Categoria do gasto lançado: a que já existir com "combust" no nome, senão esta
 CATEGORIA_PADRAO = ("Combustível", "Transporte")
@@ -70,8 +71,21 @@ class LeituraOdometro(BaseModel):
 class NovaManutencao(BaseModel):
     Veiculo: str = Field(min_length=1, max_length=60)
     Nome: str = Field(min_length=1, max_length=60)
-    IntervaloKm: float = Field(gt=0)
-    UltimaKm: float = Field(ge=0)  # odômetro da última vez que foi feita
+    IntervaloKm: Optional[float] = Field(default=None, gt=0)
+    UltimaKm: Optional[float] = Field(default=None, ge=0)  # odômetro da última vez que foi feita
+    IntervaloMeses: Optional[int] = Field(default=None, gt=0, le=240)
+    UltimaData: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+    # Precisa de pelo menos um prazo, e cada prazo do seu ponto de partida
+    @model_validator(mode="after")
+    def prazos_completos(self):
+        if self.IntervaloKm is None and self.IntervaloMeses is None:
+            raise ValueError("informe o intervalo em km, em meses ou nos dois")
+        if self.IntervaloKm is not None and self.UltimaKm is None:
+            raise ValueError("intervalo em km sem o odômetro da última vez")
+        if self.IntervaloMeses is not None and self.UltimaData is None:
+            raise ValueError("intervalo em meses sem a data da última vez")
+        return self
 
 
 def criar_rotas(conectar, checar_token):
@@ -90,10 +104,25 @@ def criar_rotas(conectar, checar_token):
             if "GastoRowid" not in colunas:
                 client.execute("ALTER TABLE abastecimentos ADD COLUMN GastoRowid INTEGER")
             client.execute(TABELA_MANUTENCOES)
+            migrar_manutencoes(client)
             client.execute(TABELA_ODOMETROS)
             if not client.execute("SELECT 1 FROM odometros LIMIT 1").rows:
                 semear_odometros(client)
             tabela_pronta = True
+
+    def migrar_manutencoes(client):
+        """Tabela de antes do prazo em meses: km era obrigatório. SQLite não
+        tira NOT NULL com ALTER, então recria a tabela e copia as linhas."""
+        colunas = [row[1] for row in client.execute("PRAGMA table_info(manutencoes)").rows]
+        if "IntervaloMeses" in colunas:
+            return
+        client.batch([
+            TABELA_MANUTENCOES.replace("manutencoes", "manutencoes_nova", 1),
+            "INSERT INTO manutencoes_nova (id, Veiculo, Nome, IntervaloKm, UltimaKm) "
+            "SELECT id, Veiculo, Nome, IntervaloKm, UltimaKm FROM manutencoes",
+            "DROP TABLE manutencoes",
+            "ALTER TABLE manutencoes_nova RENAME TO manutencoes",
+        ])
 
     def semear_odometros(client):
         ultimo_id = client.execute("SELECT COALESCE(MAX(id), 0) FROM abastecimentos").rows[0][0]
@@ -150,7 +179,8 @@ def criar_rotas(conectar, checar_token):
             )
             odometros = client.execute("SELECT Veiculo, Km, Parcial, Data, UltimoId FROM odometros")
             manutencoes = client.execute(
-                "SELECT id, Veiculo, Nome, IntervaloKm, UltimaKm FROM manutencoes ORDER BY Nome")
+                "SELECT id, Veiculo, Nome, IntervaloKm, UltimaKm, IntervaloMeses, UltimaData "
+                "FROM manutencoes ORDER BY Nome")
         return {
             "abastecimentos": [dict(zip(rs.columns, row)) for row in rs.rows],
             "odometros": [dict(zip(odometros.columns, row)) for row in odometros.rows],
@@ -212,8 +242,10 @@ def criar_rotas(conectar, checar_token):
         with conectar() as client:
             garantir_tabela(client)
             rs = client.execute(
-                "INSERT INTO manutencoes (Veiculo, Nome, IntervaloKm, UltimaKm) VALUES (?, ?, ?, ?)",
-                [manutencao.Veiculo.strip(), manutencao.Nome.strip(), manutencao.IntervaloKm, manutencao.UltimaKm],
+                "INSERT INTO manutencoes (Veiculo, Nome, IntervaloKm, UltimaKm, IntervaloMeses, UltimaData) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                [manutencao.Veiculo.strip(), manutencao.Nome.strip(), manutencao.IntervaloKm, manutencao.UltimaKm,
+                 manutencao.IntervaloMeses, manutencao.UltimaData],
             )
         return {"ok": True, "id": rs.last_insert_rowid}
 
@@ -222,9 +254,10 @@ def criar_rotas(conectar, checar_token):
         with conectar() as client:
             garantir_tabela(client)
             client.execute(
-                "UPDATE manutencoes SET Veiculo = ?, Nome = ?, IntervaloKm = ?, UltimaKm = ? WHERE id = ?",
+                "UPDATE manutencoes SET Veiculo = ?, Nome = ?, IntervaloKm = ?, UltimaKm = ?, "
+                "IntervaloMeses = ?, UltimaData = ? WHERE id = ?",
                 [manutencao.Veiculo.strip(), manutencao.Nome.strip(), manutencao.IntervaloKm,
-                 manutencao.UltimaKm, id],
+                 manutencao.UltimaKm, manutencao.IntervaloMeses, manutencao.UltimaData, id],
             )
         return {"ok": True}
 

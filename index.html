@@ -348,7 +348,7 @@
           <button id="botao-nova-manutencao" class="botao-chip" type="button">+ Adicionar</button>
         </div>
         <div id="comb-manutencoes"></div>
-        <p id="comb-manutencao-vazio" class="vazio-pequeno" hidden>Cadastre a troca de óleo, os pneus e o que mais tiver prazo em km.</p>
+        <p id="comb-manutencao-vazio" class="vazio-pequeno" hidden>Cadastre a troca de óleo, os pneus e o que mais tiver prazo em km ou em meses.</p>
       </div>
 
       <div class="cartao-grafico">
@@ -758,14 +758,25 @@
           <option>Revisão</option>
         </datalist>
 
+        <!-- Km, meses ou os dois: vence pelo que chegar primeiro -->
         <div class="form-linha">
           <label class="campo-rotulado">
             <span>A cada (km)</span>
-            <input id="manutencao-intervalo" type="text" inputmode="numeric" placeholder="Ex.: 1000" autocomplete="off" required>
+            <input id="manutencao-intervalo" type="text" inputmode="numeric" placeholder="Ex.: 1000" autocomplete="off">
           </label>
           <label class="campo-rotulado">
             <span>Feita com (odômetro)</span>
-            <input id="manutencao-ultima" type="text" inputmode="numeric" placeholder="Ex.: 19200" autocomplete="off" required>
+            <input id="manutencao-ultima" type="text" inputmode="numeric" placeholder="Ex.: 19200" autocomplete="off">
+          </label>
+        </div>
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Ou a cada (meses)</span>
+            <input id="manutencao-meses" type="text" inputmode="numeric" placeholder="Ex.: 6" autocomplete="off">
+          </label>
+          <label class="campo-rotulado">
+            <span>Feita em</span>
+            <input id="manutencao-data" type="date">
           </label>
         </div>
         <p id="manutencao-previa" class="compra-previa"></p>
