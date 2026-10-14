@@ -394,7 +394,7 @@ gavetaOdometro.addEventListener('click', (evento) => {
 // ---------- Manutenção ----------
 
 // Soma meses mantendo o dia; 31/01 mais um mês cai em 28/02, não em 03/03
-function somarMeses(dataIso, meses) {
+function somarMesesNaData(dataIso, meses) {
   const data = dataLocal(dataIso);
   const dia = data.getDate();
   data.setDate(1);
@@ -438,7 +438,7 @@ function prazosManutencao(manutencao) {
   }
   if (manutencao.IntervaloMeses > 0 && manutencao.UltimaData) {
     const inicio = dataLocal(manutencao.UltimaData);
-    const vence = somarMeses(manutencao.UltimaData, manutencao.IntervaloMeses);
+    const vence = somarMesesNaData(manutencao.UltimaData, manutencao.IntervaloMeses);
     const hoje = hojeMeiaNoite();
     // round absorve a hora a mais ou a menos do horário de verão
     const dias = Math.round((vence - hoje) / 86400000);
@@ -482,7 +482,7 @@ function descreverManutencao(manutencao) {
     const alvos = [];
     if (manutencao.IntervaloKm > 0) alvos.push(`aos ${formatarKm((manutencao.UltimaKm || 0) + manutencao.IntervaloKm)}`);
     if (manutencao.IntervaloMeses > 0 && manutencao.UltimaData) {
-      alvos.push(`em ${formatarData(formatarIso(somarMeses(manutencao.UltimaData, manutencao.IntervaloMeses)))}`);
+      alvos.push(`em ${formatarData(formatarIso(somarMesesNaData(manutencao.UltimaData, manutencao.IntervaloMeses)))}`);
     }
     return alvos.join(' ou ') + custo;
   }
@@ -610,7 +610,7 @@ function atualizarPreviaManutencao() {
     partes.push(`com ${formatarKm(proxima)}` + (atual ? ` (${textoFalta(proxima - atual.km, formatarKm)})` : ''));
   }
   if (meses > 0 && manutencaoData.value) {
-    const vence = somarMeses(manutencaoData.value, meses);
+    const vence = somarMesesNaData(manutencaoData.value, meses);
     const dias = Math.round((vence - hojeMeiaNoite()) / 86400000);
     partes.push(`em ${formatarData(formatarIso(vence))} (${dias === 0 ? 'hoje' : textoFalta(dias, formatarDias)})`);
   }
