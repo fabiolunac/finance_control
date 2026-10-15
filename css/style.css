@@ -1329,10 +1329,32 @@ body {
 }
 
 .colunas-barra {
+  position: relative;
   width: 100%;
   border-radius: 4px 4px 0 0;
   background: linear-gradient(0deg, hsl(var(--matiz) 70% 50%), var(--acento));
   transition: height .35s cubic-bezier(.2, .8, .2, 1), filter var(--t-rapida);
+}
+
+/* Valor em cima da coluna; no gráfico por dia, de pé, pra caber na coluna fina */
+.colunas-valor {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  font-family: var(--fonte-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--tinta-fraca);
+}
+
+#grafico-diario .colunas-valor {
+  writing-mode: vertical-rl;
+  transform: translateX(-50%) rotate(180deg);
+  font-size: 0.56rem;
+  letter-spacing: -0.02em;
 }
 
 .colunas-coluna-escolhida .colunas-barra,

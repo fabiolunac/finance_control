@@ -674,11 +674,19 @@ function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
   });
 }
 
+// Valor curto pra caber em cima da coluna: 87, 1,2k, 12k
+function valorCompacto(valor) {
+  if (ocultarValoresAgora) return '••';
+  if (valor < 1000) return String(Math.round(valor));
+  const mil = valor / 1000;
+  return `${mil.toLocaleString('pt-BR', { maximumFractionDigits: mil < 10 ? 1 : 0 })}k`;
+}
+
 // Colunas verticais, uma por entrada (com ou sem valor), e linha tracejada da média.
 // entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo) }
 function renderizarColunas(container, entradas, media) {
   const maior = Math.max(0, media, ...entradas.map((e) => e.valor));
-  const escala = maior * 1.1 || 1;
+  const escala = maior * 1.25 || 1; // folga em cima pro valor da coluna mais alta
   container.innerHTML = '';
 
   const area = document.createElement('div');
@@ -714,6 +722,12 @@ function renderizarColunas(container, entradas, media) {
     const barra = document.createElement('div');
     barra.className = 'colunas-barra';
     barra.style.height = `${(Math.max(entrada.valor, 0) / escala) * 100}%`;
+    if (entrada.valor > 0) {
+      const valor = document.createElement('span');
+      valor.className = 'colunas-valor';
+      valor.textContent = valorCompacto(entrada.valor);
+      barra.appendChild(valor);
+    }
     coluna.appendChild(barra);
     area.appendChild(coluna);
 
