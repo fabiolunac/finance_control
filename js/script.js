@@ -2193,6 +2193,10 @@ const compraData = document.getElementById('compra-data');
 const compraParcelas = document.getElementById('compra-parcelas');
 const compraCartao = document.getElementById('compra-cartao');
 const compraPrevia = document.getElementById('compra-previa');
+const compraFim = document.getElementById('compra-fim');
+const campoParcelas = document.getElementById('campo-parcelas');
+const campoFim = document.getElementById('campo-fim');
+const rotuloCompraData = document.getElementById('rotulo-compra-data');
 const botaoSalvarCompra = document.getElementById('botao-salvar-compra');
 const botaoExcluirCompra = document.getElementById('botao-excluir-compra');
 const erroCompra = document.getElementById('erro-compra');
@@ -2277,6 +2281,10 @@ function parcelasDaFatura(mes, cartaoId) {
     .filter((compra) => compra.Cartao === cartaoId)
     .map((compra) => {
       const indice = mesesEntre(primeiraFatura(compra.Data, cartao), mes);
+      if (compra.Fixa) {
+        if (indice < 0 || (compra.Fim && mes > compra.Fim)) return null;
+        return { compra, numero: null, valor: compra.Valor, partes: partesDaParcela(compra, compra.Valor) };
+      }
       if (indice < 0 || indice >= compra.Parcelas) return null;
       const valor = valorDaParcela(compra.Valor, compra.Parcelas, indice + 1);
       return { compra, numero: indice + 1, valor, partes: partesDaParcela(compra, valor) };
@@ -2434,7 +2442,9 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
       descricao.textContent = compra.Descricao;
       const info = document.createElement('span');
       info.className = 'parcela-info';
-      info.textContent = `${compra.Parcelas > 1 ? `${numero}/${compra.Parcelas}` : 'à vista'} · compra em ${formatarData(compra.Data).slice(0, 5)}`;
+      info.textContent = compra.Fixa
+        ? `fixo · ${compra.Fim ? `até ${nomeMesCurto(compra.Fim)}` : 'todo mês'}`
+        : `${compra.Parcelas > 1 ? `${numero}/${compra.Parcelas}` : 'à vista'} · compra em ${formatarData(compra.Data).slice(0, 5)}`;
       textos.append(descricao, info);
       if (compra.Divisao) {
         const divisao = document.createElement('span');
@@ -2698,10 +2708,29 @@ formCompra.querySelectorAll('input[name="divisao"]').forEach((opcao) => {
 });
 compraPessoas.addEventListener('input', atualizarPreviaCompra);
 
+const compraEhFixa = () => formCompra.elements.recorrencia.value === 'fixa';
+
+// Gasto fixo troca as parcelas pela última fatura (opcional)
+function atualizarCamposRecorrencia() {
+  const fixa = compraEhFixa();
+  campoParcelas.hidden = fixa;
+  compraParcelas.required = !fixa;
+  campoFim.hidden = !fixa;
+  rotuloCompraData.textContent = fixa ? 'Primeira cobrança' : 'Data da compra';
+  compraValor.setAttribute('aria-label', fixa ? 'Valor mensal' : 'Valor total da compra');
+}
+
+formCompra.querySelectorAll('input[name="recorrencia"]').forEach((opcao) => {
+  opcao.addEventListener('change', () => {
+    atualizarCamposRecorrencia();
+    atualizarPreviaCompra();
+  });
+});
+
 function abrirGavetaCompra(compra = null) {
   compraEditando = compra;
   erroCompra.hidden = true;
-  gavetaCompraTitulo.textContent = compra ? 'Editar compra' : 'Nova compra';
+  gavetaCompraTitulo.textContent = compra ? (compra.Fixa ? 'Editar gasto fixo' : 'Editar compra') : 'Nova compra';
   botaoSalvarCompra.textContent = compra ? 'Salvar' : 'Adicionar';
   botaoExcluirCompra.hidden = !compra;
   preencherOpcoesCartao();
@@ -2712,6 +2741,8 @@ function abrirGavetaCompra(compra = null) {
     compraData.value = compra.Data;
     compraParcelas.value = compra.Parcelas;
     compraCartao.value = compra.Cartao;
+    formCompra.elements.recorrencia.value = compra.Fixa ? 'fixa' : 'parcelada';
+    compraFim.value = compra.Fim || '';
     formCompra.elements.divisao.value = compra.Divisao ? compra.Divisao.tipo : 'minha';
     compraPessoas.value = compra.Divisao ? compra.Divisao.pessoas.join(', ') : '';
   } else {
@@ -2719,6 +2750,8 @@ function abrirGavetaCompra(compra = null) {
     compraDescricao.value = '';
     compraData.value = formatarIso(new Date());
     compraParcelas.value = 1;
+    formCompra.elements.recorrencia.value = 'parcelada';
+    compraFim.value = '';
     formCompra.elements.divisao.value = 'minha';
     compraPessoas.value = '';
     const ultimo = lerUltimoCartao();
@@ -2727,6 +2760,7 @@ function abrirGavetaCompra(compra = null) {
 
   preencherOpcoesPessoas();
   atualizarCampoPessoas();
+  atualizarCamposRecorrencia();
   atualizarPreviaCompra();
   gavetaCompra.showModal();
   if (!compra) compraValor.focus();
@@ -2735,7 +2769,8 @@ function abrirGavetaCompra(compra = null) {
 // Mostra como a compra vai se espalhar antes de salvar
 function atualizarPreviaCompra() {
   const total = lerValor(compraValor.value);
-  const parcelas = parseInt(compraParcelas.value, 10);
+  const fixa = compraEhFixa();
+  const parcelas = fixa ? 1 : parseInt(compraParcelas.value, 10);
   const cartao = cartoes.find((c) => c.id === Number(compraCartao.value));
   if (!cartao || !compraData.value || !(parcelas >= 1) || !(total > 0)) {
     compraPrevia.textContent = '';
@@ -2743,22 +2778,27 @@ function atualizarPreviaCompra() {
   }
   const primeira = primeiraFatura(compraData.value, cartao);
   const valorParcela = valorDaParcela(total, parcelas, 1);
-  const linhas = [parcelas === 1
+  const linhas = [fixa
+    ? `${formatarMoeda(total)} por mês · da fatura de ${nomeMes(primeira)} ${compraFim.value ? `até a de ${nomeMes(compraFim.value)}` : 'em diante'}`
+    : parcelas === 1
     ? `À vista · fatura de ${nomeMes(primeira)}`
     : `${parcelas}× de ${formatarMoeda(valorParcela)} · de ${nomeMes(primeira)} a ${nomeMes(somarMeses(primeira, parcelas - 1))}`];
 
   const divisao = divisaoDoFormulario();
   if (divisao) {
     const partes = partesDaParcela({ Divisao: divisao }, valorParcela);
-    const porParcela = parcelas > 1 ? ' por parcela' : '';
+    const porParcela = fixa ? ' por mês' : parcelas > 1 ? ' por parcela' : '';
     linhas.push(divisao.tipo === 'dividida'
       ? `Sua parte ${formatarMoeda(partes.minha)}${porParcela} · ${divisao.pessoas.length === 1 ? divisao.pessoas[0] : 'cada um'} ${formatarMoeda(partes.outros[divisao.pessoas[0]])}`
       : `Você não paga nada · ${divisao.pessoas.join(', ')} ${formatarMoeda(partes.outros[divisao.pessoas[0]])}${divisao.pessoas.length > 1 ? ' cada' : ''}${porParcela}`);
   }
+  if (fixa && compraEditando && compraEditando.Fixa && !compraFim.value) {
+    linhas.push('Pra parar de cobrar, preencha a última fatura. Excluir tira das faturas passadas também.');
+  }
   compraPrevia.textContent = linhas.join('\n');
 }
 
-[compraValor, compraParcelas, compraData, compraCartao].forEach((campo) => {
+[compraValor, compraParcelas, compraData, compraCartao, compraFim].forEach((campo) => {
   campo.addEventListener('input', atualizarPreviaCompra);
 });
 
@@ -2770,9 +2810,11 @@ async function salvarCompra(evento) {
     Data: compraData.value,
     Descricao: compraDescricao.value.trim(),
     Valor: lerValor(compraValor.value),
-    Parcelas: parseInt(compraParcelas.value, 10),
+    Parcelas: compraEhFixa() ? 1 : parseInt(compraParcelas.value, 10),
     Cartao: Number(compraCartao.value),
     Divisao: divisaoDoFormulario(),
+    Fixa: compraEhFixa(),
+    Fim: compraEhFixa() && compraFim.value ? compraFim.value : null,
   };
 
   if (formCompra.elements.divisao.value !== 'minha' && !compra.Divisao) {
@@ -2788,6 +2830,13 @@ async function salvarCompra(evento) {
   }
   if (!compra.Data || !compra.Descricao || !(compra.Parcelas >= 1 && compra.Parcelas <= 48) || !compra.Cartao) return;
 
+  const cartaoCompra = cartoes.find((c) => c.id === compra.Cartao);
+  if (compra.Fim && compra.Fim < primeiraFatura(compra.Data, cartaoCompra)) {
+    erroCompra.textContent = 'A última fatura vem antes da primeira cobrança.';
+    erroCompra.hidden = false;
+    return;
+  }
+
   const editando = compraEditando;
   botaoSalvarCompra.disabled = true;
   try {
@@ -2798,9 +2847,11 @@ async function salvarCompra(evento) {
     }
     try { localStorage.setItem('ultimoCartao', String(compra.Cartao)); } catch (e) {}
     gavetaCompra.close();
-    const primeira = primeiraFatura(compra.Data, cartoes.find((c) => c.id === compra.Cartao));
+    const primeira = primeiraFatura(compra.Data, cartaoCompra);
     mostrarNotificacao(editando
-      ? 'Compra atualizada'
+      ? (compra.Fixa ? 'Gasto fixo atualizado' : 'Compra atualizada')
+      : compra.Fixa
+      ? `${compra.Descricao} · todo mês desde a fatura de ${nomeMes(primeira)}`
       : `${compra.Descricao} · 1ª parcela na fatura de ${nomeMes(primeira)}`);
     await carregarFatura();
   } catch (e) {

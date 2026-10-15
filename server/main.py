@@ -210,6 +210,11 @@ def garantir_tabelas_fatura(client):
         colunas = [row[1] for row in client.execute("PRAGMA table_info(compras_cartao)").rows]
         if "Divisao" not in colunas:
             client.execute("ALTER TABLE compras_cartao ADD COLUMN Divisao TEXT")
+        # Gasto fixo: cobra o Valor em toda fatura desde a primeira, até Fim (YYYY-MM) se houver
+        if "Fixa" not in colunas:
+            client.execute("ALTER TABLE compras_cartao ADD COLUMN Fixa INTEGER NOT NULL DEFAULT 0")
+        if "Fim" not in colunas:
+            client.execute("ALTER TABLE compras_cartao ADD COLUMN Fim TEXT")
         _tabelas_fatura_prontas = True
 
 
@@ -240,6 +245,8 @@ class NovaCompra(BaseModel):
     Parcelas: int = Field(ge=1, le=48)
     Cartao: int
     Divisao: Optional[DivisaoCompra] = None  # ausente = compra só sua
+    Fixa: bool = False  # todo mês o mesmo Valor; Parcelas fica 1 e é ignorado
+    Fim: Optional[str] = Field(default=None, pattern=MES_ISO)  # última fatura do fixo
 
 
 def divisao_para_texto(divisao):
@@ -247,6 +254,12 @@ def divisao_para_texto(divisao):
         return None
     pessoas = [p.strip() for p in divisao.pessoas if p.strip()]
     return json.dumps({"tipo": divisao.tipo, "pessoas": pessoas}, ensure_ascii=False) if pessoas else None
+
+
+def campos_compra(compra):
+    return [compra.Data, compra.Descricao.strip(), compra.Valor, 1 if compra.Fixa else compra.Parcelas,
+            compra.Cartao, divisao_para_texto(compra.Divisao), int(compra.Fixa),
+            compra.Fim if compra.Fixa else None]
 
 
 class PagarFatura(BaseModel):
@@ -263,12 +276,13 @@ def listar_fatura(_=Depends(checar_token)):
         garantir_tabelas_fatura(client)
         cartoes, compras, pagas = client.batch([
             "SELECT id, Nome, Fechamento, Vencimento FROM cartoes ORDER BY Nome",
-            "SELECT id, Data, Descricao, Valor, Parcelas, Cartao, Divisao FROM compras_cartao ORDER BY Data DESC, id DESC",
+            "SELECT id, Data, Descricao, Valor, Parcelas, Cartao, Divisao, Fixa, Fim FROM compras_cartao ORDER BY Data DESC, id DESC",
             "SELECT id, Cartao, Mes, Valor, Data, GastoRowid FROM faturas_pagas",
         ])
     lista_compras = linhas(compras)
     for compra in lista_compras:
         compra["Divisao"] = json.loads(compra["Divisao"]) if compra["Divisao"] else None
+        compra["Fixa"] = bool(compra["Fixa"])
     return {"cartoes": linhas(cartoes), "compras": lista_compras, "pagas": linhas(pagas)}
 
 
@@ -309,9 +323,8 @@ def adicionar_compra(compra: NovaCompra, _=Depends(checar_token)):
     with conectar() as client:
         garantir_tabelas_fatura(client)
         rs = client.execute(
-            "INSERT INTO compras_cartao (Data, Descricao, Valor, Parcelas, Cartao, Divisao) VALUES (?, ?, ?, ?, ?, ?)",
-            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao,
-             divisao_para_texto(compra.Divisao)],
+            "INSERT INTO compras_cartao (Data, Descricao, Valor, Parcelas, Cartao, Divisao, Fixa, Fim) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            campos_compra(compra),
         )
     return {"ok": True, "id": rs.last_insert_rowid}
 
@@ -321,9 +334,8 @@ def atualizar_compra(id: int, compra: NovaCompra, _=Depends(checar_token)):
     with conectar() as client:
         garantir_tabelas_fatura(client)
         client.execute(
-            "UPDATE compras_cartao SET Data = ?, Descricao = ?, Valor = ?, Parcelas = ?, Cartao = ?, Divisao = ? WHERE id = ?",
-            [compra.Data, compra.Descricao.strip(), compra.Valor, compra.Parcelas, compra.Cartao,
-             divisao_para_texto(compra.Divisao), id],
+            "UPDATE compras_cartao SET Data = ?, Descricao = ?, Valor = ?, Parcelas = ?, Cartao = ?, Divisao = ?, Fixa = ?, Fim = ? WHERE id = ?",
+            [*campos_compra(compra), id],
         )
     return {"ok": True}
 

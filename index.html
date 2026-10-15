@@ -614,14 +614,24 @@
 
         <input id="compra-descricao" type="text" placeholder="Descrição" autocomplete="off" maxlength="120" aria-label="Descrição" required>
 
+        <!-- Fixa: assinatura e afins, o mesmo valor em toda fatura até encerrar -->
+        <div class="tipo-segmentado" role="radiogroup" aria-label="Tipo de compra">
+          <label><input type="radio" name="recorrencia" value="parcelada" checked><span>Compra</span></label>
+          <label><input type="radio" name="recorrencia" value="fixa"><span>Gasto fixo</span></label>
+        </div>
+
         <div class="form-linha">
           <label class="campo-rotulado">
-            <span>Data da compra</span>
+            <span id="rotulo-compra-data">Data da compra</span>
             <input id="compra-data" type="date" required>
           </label>
-          <label class="campo-rotulado">
+          <label id="campo-parcelas" class="campo-rotulado">
             <span>Parcelas</span>
             <input id="compra-parcelas" type="number" inputmode="numeric" min="1" max="48" step="1" value="1" required>
+          </label>
+          <label id="campo-fim" class="campo-rotulado" hidden>
+            <span>Última fatura</span>
+            <input id="compra-fim" type="month" aria-label="Última fatura (vazio: sem fim)">
           </label>
         </div>
 
