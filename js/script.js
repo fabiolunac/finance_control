@@ -674,6 +674,64 @@ function renderizarBarras(container, entradas, { porcentagem = false } = {}) {
   });
 }
 
+// Colunas verticais, uma por entrada (com ou sem valor), e linha tracejada da média.
+// entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo) }
+function renderizarColunas(container, entradas, media) {
+  const maior = Math.max(0, media, ...entradas.map((e) => e.valor));
+  const escala = maior * 1.1 || 1;
+  container.innerHTML = '';
+
+  const area = document.createElement('div');
+  area.className = 'colunas-area';
+  const eixo = document.createElement('div');
+  eixo.className = 'colunas-eixo';
+  const detalhe = document.createElement('p');
+  detalhe.className = 'colunas-detalhe';
+
+  if (media > 0) {
+    const linha = document.createElement('div');
+    linha.className = 'colunas-media';
+    linha.style.bottom = `${(media / escala) * 100}%`;
+    const rotuloLinha = document.createElement('span');
+    rotuloLinha.textContent = `média ${formatarMoeda(media)}`;
+    linha.appendChild(rotuloLinha);
+    area.appendChild(linha);
+  }
+
+  entradas.forEach((entrada) => {
+    const coluna = document.createElement('button');
+    coluna.type = 'button';
+    coluna.className = 'colunas-coluna';
+    coluna.title = `${entrada.titulo}: ${formatarMoeda(entrada.valor)}`;
+    coluna.setAttribute('aria-label', coluna.title);
+    coluna.addEventListener('click', () => {
+      const escolhida = !coluna.classList.contains('colunas-coluna-escolhida');
+      area.querySelectorAll('.colunas-coluna-escolhida').forEach((c) => c.classList.remove('colunas-coluna-escolhida'));
+      coluna.classList.toggle('colunas-coluna-escolhida', escolhida);
+      detalhe.textContent = escolhida ? coluna.title : '';
+    });
+
+    const barra = document.createElement('div');
+    barra.className = 'colunas-barra';
+    barra.style.height = `${(Math.max(entrada.valor, 0) / escala) * 100}%`;
+    coluna.appendChild(barra);
+    area.appendChild(coluna);
+
+    const marca = document.createElement('span');
+    marca.textContent = entrada.rotulo;
+    marca.classList.toggle('colunas-eixo-atual', Boolean(entrada.atual));
+    eixo.appendChild(marca);
+  });
+
+  // Área e eixo rolam juntos quando as colunas não cabem (largura mínima no CSS)
+  const rolagem = document.createElement('div');
+  rolagem.className = 'colunas-rolagem';
+  rolagem.style.setProperty('--n-colunas', entradas.length);
+  rolagem.append(area, eixo);
+  container.append(rolagem, detalhe);
+  return rolagem;
+}
+
 function gastosFiltradosGrafico() {
   return gastosConsiderados().filter((g) =>
     (g.tipo === 'Gasto' || g.tipo === 'Pagamento') &&
@@ -691,9 +749,32 @@ function renderizarGrafico() {
     totais[g['Mês']] = (totais[g['Mês']] || 0) + valorLiquido(g);
   });
 
-  const meses = Object.keys(totais).sort();
-  graficoVazio.hidden = meses.length > 0;
-  renderizarBarras(graficoMensal, meses.map((mes) => [mes, totais[mes]]));
+  const comGasto = Object.keys(totais).sort();
+  graficoVazio.hidden = comGasto.length > 0;
+  if (!comGasto.length) {
+    graficoMensal.innerHTML = '';
+    return;
+  }
+
+  // Todos os meses entre o primeiro e o último com gasto, mesmo os vazios
+  const atual = mesAtual();
+  const meses = [];
+  for (let mes = comGasto[0]; mes <= comGasto[comGasto.length - 1]; mes = somarMeses(mes, 1)) meses.push(mes);
+
+  // Média dos meses fechados; o corrente, pela metade, puxaria pra baixo
+  const fechados = meses.filter((mes) => mes !== atual);
+  const base = fechados.length ? fechados : meses;
+  const media = base.reduce((soma, mes) => soma + (totais[mes] || 0), 0) / base.length;
+
+  const rolagem = renderizarColunas(graficoMensal, meses.map((mes) => ({
+    rotulo: nomeMesCurto(mes),
+    titulo: nomeMesTitulo(mes),
+    valor: totais[mes] || 0,
+    atual: mes === atual,
+  })), media);
+
+  // Muitos meses rolam na horizontal; começa mostrando os mais recentes
+  rolagem.scrollLeft = rolagem.scrollWidth;
 }
 
 function preencherFiltroDiario() {
@@ -721,14 +802,26 @@ function renderizarGraficoDiario() {
     totais[data] = (totais[data] || 0) + valorLiquido(g);
   });
 
-  const datas = Object.keys(totais).sort();
-  graficoDiarioVazio.hidden = datas.length > 0;
+  const mes = graficoDiaMes.value;
+  graficoDiarioVazio.hidden = filtrados.length > 0;
+  if (!filtrados.length) {
+    graficoDiario.innerHTML = '';
+    return;
+  }
 
-  const entradas = datas.map((data) => {
-    const [, mes, dia] = data.split('-');
-    return [`${dia}/${mes}`, totais[data]];
-  });
-  renderizarBarras(graficoDiario, entradas);
+  // Todos os dias do mês; a média conta os dias já passados (no mês corrente, até hoje)
+  const [ano, m] = mes.split('-').map(Number);
+  const diasNoMes = new Date(ano, m, 0).getDate();
+  const hoje = formatarIso(new Date());
+  const diasCorridos = mes === mesAtual() ? new Date().getDate() : diasNoMes;
+  const soma = Object.values(totais).reduce((a, b) => a + b, 0);
+
+  const entradas = [];
+  for (let dia = 1; dia <= diasNoMes; dia += 1) {
+    const iso = `${mes}-${pad2(dia)}`;
+    entradas.push({ rotulo: String(dia), titulo: formatarData(iso).slice(0, 5), valor: totais[iso] || 0, atual: iso === hoje });
+  }
+  renderizarColunas(graficoDiario, entradas, soma / diasCorridos);
 }
 
 ligarPassoMes(graficoDiaMes, atualizarGraficosDoMes);
