@@ -33,8 +33,8 @@ const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
 const metricaComparacao = document.getElementById('metrica-comparacao');
 const metricaFatura = document.getElementById('metrica-fatura');
-const araujoContagem = document.getElementById('araujo-contagem');
-const araujoDetalhe = document.getElementById('araujo-detalhe');
+const energeticosContagem = document.getElementById('energeticos-contagem');
+const energeticosDetalhe = document.getElementById('energeticos-detalhe');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
 const hojeValor = document.getElementById('hoje-valor');
@@ -961,7 +961,7 @@ function renderizarVisaoGeral() {
   renderizarMetaSemanal();
   renderizarGastoHoje();
   renderizarUltimaCompra();
-  renderizarAraujo();
+  renderizarEnergeticos();
   renderizarUltimoCorte();
   renderizarCalendario();
   renderizarGraficoSemanal();
@@ -1007,7 +1007,7 @@ function renderizarGraficoSubcategorias(gastosMes) {
   renderizarBarras(graficoSubcategoriasMes, entradas, { porcentagem: true });
 }
 
-// ---------- Cards específicos: Araújo e corte de cabelo ----------
+// ---------- Cards específicos: energéticos e corte de cabelo ----------
 
 function contem(texto, trecho) {
   return Boolean(texto) && semAcento(texto).toLowerCase().includes(trecho);
@@ -1060,17 +1060,22 @@ cardUltimaCompra.addEventListener('click', () => {
   if (ultimaCompra) abrirGaveta(ultimaCompra);
 });
 
-// Compras na Araújo no mês escolhido (cada uma ≈ um Monster)
-function renderizarAraujo() {
+// Gastos marcados com energético no mês escolhido (cada um ≈ uma lata)
+function renderizarEnergeticos() {
   const compras = todosGastos.filter((g) =>
-    g.tipo === 'Gasto' && g['Mês'] === mesSelecionado() && contem(g.Local, 'araujo'));
-  araujoContagem.textContent = String(compras.length);
+    g.tipo === 'Gasto' && g['Mês'] === mesSelecionado() && g.Energetico);
+  energeticosContagem.textContent = String(compras.length);
   if (!compras.length) {
-    araujoDetalhe.textContent = 'Nenhuma compra neste mês';
+    energeticosDetalhe.textContent = 'Nenhum neste mês';
     return;
   }
+  const porMarca = ['Monster', 'Reign']
+    .map((marca) => [marca, compras.filter((g) => g.Energetico === marca).length])
+    .filter(([, quantos]) => quantos > 0)
+    .map(([marca, quantos]) => `${quantos} ${marca}`);
   const total = compras.reduce((soma, g) => soma + g.Valor, 0);
-  araujoDetalhe.textContent = `${formatarMoeda(total)} · última em ${formatarData(maisRecente(compras).Data).slice(0, 5)}`;
+  energeticosDetalhe.textContent = [...porMarca, formatarMoeda(total),
+    `último em ${formatarData(maisRecente(compras).Data).slice(0, 5)}`].join(' · ');
 }
 
 // Último lançamento com categoria de corte de cabelo, em todo o histórico
@@ -1370,12 +1375,14 @@ function abrirGaveta(gasto = null, doLote = false) {
     campoData.value = gasto.Data.slice(0, 10);
     campoBanco.value = gasto.banco || '';
     formGasto.elements.tipo.value = gasto.tipo;
+    formGasto.elements.energetico.value = gasto.Energetico || '';
   } else {
     campoValor.value = '';
     campoLocal.value = '';
     campoData.value = camposLote ? camposLote.Data : formatarIso(new Date());
     campoBanco.value = camposLote ? camposLote.banco : lerUltimoBanco();
     formGasto.elements.tipo.value = camposLote ? camposLote.tipo : 'Gasto';
+    formGasto.elements.energetico.value = '';
   }
 
   renderizarLote();
@@ -1440,6 +1447,7 @@ async function salvarGasto(evento) {
     Valor: lerValor(campoValor.value),
     tipo: formGasto.elements.tipo.value,
     banco: campoBanco.value.trim(),
+    Energetico: formGasto.elements.energetico.value || null,
   };
 
   if (Number.isNaN(gasto.Valor)) {
@@ -1773,6 +1781,7 @@ async function salvarEdicao(td, gasto, campo, novoValorBruto, valorOriginalTexto
     Valor: gasto.Valor,
     tipo: gasto.tipo,
     banco: gasto.banco,
+    Energetico: gasto.Energetico || null,
   };
   payload[campo] = novoValor;
 

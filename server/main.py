@@ -44,12 +44,31 @@ def checar_token(request: Request):
         raise HTTPException(status_code=401, detail="Token inválido ou ausente.")
 
 
+# Energético comprado no gasto (Monster, Reign ou vazio), pra contar no card.
+# Na primeira vez, as compras antigas na Araújo, que eram sempre um Monster,
+# entram marcadas como Monster.
+_coluna_energetico_pronta = False
+
+
+def garantir_coluna_energetico(client):
+    global _coluna_energetico_pronta
+    if not _coluna_energetico_pronta:
+        colunas = [row[1] for row in client.execute("PRAGMA table_info(gastos)").rows]
+        if "Energetico" not in colunas:
+            client.batch([
+                "ALTER TABLE gastos ADD COLUMN Energetico TEXT",
+                "UPDATE gastos SET Energetico = 'Monster' WHERE tipo = 'Gasto' AND Local LIKE '%ara_jo%'",
+            ])
+        _coluna_energetico_pronta = True
+
+
 @app.get("/api/gastos")
 def listar_gastos(_=Depends(checar_token)):
     client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     try:
+        garantir_coluna_energetico(client)
         gastos_rs = client.execute(
-            "SELECT rowid, Data, Local, Valor, banco, tipo FROM gastos ORDER BY Data ASC, rowid ASC"
+            "SELECT rowid, Data, Local, Valor, banco, tipo, Energetico FROM gastos ORDER BY Data ASC, rowid ASC"
         )
         param_rs = client.execute('SELECT Local, Categoria, "Categoria Geral" FROM param')
     finally:
@@ -60,6 +79,7 @@ def listar_gastos(_=Depends(checar_token)):
         return {"gastos": []}
 
     df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0.0)
+    df["Energetico"] = df["Energetico"].fillna("")
     df_param = pd.DataFrame(param_rs.rows, columns=param_rs.columns)
 
     df = prepare_data(df, df_param)
@@ -76,15 +96,17 @@ class NovoGasto(BaseModel):
     Valor: float
     tipo: str = "Gasto"
     banco: str
+    Energetico: Optional[Literal["Monster", "Reign"]] = None
 
 
 @app.post("/api/gastos", status_code=201)
 def adicionar_gasto(gasto: NovoGasto, _=Depends(checar_token)):
     client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     try:
+        garantir_coluna_energetico(client)
         rs = client.execute(
-            "INSERT INTO gastos (Data, Local, Valor, banco, tipo) VALUES (?, ?, ?, ?, ?)",
-            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo],
+            "INSERT INTO gastos (Data, Local, Valor, banco, tipo, Energetico) VALUES (?, ?, ?, ?, ?, ?)",
+            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo, gasto.Energetico],
         )
     finally:
         client.close()
@@ -106,9 +128,10 @@ def remover_gasto(rowid: int, _=Depends(checar_token)):
 def atualizar_gasto(rowid: int, gasto: NovoGasto, _=Depends(checar_token)):
     client = libsql_client.create_client_sync(url=TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     try:
+        garantir_coluna_energetico(client)
         client.execute(
-            "UPDATE gastos SET Data = ?, Local = ?, Valor = ?, banco = ?, tipo = ? WHERE rowid = ?",
-            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo, rowid],
+            "UPDATE gastos SET Data = ?, Local = ?, Valor = ?, banco = ?, tipo = ?, Energetico = ? WHERE rowid = ?",
+            [f"{gasto.Data} 00:00:00", gasto.Local, gasto.Valor, gasto.banco, gasto.tipo, gasto.Energetico, rowid],
         )
     finally:
         client.close()

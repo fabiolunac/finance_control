@@ -241,9 +241,9 @@
           <span class="resumo-sub" id="ultima-compra-detalhe"></span>
         </button>
         <div class="cartao-grafico metrica-extra">
-          <span class="metrica-rotulo">Monster na Araújo · mês</span>
-          <span class="metrica-extra-valor" id="araujo-contagem"></span>
-          <span class="resumo-sub" id="araujo-detalhe"></span>
+          <span class="metrica-rotulo">Energéticos · mês</span>
+          <span class="metrica-extra-valor" id="energeticos-contagem"></span>
+          <span class="resumo-sub" id="energeticos-detalhe"></span>
         </div>
         <div class="cartao-grafico metrica-extra">
           <span class="metrica-rotulo">Último corte de cabelo</span>
@@ -578,6 +578,13 @@
 
         <input id="campo-local" list="opcoes-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" aria-label="Local" required>
         <datalist id="opcoes-local"></datalist>
+
+        <!-- Energético da compra: conta no card do mês -->
+        <div class="tipo-segmentado energetico-segmentado" role="radiogroup" aria-label="Energético">
+          <label><input type="radio" name="energetico" value="" checked><span>Sem energético</span></label>
+          <label><input type="radio" name="energetico" value="Monster"><span>Monster</span></label>
+          <label><input type="radio" name="energetico" value="Reign"><span>Reign</span></label>
+        </div>
 
         <div class="form-linha">
           <input id="campo-data" type="date" aria-label="Data" required>

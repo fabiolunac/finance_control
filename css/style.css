@@ -2250,6 +2250,10 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 
 .divisao-segmentado { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
+/* Energético no gasto: menor que os outros seletores, é só uma marcação */
+.energetico-segmentado { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.energetico-segmentado span { padding: 6px 8px; font-size: 0.8rem; }
+
 .fatura-cartao-totais {
   display: flex;
   flex-direction: column;
