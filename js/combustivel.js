@@ -4,7 +4,9 @@
    (antes de zerar): é quanto o veículo rodou com o abastecimento
    ANTERIOR. Juntando os dois, sai quanto cada abastecimento rendeu
    e o custo por km; com o preço por litro, os litros e o km/l.
-   O mais recente fica "em uso" até o próximo.
+   O mais recente fica "em uso" até o próximo. Marcado fora do consumo
+   (tanque que já tinha combustível), o km rodado aparece mas não entra
+   no km/l nem no custo por km.
    Usa do núcleo (script.js): registrarModulo, registrarAba,
    requisitar, mostrarNotificacao, removerComDesfazer e formatação.
    ============================================================ */
@@ -80,6 +82,7 @@ const abastCombustivel = document.getElementById('abast-combustivel');
 const abastPreco = document.getElementById('abast-preco');
 const abastVeiculo = document.getElementById('abast-veiculo');
 const abastBanco = document.getElementById('abast-banco');
+const abastConsumo = document.querySelectorAll('input[name="abast-consumo"]');
 const opcoesVeiculos = document.getElementById('opcoes-veiculos');
 const abastPrevia = document.getElementById('abast-previa');
 const botaoSalvarAbast = document.getElementById('botao-salvar-abast');
@@ -144,8 +147,9 @@ function ordenarCronologico(lista) {
   return [...lista].sort((a, b) => a.Data.localeCompare(b.Data) || a.id - b.id);
 }
 
-// id do abastecimento → { km, custoKm } com o que ele rendeu. O km vem do
-// abastecimento seguinte do mesmo veículo; sem seguinte, km fica null (em uso)
+// id do abastecimento → { km, custoKm, kmPorLitro, fora } com o que ele rendeu.
+// O km vem do abastecimento seguinte do mesmo veículo; sem seguinte, km fica
+// null (em uso). Fora do consumo: só o km, sem custo por km nem km/l
 function calcularRendimentos() {
   const porVeiculo = {};
   ordenarCronologico(abastecimentos).forEach((a) => {
@@ -158,10 +162,12 @@ function calcularRendimentos() {
       const seguinte = lista[i + 1];
       const km = seguinte ? seguinte.Km : null;
       const litros = litrosDe(a);
+      const fora = Boolean(a.ForaDoConsumo);
       rendimentos.set(a.id, {
         km,
-        custoKm: km > 0 ? a.Valor / km : null,
-        kmPorLitro: km > 0 && litros ? km / litros : null,
+        fora,
+        custoKm: km > 0 && !fora ? a.Valor / km : null,
+        kmPorLitro: km > 0 && litros && !fora ? km / litros : null,
       });
     });
   });
@@ -245,16 +251,16 @@ function preencherSeletorVeiculos(seletor, veiculos) {
   });
 }
 
-// Média só dos abastecimentos já fechados (que têm o km do seguinte)
+// Média só dos abastecimentos já fechados (que têm o km do seguinte) e que contam no consumo
 function renderizarResumoCombustivel(lista, rendimentos) {
-  const fechados = lista.filter((a) => rendimentos.get(a.id).km > 0);
+  const fechados = lista.filter((a) => rendimentos.get(a.id).km > 0 && !rendimentos.get(a.id).fora);
   const doVeiculo = veiculoFiltro ? ` · ${veiculoFiltro}` : '';
   combMediaRotulo.textContent = `Consumo médio${doVeiculo}`;
   if (!fechados.length) {
     combMediaKm.textContent = '—';
-    combMediaSub.textContent = lista.length
-      ? 'Aparece depois do segundo abastecimento do mesmo veículo'
-      : '';
+    let aviso = lista.length ? 'Aparece depois do segundo abastecimento do mesmo veículo' : '';
+    if (lista.some((a) => rendimentos.get(a.id).km > 0)) aviso = 'Aparece quando fechar um abastecimento que conta no consumo';
+    combMediaSub.textContent = aviso;
     return;
   }
   const kmTotal = fechados.reduce((soma, a) => soma + rendimentos.get(a.id).km, 0);
@@ -742,7 +748,7 @@ function renderizarListaAbastecimentos(lista, rendimentos) {
 }
 
 function criarItemAbastecimento(a, rendimentos) {
-  const { km, custoKm, kmPorLitro } = rendimentos.get(a.id);
+  const { km, custoKm, kmPorLitro, fora } = rendimentos.get(a.id);
   const litros = litrosDe(a);
   const item = document.createElement('button');
   item.type = 'button';
@@ -768,9 +774,9 @@ function criarItemAbastecimento(a, rendimentos) {
   valor.textContent = formatarMoeda(a.Valor);
   const rendimento = document.createElement('span');
   rendimento.className = km > 0 ? 'abast-rendimento' : 'abast-rendimento abast-em-uso';
-  rendimento.textContent = km > 0
-    ? `${formatarKm(km)} · ${kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`}`
-    : 'em uso';
+  let medida = 'fora do consumo';
+  if (!fora) medida = kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`;
+  rendimento.textContent = km > 0 ? `${formatarKm(km)} · ${medida}` : 'em uso';
   direita.append(valor, rendimento);
 
   item.append(textos, direita);
@@ -878,6 +884,7 @@ function abrirGavetaAbastecimento(abastecimento = null) {
     abastVeiculo.value = abastecimento.Veiculo;
     abastPreco.value = abastecimento.PrecoLitro ? String(abastecimento.PrecoLitro).replace('.', ',') : '';
     abastBanco.value = abastecimento.Banco || '';
+    marcarConsumo(Boolean(abastecimento.ForaDoConsumo));
   } else {
     abastValor.value = '';
     abastData.value = formatarIso(new Date());
@@ -886,6 +893,7 @@ function abrirGavetaAbastecimento(abastecimento = null) {
     abastVeiculo.value = veiculoFiltro || lerPreferencia('ultimoVeiculo');
     abastCombustivel.value = lerPreferencia('ultimoCombustivel') || 'Gasolina';
     abastBanco.value = bancoSugerido();
+    marcarConsumo(false);
     preencherPrecoBase();
   }
   precoDigitado = false;
@@ -893,6 +901,14 @@ function abrirGavetaAbastecimento(abastecimento = null) {
   atualizarPreviaAbastecimento();
   gavetaAbastecimento.showModal();
   if (!abastecimento) abastValor.focus();
+}
+
+function marcarConsumo(fora) {
+  abastConsumo.forEach((radio) => { radio.checked = radio.value === (fora ? 'fora' : 'conta'); });
+}
+
+function foraDoConsumoMarcado() {
+  return [...abastConsumo].some((radio) => radio.checked && radio.value === 'fora');
 }
 
 // O que foi usado no último abastecimento (vazio vale: não lançou); na
@@ -930,11 +946,17 @@ function atualizarPreviaAbastecimento() {
       const litrosAnterior = litrosDe(anterior);
       let rendeu = '';
       if (km > 0) {
-        rendeu = `: rodou ${formatarKm(km)} · ` +
-          (litrosAnterior ? `${umaCasa(km / litrosAnterior)} km/l` : `${formatarMoeda(anterior.Valor / km)}/km`);
+        let medida = 'fora do consumo';
+        if (!anterior.ForaDoConsumo) {
+          medida = litrosAnterior ? `${umaCasa(km / litrosAnterior)} km/l` : `${formatarMoeda(anterior.Valor / km)}/km`;
+        }
+        rendeu = `: rodou ${formatarKm(km)} · ${medida}`;
       }
       linhas.push(inicio + rendeu);
     }
+  }
+  if (foraDoConsumoMarcado()) {
+    linhas.push('Fora do consumo: o km que ele render conta no odômetro, mas não no km/l nem no custo por km.');
   }
   const banco = abastBanco.value.trim();
   if (banco && veiculo) {
@@ -948,6 +970,8 @@ function atualizarPreviaAbastecimento() {
 [abastValor, abastData, abastKm, abastVeiculo, abastPreco, abastBanco].forEach((campo) => {
   campo.addEventListener('input', atualizarPreviaAbastecimento);
 });
+
+abastConsumo.forEach((radio) => radio.addEventListener('change', atualizarPreviaAbastecimento));
 
 abastPreco.addEventListener('input', () => { precoDigitado = true; });
 
@@ -969,6 +993,7 @@ async function salvarAbastecimento(evento) {
     Veiculo: abastVeiculo.value.trim(),
     PrecoLitro: lerValor(abastPreco.value),
     Banco: abastBanco.value.trim() || null,
+    ForaDoConsumo: foraDoConsumoMarcado(),
   };
 
   if (!(abastecimento.Valor > 0)) {

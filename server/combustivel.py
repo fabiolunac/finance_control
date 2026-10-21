@@ -16,6 +16,10 @@ Com Banco preenchido, o abastecimento também vira um gasto em Finanças
 mexe no outro. Sem Banco, nada é lançado (ex.: pago no cartão de crédito,
 que já entra pela fatura).
 
+ForaDoConsumo marca o abastecimento cujo rendimento não diz nada sobre o
+consumo (ex.: completou um tanque que já tinha combustível): o km rodado
+conta no odômetro, mas fica fora do km/l e do custo por km.
+
 Manutenções (troca de óleo etc.) guardam o intervalo em km, em meses ou
 nos dois, e o odômetro e a data da última vez que foram feitas. Vence pelo
 que chegar primeiro; quanto falta o app calcula com o odômetro e o dia de hoje.
@@ -80,6 +84,7 @@ class NovoAbastecimento(BaseModel):
     Veiculo: str = Field(min_length=1, max_length=60)
     PrecoLitro: Optional[float] = Field(default=None, gt=0)  # ausente nos registros antigos
     Banco: Optional[str] = Field(default=None, max_length=60)  # preenchido: lança o gasto em Finanças
+    ForaDoConsumo: bool = False  # rendimento não entra no km/l (tanque já tinha combustível)
 
 
 class LeituraOdometro(BaseModel):
@@ -127,6 +132,8 @@ def criar_rotas(conectar, checar_token):
                 client.execute("ALTER TABLE abastecimentos ADD COLUMN PrecoLitro REAL")
             if "GastoRowid" not in colunas:
                 client.execute("ALTER TABLE abastecimentos ADD COLUMN GastoRowid INTEGER")
+            if "ForaDoConsumo" not in colunas:
+                client.execute("ALTER TABLE abastecimentos ADD COLUMN ForaDoConsumo INTEGER NOT NULL DEFAULT 0")
             client.execute(TABELA_MANUTENCOES)
             migrar_manutencoes(client)
             client.execute(TABELA_ODOMETROS)
@@ -231,7 +238,7 @@ def criar_rotas(conectar, checar_token):
             garantir_tabela(client)
             rs = client.execute(
                 "SELECT a.id, a.Data, a.Valor, a.Km, a.Combustivel, a.Veiculo, a.PrecoLitro, a.GastoRowid, "
-                "g.banco AS Banco FROM abastecimentos a LEFT JOIN gastos g ON g.rowid = a.GastoRowid "
+                "a.ForaDoConsumo, g.banco AS Banco FROM abastecimentos a LEFT JOIN gastos g ON g.rowid = a.GastoRowid "
                 "ORDER BY a.Data DESC, a.id DESC"
             )
             odometros = client.execute("SELECT Veiculo, Km, Parcial, Data, UltimoId FROM odometros")
@@ -262,10 +269,11 @@ def criar_rotas(conectar, checar_token):
             garantir_tabela(client)
             gasto_rowid = gravar_gasto(client, abastecimento, None)
             rs = client.execute(
-                "INSERT INTO abastecimentos (Data, Valor, Km, Combustivel, Veiculo, PrecoLitro, GastoRowid) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO abastecimentos (Data, Valor, Km, Combustivel, Veiculo, PrecoLitro, GastoRowid, ForaDoConsumo) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [abastecimento.Data, abastecimento.Valor, abastecimento.Km,
-                 abastecimento.Combustivel, abastecimento.Veiculo.strip(), abastecimento.PrecoLitro, gasto_rowid],
+                 abastecimento.Combustivel, abastecimento.Veiculo.strip(), abastecimento.PrecoLitro, gasto_rowid,
+                 int(abastecimento.ForaDoConsumo)],
             )
         return {"ok": True, "id": rs.last_insert_rowid}
 
@@ -277,9 +285,10 @@ def criar_rotas(conectar, checar_token):
             gasto_rowid = gravar_gasto(client, abastecimento, atual[0][0] if atual else None)
             client.execute(
                 "UPDATE abastecimentos SET Data = ?, Valor = ?, Km = ?, Combustivel = ?, Veiculo = ?, "
-                "PrecoLitro = ?, GastoRowid = ? WHERE id = ?",
+                "PrecoLitro = ?, GastoRowid = ?, ForaDoConsumo = ? WHERE id = ?",
                 [abastecimento.Data, abastecimento.Valor, abastecimento.Km, abastecimento.Combustivel,
-                 abastecimento.Veiculo.strip(), abastecimento.PrecoLitro, gasto_rowid, id],
+                 abastecimento.Veiculo.strip(), abastecimento.PrecoLitro, gasto_rowid,
+                 int(abastecimento.ForaDoConsumo), id],
             )
         return {"ok": True}
 

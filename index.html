@@ -715,6 +715,12 @@
           <input id="abast-banco" type="text" list="opcoes-banco" placeholder="Vazio: não lança, ex.: cartão de crédito" autocomplete="off" maxlength="60">
         </label>
 
+        <!-- Fora: tanque que já tinha combustível, o km rodado não diz o consumo -->
+        <div class="tipo-segmentado" role="radiogroup" aria-label="Consumo">
+          <label><input type="radio" name="abast-consumo" value="conta" checked><span>Conta no consumo</span></label>
+          <label><input type="radio" name="abast-consumo" value="fora"><span>Fora do consumo</span></label>
+        </div>
+
         <p id="abast-previa" class="compra-previa"></p>
 
         <div class="form-acoes">
