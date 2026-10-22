@@ -35,6 +35,16 @@ const metricaComparacao = document.getElementById('metrica-comparacao');
 const metricaFatura = document.getElementById('metrica-fatura');
 const energeticosContagem = document.getElementById('energeticos-contagem');
 const energeticosDetalhe = document.getElementById('energeticos-detalhe');
+const rendaCards = document.getElementById('renda-cards');
+const salarioSobra = document.getElementById('salario-sobra');
+const salarioBarra = document.getElementById('salario-barra');
+const salarioDetalhe = document.getElementById('salario-detalhe');
+const aleloSobra = document.getElementById('alelo-sobra');
+const aleloBarra = document.getElementById('alelo-barra');
+const aleloDetalhe = document.getElementById('alelo-detalhe');
+const formRenda = document.getElementById('form-renda');
+const rendaSalario = document.getElementById('renda-salario');
+const rendaVale = document.getElementById('renda-vale');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
 const hojeValor = document.getElementById('hoje-valor');
@@ -46,9 +56,6 @@ const graficoCategoriasMes = document.getElementById('grafico-categorias-mes');
 const graficoSubcategoriasMes = document.getElementById('grafico-subcategorias-mes');
 const graficoSubcategoriasVazio = document.getElementById('grafico-subcategorias-vazio');
 const graficoCategoriasVazio = document.getElementById('grafico-categorias-vazio');
-const metaSemanaTexto = document.getElementById('meta-semana-texto');
-const metaSemanaBarra = document.getElementById('meta-semana-barra');
-const metaSemanaLegenda = document.getElementById('meta-semana-legenda');
 const visaoMes = document.getElementById('visao-mes');
 const botaoMesAtualVisao = document.getElementById('botao-mes-atual-visao');
 const calendario = document.getElementById('calendario');
@@ -197,6 +204,9 @@ async function carregar() {
     mostrarNotificacao('Acordando o servidor, pode levar até um minuto…', null, null, 60000);
   }, 4000);
 
+  // Salário e vale vêm junto; se falhar, os cards só ficam sem os valores
+  const rendaPromessa = carregarRenda();
+
   try {
     const resposta = await fetch(`${API_URL}/api/gastos`, {
       headers: { Authorization: `Bearer ${obterToken()}` },
@@ -214,6 +224,7 @@ async function carregar() {
     // Gastos com remoção aguardando o "Desfazer" continuam fora da tela
     todosGastos = gastos.filter((g) => !gastosRemovendo.has(g.rowid));
     carregouUmaVez = true;
+    await rendaPromessa;
     renderizarTudo();
   } catch (e) {
     erro.textContent = e.message;
@@ -958,7 +969,7 @@ function renderizarVisaoGeral() {
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
-  renderizarMetaSemanal();
+  renderizarRenda();
   renderizarGastoHoje();
   renderizarUltimaCompra();
   renderizarEnergeticos();
@@ -1006,6 +1017,79 @@ function renderizarGraficoSubcategorias(gastosMes) {
   }
   renderizarBarras(graficoSubcategoriasMes, entradas, { porcentagem: true });
 }
+
+// ---------- Salário e vale alimentação (Alelo) ----------
+
+// O emprego começa em 01/11/2026: antes disso não há salário nem vale pra comparar.
+// No mês atual, se ainda for antes, os cards aparecem zerados avisando o início.
+const INICIO_RENDA = '2026-11';
+let renda = { Salario: 0, Vale: 0 };
+
+async function carregarRenda() {
+  try {
+    const resposta = await requisitar('GET', '/api/renda', null, 'Erro ao carregar o salário.');
+    renda = await resposta.json();
+  } catch (e) {
+    return;
+  }
+  rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
+  rendaVale.value = renda.Vale ? String(renda.Vale).replace('.', ',') : '';
+}
+
+function ehAlelo(gasto) {
+  return semAcento(gasto.banco || '').toLowerCase() === 'alelo';
+}
+
+// Barra do quanto já foi gasto do valor; legenda com o que foi gasto e quanto entrou
+function renderizarCardRenda(elSobra, elBarra, elDetalhe, entrada, gastos, antes) {
+  const gasto = calcularTotalGasto(gastos);
+  animarValor(elSobra, antes ? entrada : entrada - gasto);
+  const fracao = entrada > 0 ? gasto / entrada : (gasto > 0 ? 1 : 0);
+  elBarra.style.width = `${Math.min(Math.max(fracao, 0), 1) * 100}%`;
+  elBarra.className = 'progresso-barra ' +
+    (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
+  if (antes) {
+    elDetalhe.textContent = `Começa em 01/11 · ${formatarMoeda(entrada)} por mês`;
+  } else if (!entrada) {
+    elDetalhe.textContent = `Gasto ${formatarMoeda(gasto)} · valor não cadastrado em Configurações`;
+  } else {
+    elDetalhe.textContent = `Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(entrada)} (${Math.round(fracao * 100)}%)`;
+  }
+}
+
+function renderizarRenda() {
+  const mes = mesSelecionado();
+  const antes = mes < INICIO_RENDA;
+  rendaCards.hidden = antes && mes !== mesAtual();
+  if (rendaCards.hidden) return;
+
+  const gastosMes = antes ? [] : gastosConsiderados().filter((g) => g['Mês'] === mes);
+  renderizarCardRenda(salarioSobra, salarioBarra, salarioDetalhe, renda.Salario,
+    gastosMes.filter((g) => !ehAlelo(g)), antes);
+  renderizarCardRenda(aleloSobra, aleloBarra, aleloDetalhe, renda.Vale,
+    gastosMes.filter(ehAlelo), antes);
+}
+
+formRenda.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const nova = { Salario: lerValor(rendaSalario.value), Vale: lerValor(rendaVale.value) };
+  if (Number.isNaN(nova.Salario) || Number.isNaN(nova.Vale)) {
+    mostrarNotificacao('Valor inválido. Use algo como 3500,00.');
+    return;
+  }
+  const botao = formRenda.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('PUT', '/api/renda', nova, 'Erro ao salvar no servidor.');
+    renda = nova;
+    mostrarNotificacao('Salário e vale salvos');
+    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
 
 // ---------- Cards específicos: energéticos e corte de cabelo ----------
 
@@ -1090,38 +1174,6 @@ function renderizarUltimoCorte() {
   const ultimo = maisRecente(cortes);
   corteQuando.textContent = textoDiasAtras(ultimo.Data);
   corteDetalhe.textContent = `${formatarData(ultimo.Data)} · ${ultimo.Local} · ${formatarMoeda(ultimo.Valor)}`;
-}
-
-// ---------- Teto de gasto da semana atual ----------
-
-const TETO_SEMANAL = 250;
-
-function renderizarMetaSemanal() {
-  const inicio = inicioSemana(new Date());
-  const fim = new Date(inicio);
-  fim.setDate(fim.getDate() + 6);
-  const inicioIso = formatarIso(inicio);
-  const fimIso = formatarIso(fim);
-
-  const gastoSemana = calcularTotalGasto(gastosConsiderados().filter((g) => {
-    const data = g.Data.slice(0, 10);
-    return data >= inicioIso && data <= fimIso;
-  }));
-
-  const fracao = gastoSemana / TETO_SEMANAL;
-  metaSemanaBarra.style.width = `${Math.min(fracao, 1) * 100}%`;
-  metaSemanaBarra.className = 'progresso-barra ' +
-    (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
-
-  const p = (n) => String(n).padStart(2, '0');
-  metaSemanaTexto.textContent =
-    `Semana atual (${p(inicio.getDate())}/${p(inicio.getMonth() + 1)} – ${p(fim.getDate())}/${p(fim.getMonth() + 1)})`;
-
-  const restante = TETO_SEMANAL - gastoSemana;
-  const diasRestantes = 7 - (new Date().getDay() + 6) % 7; // contando hoje
-  metaSemanaLegenda.textContent = restante >= 0
-    ? `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — faltam ${formatarMoeda(restante)} (${formatarMoeda(restante / diasRestantes)}/dia até domingo)`
-    : `${formatarMoeda(gastoSemana)} de ${formatarMoeda(TETO_SEMANAL)} — ${formatarMoeda(-restante)} acima do teto`;
 }
 
 // ---------- Gastos por semana ----------
@@ -1331,8 +1383,21 @@ function lerUltimoBanco() {
 }
 
 function salvarUltimoBanco(banco) {
+  // Alelo é escolhido no seletor, não fica como banco padrão
+  if (semAcento(banco).toLowerCase() === 'alelo') return;
   try { localStorage.setItem('ultimoBanco', banco); } catch (e) {}
 }
+
+// "Alelo" esconde o campo do banco: o gasto vai com banco "Alelo"
+function aplicarPagoCom() {
+  const alelo = formGasto.elements.pagocom.value === 'Alelo';
+  campoBanco.hidden = alelo;
+  campoBanco.required = !alelo;
+}
+
+formGasto.querySelectorAll('input[name="pagocom"]').forEach((opcao) => {
+  opcao.addEventListener('change', aplicarPagoCom);
+});
 
 // Aceita "12,50", "12.50" e "1.234,56"
 function lerValor(texto) {
@@ -1373,18 +1438,22 @@ function abrirGaveta(gasto = null, doLote = false) {
     campoValor.value = String(gasto.Valor).replace('.', ',');
     campoLocal.value = gasto.Local;
     campoData.value = gasto.Data.slice(0, 10);
-    campoBanco.value = gasto.banco || '';
+    formGasto.elements.pagocom.value = ehAlelo(gasto) ? 'Alelo' : '';
+    campoBanco.value = ehAlelo(gasto) ? lerUltimoBanco() : gasto.banco || '';
     formGasto.elements.tipo.value = gasto.tipo;
     formGasto.elements.energetico.value = gasto.Energetico || '';
   } else {
     campoValor.value = '';
     campoLocal.value = '';
     campoData.value = camposLote ? camposLote.Data : formatarIso(new Date());
-    campoBanco.value = camposLote ? camposLote.banco : lerUltimoBanco();
+    const loteAlelo = Boolean(camposLote) && ehAlelo(camposLote);
+    formGasto.elements.pagocom.value = loteAlelo ? 'Alelo' : '';
+    campoBanco.value = camposLote && !loteAlelo ? camposLote.banco : lerUltimoBanco();
     formGasto.elements.tipo.value = camposLote ? camposLote.tipo : 'Gasto';
     formGasto.elements.energetico.value = '';
   }
 
+  aplicarPagoCom();
   renderizarLote();
   if (!gavetaAdicionar.open) gavetaAdicionar.showModal();
   if (!gasto) campoValor.focus();
@@ -1446,7 +1515,7 @@ async function salvarGasto(evento) {
     Local: campoLocal.value.trim(),
     Valor: lerValor(campoValor.value),
     tipo: formGasto.elements.tipo.value,
-    banco: campoBanco.value.trim(),
+    banco: formGasto.elements.pagocom.value || campoBanco.value.trim(),
     Energetico: formGasto.elements.energetico.value || null,
   };
 

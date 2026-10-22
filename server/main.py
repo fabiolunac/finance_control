@@ -415,6 +415,43 @@ def desfazer_pagamento(id: int, _=Depends(checar_token)):
         ])
 
 
+# ---------- Renda: salário e vale alimentação (Alelo) do mês ----------
+
+_tabela_renda_pronta = False
+
+
+def garantir_tabela_renda(client):
+    global _tabela_renda_pronta
+    if not _tabela_renda_pronta:
+        client.execute("CREATE TABLE IF NOT EXISTS renda (Chave TEXT PRIMARY KEY, Valor REAL NOT NULL)")
+        _tabela_renda_pronta = True
+
+
+class Renda(BaseModel):
+    Salario: float = Field(ge=0)
+    Vale: float = Field(ge=0)
+
+
+@app.get("/api/renda")
+def ler_renda(_=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        rs = client.execute("SELECT Chave, Valor FROM renda")
+    valores = {chave: valor for chave, valor in rs.rows}
+    return {"Salario": valores.get("Salario", 0.0), "Vale": valores.get("Vale", 0.0)}
+
+
+@app.put("/api/renda")
+def salvar_renda(renda: Renda, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.batch([
+            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('Salario', ?)", [renda.Salario]),
+            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('Vale', ?)", [renda.Vale]),
+        ])
+    return {"ok": True}
+
+
 # ---------- Módulos em arquivos próprios ----------
 
 from combustivel import criar_rotas as rotas_combustivel  # noqa: E402

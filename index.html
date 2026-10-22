@@ -211,25 +211,32 @@
         <button class="botao-chip botao-fatura" type="button" aria-pressed="false">Com fatura</button>
       </div>
 
-      <div class="cartao-resumo">
-        <div class="resumo-mes">
+      <!-- Painel do mês: total gasto em destaque; salário e Alelo (de novembro/2026 em diante) -->
+      <div class="cartao-resumo painel-mes">
+        <div class="painel-total">
           <span class="metrica-rotulo">Total gasto no mês</span>
           <span class="resumo-valor" id="metrica-total-gasto"></span>
           <span class="resumo-sub" id="metrica-lancamentos"></span>
           <span class="metrica-delta" id="metrica-comparacao" hidden></span>
           <span class="resumo-sub resumo-fatura" id="metrica-fatura" hidden></span>
         </div>
-        <div class="resumo-semana">
-          <span class="metrica-rotulo">Teto da semana</span>
-          <div class="progresso-cabecalho" id="meta-semana-texto"></div>
-          <div class="progresso-trilha">
-            <div id="meta-semana-barra" class="progresso-barra"></div>
+        <div id="renda-cards" class="painel-renda" hidden>
+          <div class="painel-divisao">
+            <span class="painel-rotulo">Salário · sobra</span>
+            <span class="painel-valor" id="salario-sobra"></span>
+            <div class="progresso-trilha"><div id="salario-barra" class="progresso-barra"></div></div>
+            <span class="painel-detalhe" id="salario-detalhe"></span>
           </div>
-          <p id="meta-semana-legenda" class="progresso-legenda"></p>
+          <div class="painel-divisao">
+            <span class="painel-rotulo">Alelo · saldo</span>
+            <span class="painel-valor" id="alelo-sobra"></span>
+            <div class="progresso-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
+            <span class="painel-detalhe" id="alelo-detalhe"></span>
+          </div>
         </div>
       </div>
 
-      <div class="metricas-extra">
+      <div class="metricas-extra metricas-secundarias">
         <div class="cartao-grafico metrica-extra">
           <span class="metrica-rotulo">Gasto hoje</span>
           <span class="metrica-extra-valor" id="hoje-valor"></span>
@@ -480,6 +487,16 @@
         <svg class="linha-config-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
 
+      <div class="cartao-grafico cartao-renda">
+        <h2 class="titulo-grafico">Salário e vale alimentação</h2>
+        <p class="pendentes-ajuda">Valor que entra por mês, a partir de 01/11/2026. Gasto com Alelo sai do vale; o resto sai do salário.</p>
+        <form id="form-renda" class="cartao-campos renda-campos">
+          <input id="renda-salario" type="text" inputmode="decimal" placeholder="Salário" autocomplete="off" required aria-label="Salário">
+          <input id="renda-vale" type="text" inputmode="decimal" placeholder="Vale alimentação" autocomplete="off" required aria-label="Vale alimentação">
+          <button class="botao-primario" type="submit">Salvar</button>
+        </form>
+      </div>
+
       <div id="cartao-cartoes" class="cartao-grafico cartao-cartoes">
         <h2 class="titulo-grafico">Cartões</h2>
         <p class="pendentes-ajuda">Fechamento: compras feitas a partir desse dia vão pra fatura seguinte. Vencimento: dia de pagar.</p>
@@ -565,32 +582,52 @@
         <h2 id="gaveta-titulo" class="titulo-grafico">Novo gasto</h2>
         <button id="botao-fechar-gaveta" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
       </div>
-      <form id="form-gasto" class="form-gasto">
-        <label class="campo-valor-grande">
-          <span class="campo-valor-moeda">R$</span>
-          <input id="campo-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Valor" required>
-        </label>
+      <!-- Valor, local e data à esquerda; o resto num painel de detalhes ao lado (embaixo no celular) -->
+      <form id="form-gasto" class="form-gasto form-gasto-dividido">
+        <div class="form-principal">
+          <label class="campo-valor-grande">
+            <span class="campo-valor-moeda">R$</span>
+            <input id="campo-valor" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Valor" required>
+          </label>
 
-        <div class="tipo-segmentado" role="radiogroup" aria-label="Tipo">
-          <label><input type="radio" name="tipo" value="Gasto" checked required><span>Gasto</span></label>
-          <label><input type="radio" name="tipo" value="Pagamento"><span>Pagamento</span></label>
-        </div>
+          <input id="campo-local" list="opcoes-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" aria-label="Local" required>
+          <datalist id="opcoes-local"></datalist>
 
-        <input id="campo-local" list="opcoes-local" type="text" placeholder="Local" autocomplete="off" maxlength="120" aria-label="Local" required>
-        <datalist id="opcoes-local"></datalist>
-
-        <!-- Energético da compra: conta no card do mês -->
-        <div class="tipo-segmentado energetico-segmentado" role="radiogroup" aria-label="Energético">
-          <label><input type="radio" name="energetico" value="" checked><span>Sem energético</span></label>
-          <label><input type="radio" name="energetico" value="Monster"><span>Monster</span></label>
-          <label><input type="radio" name="energetico" value="Reign"><span>Reign</span></label>
-        </div>
-
-        <div class="form-linha">
           <input id="campo-data" type="date" aria-label="Data" required>
-          <input id="campo-banco" list="opcoes-banco" placeholder="Banco" autocomplete="off" aria-label="Banco" required>
         </div>
-        <datalist id="opcoes-banco"></datalist>
+
+        <div class="form-detalhes">
+          <span class="form-detalhes-titulo">Detalhes</span>
+
+          <div class="detalhe-linha">
+            <span class="detalhe-rotulo">Tipo</span>
+            <div class="tipo-segmentado" role="radiogroup" aria-label="Tipo">
+              <label><input type="radio" name="tipo" value="Gasto" checked required><span>Gasto</span></label>
+              <label><input type="radio" name="tipo" value="Pagamento"><span>Pagamento</span></label>
+            </div>
+          </div>
+
+          <!-- Alelo (vale alimentação) vai como banco "Alelo" e sai do saldo do salário -->
+          <div class="detalhe-linha">
+            <span class="detalhe-rotulo">Pago com</span>
+            <div class="tipo-segmentado" role="radiogroup" aria-label="Pago com">
+              <label><input type="radio" name="pagocom" value="" checked><span>Banco</span></label>
+              <label><input type="radio" name="pagocom" value="Alelo"><span>Alelo</span></label>
+            </div>
+            <input id="campo-banco" list="opcoes-banco" placeholder="Qual banco" autocomplete="off" aria-label="Banco" required>
+            <datalist id="opcoes-banco"></datalist>
+          </div>
+
+          <!-- Energético da compra: conta no card do mês -->
+          <div class="detalhe-linha">
+            <span class="detalhe-rotulo">Energético</span>
+            <div class="tipo-segmentado energetico-segmentado" role="radiogroup" aria-label="Energético">
+              <label><input type="radio" name="energetico" value="" checked><span>Nenhum</span></label>
+              <label><input type="radio" name="energetico" value="Monster"><span>Monster</span></label>
+              <label><input type="radio" name="energetico" value="Reign"><span>Reign</span></label>
+            </div>
+          </div>
+        </div>
 
         <!-- O botão principal vem antes no HTML: Enter no teclado usa o primeiro -->
         <div class="form-acoes">
