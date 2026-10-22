@@ -36,6 +36,10 @@ const metricaFatura = document.getElementById('metrica-fatura');
 const energeticosContagem = document.getElementById('energeticos-contagem');
 const energeticosDetalhe = document.getElementById('energeticos-detalhe');
 const rendaCards = document.getElementById('renda-cards');
+const painelFatura = document.getElementById('painel-fatura');
+const painelFaturaRotulo = document.getElementById('painel-fatura-rotulo');
+const painelFaturaValor = document.getElementById('painel-fatura-valor');
+const painelFaturaSub = document.getElementById('painel-fatura-sub');
 const salarioSobra = document.getElementById('salario-sobra');
 const salarioBarra = document.getElementById('salario-barra');
 const salarioBarraFixos = document.getElementById('salario-barra-fixos');
@@ -209,8 +213,9 @@ async function carregar() {
     mostrarNotificacao('Acordando o servidor, pode levar até um minuto…', null, null, 60000);
   }, 4000);
 
-  // Salário e vale vêm junto; se falhar, os cards só ficam sem os valores
+  // Salário, vale e fatura vêm junto; se falharem, o painel só fica sem eles
   const rendaPromessa = carregarRenda();
+  const faturaPromessa = carregarFatura();
 
   try {
     const resposta = await fetch(`${API_URL}/api/gastos`, {
@@ -229,7 +234,7 @@ async function carregar() {
     // Gastos com remoção aguardando o "Desfazer" continuam fora da tela
     todosGastos = gastos.filter((g) => !gastosRemovendo.has(g.rowid));
     carregouUmaVez = true;
-    await rendaPromessa;
+    await Promise.all([rendaPromessa, faturaPromessa]);
     renderizarTudo();
   } catch (e) {
     erro.textContent = e.message;
@@ -245,7 +250,6 @@ async function carregar() {
 botaoAtualizar.addEventListener('click', () => {
   carregar();
   if (!secaoParametros.hidden) carregarParametros();
-  if (!secaoFatura.hidden || !secaoConfiguracoes.hidden) carregarFatura();
   if (moduloAtual.aoAtualizar) moduloAtual.aoAtualizar();
 });
 
@@ -976,6 +980,7 @@ function renderizarVisaoGeral() {
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
+  renderizarFaturaPainel();
   renderizarRenda();
   renderizarGastoHoje();
   renderizarUltimaCompra();
@@ -1023,6 +1028,34 @@ function renderizarGraficoSubcategorias(gastosMes) {
     entradas.push([`Outras (${resto.length})`, somaResto, 'hsl(0 0% 58%)']);
   }
   renderizarBarras(graficoSubcategoriasMes, entradas, { porcentagem: true });
+}
+
+// ---------- Fatura no painel do mês ----------
+
+// Fatura que vence no mês escolhido, somando todos os cartões
+function renderizarFaturaPainel() {
+  painelFatura.hidden = cartoes.length === 0;
+  if (painelFatura.hidden) return;
+
+  const mes = mesSelecionado();
+  let total = 0;
+  let aPagar = 0;
+  let minha = 0;
+  cartoes.forEach((cartao) => {
+    const parcelas = parcelasDaFatura(mes, cartao.id);
+    const totalCartao = somarParcelas(parcelas);
+    total += totalCartao;
+    minha += somarMinhaParte(parcelas);
+    if (!faturasPagas.some((p) => p.Cartao === cartao.id && p.Mes === mes)) aPagar += totalCartao;
+  });
+
+  painelFaturaRotulo.textContent = `Fatura de ${MESES[Number(mes.slice(5)) - 1]}`;
+  animarValor(painelFaturaValor, total);
+  const partes = [];
+  if (total > 0) partes.push(aPagar < 0.005 ? 'paga' : aPagar < total - 0.005 ? `falta pagar ${formatarMoeda(aPagar)}` : 'a pagar');
+  else partes.push('nada lançado');
+  if (minha < total - 0.005) partes.push(`sua parte ${formatarMoeda(minha)}`);
+  painelFaturaSub.textContent = partes.join(' · ');
 }
 
 // ---------- Salário e vale alimentação (Alelo) ----------
@@ -2473,6 +2506,7 @@ async function carregarFatura() {
     if (!mesFatura) mesFatura = proximaFaturaAVencer();
     renderizarFatura();
     renderizarCartoes();
+    if (!secaoVisaoGeral.hidden) renderizarFaturaPainel();
   } catch (e) {
     mostrarErro(e.message);
   }
@@ -2888,7 +2922,7 @@ async function pagarFatura(cartao, total, data, banco, botao) {
       'Erro ao marcar a fatura como paga.');
     salvarUltimoBanco(banco);
     mostrarNotificacao(`Fatura ${cartao.Nome} paga · ${formatarMoeda(total)} lançado nos gastos`);
-    await Promise.all([carregarFatura(), carregar()]);
+    await carregar(); // recarrega a fatura junto
   } catch (e) {
     mostrarErro(e.message);
     botao.disabled = false;
@@ -2900,7 +2934,7 @@ async function desfazerPagamento(paga) {
   try {
     await requisitar('DELETE', `/api/faturas/pagas/${paga.id}`, null, 'Erro ao desfazer o pagamento.');
     mostrarNotificacao('Pagamento desfeito; o gasto da fatura foi removido');
-    await Promise.all([carregarFatura(), carregar()]);
+    await carregar(); // recarrega a fatura junto
   } catch (e) {
     mostrarErro(e.message);
   }

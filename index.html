@@ -213,14 +213,21 @@
         <button class="botao-chip botao-fatura" type="button" aria-pressed="false">Com fatura</button>
       </div>
 
-      <!-- Painel do mês: total gasto em destaque; salário e Alelo (de novembro/2026 em diante) -->
+      <!-- Painel do mês: total gasto e fatura em cima; salário e Alelo (de novembro/2026 em diante) embaixo -->
       <div class="cartao-resumo painel-mes">
-        <div class="painel-total">
-          <span class="metrica-rotulo">Total gasto no mês</span>
-          <span class="resumo-valor" id="metrica-total-gasto"></span>
-          <span class="resumo-sub" id="metrica-lancamentos"></span>
-          <span class="metrica-delta" id="metrica-comparacao" hidden></span>
-          <span class="resumo-sub resumo-fatura" id="metrica-fatura" hidden></span>
+        <div class="painel-topo">
+          <div class="painel-total">
+            <span class="metrica-rotulo">Total gasto no mês</span>
+            <span class="resumo-valor" id="metrica-total-gasto"></span>
+            <span class="resumo-sub" id="metrica-lancamentos"></span>
+            <span class="metrica-delta" id="metrica-comparacao" hidden></span>
+            <span class="resumo-sub resumo-fatura" id="metrica-fatura" hidden></span>
+          </div>
+          <div id="painel-fatura" class="painel-total painel-fatura" hidden>
+            <span class="metrica-rotulo" id="painel-fatura-rotulo">Fatura</span>
+            <span class="resumo-valor" id="painel-fatura-valor"></span>
+            <span class="resumo-sub" id="painel-fatura-sub"></span>
+          </div>
         </div>
         <div id="renda-cards" class="painel-renda" hidden>
           <div class="painel-divisao">

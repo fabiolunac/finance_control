@@ -2646,9 +2646,8 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 
 /* ---------- Painel do mês: total, salário e Alelo ---------- */
 
-/* Celular: total em cima, salário e Alelo lado a lado embaixo.
-   Tela larga: as três divisões numa linha, o total mais largo. */
-.painel-mes { gap: 0; padding: 0; }
+/* Duas linhas: total e fatura em cima, salário e Alelo embaixo */
+.painel-mes { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; }
 .painel-total { padding: 24px 22px 20px; }
 .painel-mes .resumo-valor { font-size: 2.5rem; }
 
@@ -2689,12 +2688,21 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
   color: var(--tinta-muda);
 }
 
+/* Total e fatura lado a lado, com o mesmo tamanho de número */
+.painel-topo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.painel-topo:has(> .painel-fatura[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.painel-fatura { border-left: 1px solid var(--borda); }
+.painel-topo .painel-total { min-width: 0; }
+.painel-mes .painel-topo .resumo-valor { font-size: clamp(1.3rem, 5.4vw, 2.5rem); white-space: nowrap; }
+
 @media (min-width: 860px) {
-  .painel-mes { grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); }
   .painel-total { padding: 26px 28px; }
-  .painel-renda { border-top: none; border-left: 1px solid var(--borda); }
-  .painel-divisao { padding: 26px 28px; }
+  .painel-divisao { padding: 22px 28px 24px; }
   .painel-valor { font-size: 1.7rem; }
+}
+
+@media (max-width: 640px) {
+  .painel-topo .painel-total { padding: 20px 16px 18px; }
 }
 
 @media (max-width: 380px) {
@@ -2740,9 +2748,6 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
   .renda-campos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .renda-campos .botao-primario { grid-column: 1 / -1; }
 }
-
-/* Mês sem salário (antes de novembro/2026): o total ocupa o painel todo */
-.painel-mes:has(> .painel-renda[hidden]) { grid-template-columns: minmax(0, 1fr); }
 
 /* ---------- Formulário de gasto: principal e detalhes ---------- */
 
