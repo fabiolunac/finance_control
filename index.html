@@ -10,9 +10,11 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0D0A18">
 
-  <!-- Aplica a cor do tema salva antes de desenhar, pra não piscar o roxo padrão -->
+  <!-- Aplica o tema e a cor salvos antes de desenhar, pra não piscar o roxo padrão -->
   <script>
     try {
+      const tema = localStorage.getItem('tema');
+      if (tema) document.documentElement.dataset.tema = tema;
       const matiz = localStorage.getItem('matiz');
       if (matiz !== null) {
         document.documentElement.style.setProperty('--matiz', matiz);
@@ -224,14 +226,14 @@
           <div class="painel-divisao">
             <span class="painel-rotulo">Salário · sobra</span>
             <span class="painel-valor" id="salario-sobra"></span>
-            <div class="progresso-trilha"><div id="salario-barra" class="progresso-barra"></div></div>
-            <span class="painel-detalhe" id="salario-detalhe"></span>
+            <div class="progresso-trilha"><div id="salario-barra" class="progresso-barra"></div><div id="salario-barra-fixos" class="progresso-barra progresso-fixos"></div></div>
+            <div class="painel-detalhe" id="salario-detalhe"></div>
           </div>
           <div class="painel-divisao">
             <span class="painel-rotulo">Alelo · saldo</span>
             <span class="painel-valor" id="alelo-sobra"></span>
             <div class="progresso-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
-            <span class="painel-detalhe" id="alelo-detalhe"></span>
+            <div class="painel-detalhe" id="alelo-detalhe"></div>
           </div>
         </div>
       </div>
@@ -461,10 +463,15 @@
       <h2 class="titulo-secao">Geral</h2>
 
       <div class="cartao-grafico cartao-tema">
-        <h2 class="titulo-grafico">Cor do tema</h2>
-        <div id="seletor-cor" class="seletor-cor" role="group" aria-label="Cor do tema"></div>
-        <label class="faixa-matiz-rotulo" for="faixa-matiz">Personalizada</label>
-        <input id="faixa-matiz" class="faixa-matiz" type="range" min="0" max="359" step="1">
+        <h2 class="titulo-grafico">Tema</h2>
+        <div id="temas-lista"></div>
+        <!-- Só no tema Original: a cor do degradê -->
+        <div id="tema-original-ajustes" class="tema-original-ajustes">
+          <span class="temas-grupo-titulo">Cor do Original</span>
+          <div id="seletor-cor" class="seletor-cor" role="group" aria-label="Cor do tema Original"></div>
+          <label class="faixa-matiz-rotulo" for="faixa-matiz">Personalizada</label>
+          <input id="faixa-matiz" class="faixa-matiz" type="range" min="0" max="359" step="1">
+        </div>
       </div>
 
       <div class="cartao-grafico cartao-notificacoes">
@@ -494,6 +501,18 @@
           <input id="renda-salario" type="text" inputmode="decimal" placeholder="Salário" autocomplete="off" required aria-label="Salário">
           <input id="renda-vale" type="text" inputmode="decimal" placeholder="Vale alimentação" autocomplete="off" required aria-label="Vale alimentação">
           <button class="botao-primario" type="submit">Salvar</button>
+        </form>
+
+        <h3 class="subtitulo-renda">Gastos fixos do salário</h3>
+        <p class="pendentes-ajuda">Contas de todo mês, como aluguel. Até você lançar um gasto com o mesmo local no mês, o valor aparece como "a pagar" e já sai da sobra.</p>
+        <div id="lista-fixos" class="lista-pendentes"></div>
+        <form id="form-fixo" class="pendente form-cartao">
+          <span class="pendente-local">Novo gasto fixo</span>
+          <div class="cartao-campos renda-campos">
+            <input id="fixo-local" type="text" list="opcoes-local" placeholder="Local (igual ao do gasto)" maxlength="120" autocomplete="off" required aria-label="Local do gasto fixo">
+            <input id="fixo-valor" type="text" inputmode="decimal" placeholder="Valor" autocomplete="off" required aria-label="Valor do gasto fixo">
+            <button class="botao-primario" type="submit">Adicionar</button>
+          </div>
         </form>
       </div>
 

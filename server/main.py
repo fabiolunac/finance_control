@@ -423,7 +423,12 @@ _tabela_renda_pronta = False
 def garantir_tabela_renda(client):
     global _tabela_renda_pronta
     if not _tabela_renda_pronta:
-        client.execute("CREATE TABLE IF NOT EXISTS renda (Chave TEXT PRIMARY KEY, Valor REAL NOT NULL)")
+        client.batch([
+            "CREATE TABLE IF NOT EXISTS renda (Chave TEXT PRIMARY KEY, Valor REAL NOT NULL)",
+            # Gasto fixo que sai do salário todo mês (aluguel, internet); o app
+            # considera pago quando há um gasto no mês com o mesmo Local
+            "CREATE TABLE IF NOT EXISTS fixos (id INTEGER PRIMARY KEY, Local TEXT NOT NULL, Valor REAL NOT NULL)",
+        ])
         _tabela_renda_pronta = True
 
 
@@ -432,13 +437,36 @@ class Renda(BaseModel):
     Vale: float = Field(ge=0)
 
 
+class NovoFixo(BaseModel):
+    Local: str = Field(min_length=1, max_length=120)
+    Valor: float = Field(gt=0)
+
+
 @app.get("/api/renda")
 def ler_renda(_=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
-        rs = client.execute("SELECT Chave, Valor FROM renda")
+        rs, fixos = client.batch([
+            "SELECT Chave, Valor FROM renda",
+            "SELECT id, Local, Valor FROM fixos ORDER BY Local",
+        ])
     valores = {chave: valor for chave, valor in rs.rows}
-    return {"Salario": valores.get("Salario", 0.0), "Vale": valores.get("Vale", 0.0)}
+    return {"Salario": valores.get("Salario", 0.0), "Vale": valores.get("Vale", 0.0), "Fixos": linhas(fixos)}
+
+
+@app.post("/api/fixos", status_code=201)
+def adicionar_fixo(fixo: NovoFixo, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        rs = client.execute("INSERT INTO fixos (Local, Valor) VALUES (?, ?)", [fixo.Local.strip(), fixo.Valor])
+    return {"ok": True, "id": rs.last_insert_rowid}
+
+
+@app.delete("/api/fixos/{id}", status_code=204)
+def remover_fixo(id: int, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute("DELETE FROM fixos WHERE id = ?", [id])
 
 
 @app.put("/api/renda")

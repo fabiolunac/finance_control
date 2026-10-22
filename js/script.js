@@ -38,6 +38,7 @@ const energeticosDetalhe = document.getElementById('energeticos-detalhe');
 const rendaCards = document.getElementById('renda-cards');
 const salarioSobra = document.getElementById('salario-sobra');
 const salarioBarra = document.getElementById('salario-barra');
+const salarioBarraFixos = document.getElementById('salario-barra-fixos');
 const salarioDetalhe = document.getElementById('salario-detalhe');
 const aleloSobra = document.getElementById('alelo-sobra');
 const aleloBarra = document.getElementById('alelo-barra');
@@ -45,6 +46,10 @@ const aleloDetalhe = document.getElementById('alelo-detalhe');
 const formRenda = document.getElementById('form-renda');
 const rendaSalario = document.getElementById('renda-salario');
 const rendaVale = document.getElementById('renda-vale');
+const listaFixos = document.getElementById('lista-fixos');
+const formFixo = document.getElementById('form-fixo');
+const fixoLocal = document.getElementById('fixo-local');
+const fixoValor = document.getElementById('fixo-valor');
 const corteQuando = document.getElementById('corte-quando');
 const corteDetalhe = document.getElementById('corte-detalhe');
 const hojeValor = document.getElementById('hoje-valor');
@@ -284,7 +289,9 @@ function atualizarCoresCategoria() {
   const categorias = valoresUnicos('Categoria Geral')
     .filter((c) => c && c !== 'Extra')
     .sort((a, b) => a.localeCompare(b));
-  coresCategoria = new Map(categorias.map((c, i) => [c, `hsl(${Math.round((i * 137.5 + 15) % 360)} 70% 64%)`]));
+  // Tema claro pede cores mais escuras, senão somem no fundo branco
+  const luz = getComputedStyle(document.documentElement).getPropertyValue('--esquema').trim() === 'light' ? 46 : 64;
+  coresCategoria = new Map(categorias.map((c, i) => [c, `hsl(${Math.round((i * 137.5 + 15) % 360)} 70% ${luz}%)`]));
 }
 
 function corCategoria(categoriaGeral) {
@@ -1023,7 +1030,7 @@ function renderizarGraficoSubcategorias(gastosMes) {
 // O emprego começa em 01/11/2026: antes disso não há salário nem vale pra comparar.
 // No mês atual, se ainda for antes, os cards aparecem zerados avisando o início.
 const INICIO_RENDA = '2026-11';
-let renda = { Salario: 0, Vale: 0 };
+let renda = { Salario: 0, Vale: 0, Fixos: [] };
 
 async function carregarRenda() {
   try {
@@ -1034,27 +1041,122 @@ async function carregarRenda() {
   }
   rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
   rendaVale.value = renda.Vale ? String(renda.Vale).replace('.', ',') : '';
+  renderizarFixos();
 }
 
 function ehAlelo(gasto) {
   return semAcento(gasto.banco || '').toLowerCase() === 'alelo';
 }
 
-// Barra do quanto já foi gasto do valor; legenda com o que foi gasto e quanto entrou
-function renderizarCardRenda(elSobra, elBarra, elDetalhe, entrada, gastos, antes) {
-  const gasto = calcularTotalGasto(gastos);
-  animarValor(elSobra, antes ? entrada : entrada - gasto);
-  const fracao = entrada > 0 ? gasto / entrada : (gasto > 0 ? 1 : 0);
-  elBarra.style.width = `${Math.min(Math.max(fracao, 0), 1) * 100}%`;
-  elBarra.className = 'progresso-barra ' +
+// Selo pequeno nos gastos pagos com o vale (lista, calendário, sequência)
+function criarSeloAlelo() {
+  const selo = document.createElement('span');
+  selo.className = 'selo-alelo';
+  selo.textContent = 'Alelo';
+  return selo;
+}
+
+function mesmoLocal(a, b) {
+  return semAcento(a || '').trim().toLowerCase() === semAcento(b || '').trim().toLowerCase();
+}
+
+// Linhas da legenda de cada divisão do painel; classe opcional pra colorir
+function preencherDetalhe(elemento, linhas) {
+  elemento.innerHTML = '';
+  linhas.filter(Boolean).forEach(([texto, classe]) => {
+    const linha = document.createElement('span');
+    linha.className = 'painel-detalhe-linha' + (classe ? ` ${classe}` : '');
+    linha.textContent = texto;
+    elemento.appendChild(linha);
+  });
+}
+
+function pintarBarra(barra, fracao) {
+  barra.style.width = `${Math.min(Math.max(fracao, 0), 1) * 100}%`;
+  barra.className = 'progresso-barra ' +
     (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
+}
+
+function diasNoMes(mes) {
+  const [ano, m] = mes.split('-').map(Number);
+  return new Date(ano, m, 0).getDate();
+}
+
+// Salário: gasto (barra cheia) + fixos ainda não lançados (barra listrada).
+// No mês corrente, projeta o fim do mês pelo ritmo dos gastos do dia a dia:
+// fixos e fatura são pontuais e entram pelo valor, não pelo ritmo.
+function renderizarSalario(mes, gastos, antes) {
+  const salario = renda.Salario;
+  const fixos = renda.Fixos || [];
   if (antes) {
-    elDetalhe.textContent = `Começa em 01/11 · ${formatarMoeda(entrada)} por mês`;
-  } else if (!entrada) {
-    elDetalhe.textContent = `Gasto ${formatarMoeda(gasto)} · valor não cadastrado em Configurações`;
-  } else {
-    elDetalhe.textContent = `Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(entrada)} (${Math.round(fracao * 100)}%)`;
+    animarValor(salarioSobra, salario);
+    pintarBarra(salarioBarra, 0);
+    salarioBarraFixos.style.width = '0';
+    preencherDetalhe(salarioDetalhe, [[`Começa em 01/11 · ${formatarMoeda(salario)} por mês`]]);
+    return;
   }
+
+  const gasto = calcularTotalGasto(gastos);
+  const pendentes = fixos.filter((f) => !gastos.some((g) => g.tipo === 'Gasto' && mesmoLocal(g.Local, f.Local)));
+  const aPagar = pendentes.reduce((soma, f) => soma + f.Valor, 0);
+  animarValor(salarioSobra, salario - gasto - aPagar);
+
+  const fracao = salario > 0 ? gasto / salario : (gasto > 0 ? 1 : 0);
+  pintarBarra(salarioBarra, fracao);
+  const espaco = Math.max(1 - Math.min(Math.max(fracao, 0), 1), 0);
+  salarioBarraFixos.style.width = `${Math.min(salario > 0 ? aPagar / salario : 0, espaco) * 100}%`;
+
+  if (!salario) {
+    preencherDetalhe(salarioDetalhe, [[`Gasto ${formatarMoeda(gasto)} · salário não cadastrado em Configurações`]]);
+    return;
+  }
+
+  const linhas = [[`Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(salario)} (${Math.round(fracao * 100)}%)`]];
+  if (aPagar > 0) {
+    linhas.push([`${formatarMoeda(aPagar)} em fixos a pagar (${pendentes.map((f) => f.Local).join(', ')})`, 'detalhe-fixos']);
+  }
+
+  // Projeção só a partir do dia 5: antes disso o ritmo de 1 ou 2 dias engana
+  const dia = new Date().getDate();
+  if (mes === mesAtual() && dia >= 5) {
+    const pontuais = calcularTotalGasto(gastos.filter((g) =>
+      ehFatura(g) || fixos.some((f) => mesmoLocal(g.Local, f.Local))));
+    const ritmo = (gasto - pontuais) / dia;
+    const fim = salario - gasto - aPagar - ritmo * (diasNoMes(mes) - dia);
+    linhas.push(fim >= 0
+      ? [`No ritmo atual, sobram ${formatarMoeda(fim)} no fim do mês`, 'detalhe-bom']
+      : [`No ritmo atual, faltam ${formatarMoeda(-fim)} no fim do mês`, 'detalhe-ruim']);
+  }
+  preencherDetalhe(salarioDetalhe, linhas);
+}
+
+// Alelo: saldo do mês e, no mês corrente, quanto dá por dia até o fim
+function renderizarAlelo(mes, gastos, antes) {
+  const vale = renda.Vale;
+  if (antes) {
+    animarValor(aleloSobra, vale);
+    pintarBarra(aleloBarra, 0);
+    preencherDetalhe(aleloDetalhe, [[`Começa em 01/11 · ${formatarMoeda(vale)} por mês`]]);
+    return;
+  }
+
+  const gasto = calcularTotalGasto(gastos);
+  const saldo = vale - gasto;
+  animarValor(aleloSobra, saldo);
+  const fracao = vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0);
+  pintarBarra(aleloBarra, fracao);
+
+  if (!vale) {
+    preencherDetalhe(aleloDetalhe, [[`Gasto ${formatarMoeda(gasto)} · vale não cadastrado em Configurações`]]);
+    return;
+  }
+
+  const linhas = [[`Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(vale)} (${Math.round(fracao * 100)}%)`]];
+  if (mes === mesAtual() && saldo > 0) {
+    const diasRestantes = diasNoMes(mes) - new Date().getDate() + 1; // contando hoje
+    linhas.push([`${formatarMoeda(saldo / diasRestantes)} por dia até o fim do mês`, 'detalhe-bom']);
+  }
+  preencherDetalhe(aleloDetalhe, linhas);
 }
 
 function renderizarRenda() {
@@ -1064,11 +1166,64 @@ function renderizarRenda() {
   if (rendaCards.hidden) return;
 
   const gastosMes = antes ? [] : gastosConsiderados().filter((g) => g['Mês'] === mes);
-  renderizarCardRenda(salarioSobra, salarioBarra, salarioDetalhe, renda.Salario,
-    gastosMes.filter((g) => !ehAlelo(g)), antes);
-  renderizarCardRenda(aleloSobra, aleloBarra, aleloDetalhe, renda.Vale,
-    gastosMes.filter(ehAlelo), antes);
+  renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
+  renderizarAlelo(mes, gastosMes.filter(ehAlelo), antes);
 }
+
+// Lista dos fixos em Configurações
+function renderizarFixos() {
+  listaFixos.innerHTML = '';
+  (renda.Fixos || []).forEach((fixo) => {
+    const linha = document.createElement('div');
+    linha.className = 'pendente';
+    const info = document.createElement('div');
+    info.className = 'pendente-info';
+    const nome = document.createElement('span');
+    nome.className = 'pendente-local';
+    nome.textContent = `${fixo.Local} · ${formatarMoeda(fixo.Valor)}`;
+    const remover = document.createElement('button');
+    remover.type = 'button';
+    remover.className = 'botao-remover';
+    remover.textContent = '×';
+    remover.setAttribute('aria-label', `Remover gasto fixo ${fixo.Local}`);
+    remover.addEventListener('click', async () => {
+      remover.disabled = true;
+      try {
+        await requisitar('DELETE', `/api/fixos/${fixo.id}`, null, 'Erro ao remover o gasto fixo.');
+        await carregarRenda();
+        if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+      } catch (e) {
+        mostrarNotificacao(e.message);
+        remover.disabled = false;
+      }
+    });
+    info.append(nome, remover);
+    linha.appendChild(info);
+    listaFixos.appendChild(linha);
+  });
+}
+
+formFixo.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const fixo = { Local: fixoLocal.value.trim(), Valor: lerValor(fixoValor.value) };
+  if (!fixo.Local || !(fixo.Valor > 0)) {
+    mostrarNotificacao('Valor inválido. Use algo como 1200,00.');
+    return;
+  }
+  const botao = formFixo.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('POST', '/api/fixos', fixo, 'Erro ao salvar o gasto fixo.');
+    fixoLocal.value = '';
+    fixoValor.value = '';
+    await carregarRenda();
+    mostrarNotificacao(`Gasto fixo adicionado: ${fixo.Local}`);
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
 
 formRenda.addEventListener('submit', async (evento) => {
   evento.preventDefault();
@@ -1081,7 +1236,7 @@ formRenda.addEventListener('submit', async (evento) => {
   botao.disabled = true;
   try {
     await requisitar('PUT', '/api/renda', nova, 'Erro ao salvar no servidor.');
-    renda = nova;
+    renda = { ...renda, ...nova };
     mostrarNotificacao('Salário e vale salvos');
     if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
   } catch (e) {
@@ -1351,6 +1506,7 @@ function renderizarDetalheCalendario() {
     const local = document.createElement('span');
     local.className = 'mini-lista-local';
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
+    if (ehAlelo(gasto)) local.append(criarSeloAlelo());
     const valor = document.createElement('span');
     valor.className = 'mini-lista-valor';
     // Pagamento aparece como valor que volta: sinal de menos e verde
@@ -1395,8 +1551,23 @@ function aplicarPagoCom() {
   campoBanco.required = !alelo;
 }
 
+// Banco/Alelo escolhido à mão nesta abertura: o local não muda mais a escolha
+let pagoComManual = false;
+
 formGasto.querySelectorAll('input[name="pagocom"]').forEach((opcao) => {
-  opcao.addEventListener('change', aplicarPagoCom);
+  opcao.addEventListener('change', () => {
+    pagoComManual = true;
+    aplicarPagoCom();
+  });
+});
+
+// Gasto novo: o local puxa o "pago com" da última vez que ele apareceu
+campoLocal.addEventListener('input', () => {
+  if (gastoEditando || pagoComManual) return;
+  const anteriores = todosGastos.filter((g) => g.tipo === 'Gasto' && mesmoLocal(g.Local, campoLocal.value));
+  if (!anteriores.length) return;
+  formGasto.elements.pagocom.value = ehAlelo(maisRecente(anteriores)) ? 'Alelo' : '';
+  aplicarPagoCom();
 });
 
 // Aceita "12,50", "12.50" e "1.234,56"
@@ -1453,6 +1624,7 @@ function abrirGaveta(gasto = null, doLote = false) {
     formGasto.elements.energetico.value = '';
   }
 
+  pagoComManual = false;
   aplicarPagoCom();
   renderizarLote();
   if (!gavetaAdicionar.open) gavetaAdicionar.showModal();
@@ -1496,6 +1668,7 @@ function renderizarLote() {
     const local = document.createElement('span');
     local.className = 'mini-lista-local';
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
+    if (ehAlelo(gasto)) local.append(criarSeloAlelo());
     const valor = document.createElement('span');
     valor.className = 'mini-lista-valor';
     valor.textContent = formatarMoeda(gasto.Valor);
@@ -1723,6 +1896,7 @@ function renderizar(gastos) {
       const td = document.createElement('td');
       td.textContent = c.texto;
       if (c.ponto) td.prepend(criarPonto(corCategoria(gasto['Categoria Geral'])));
+      if (c.campo === 'Local' && ehAlelo(gasto)) td.append(criarSeloAlelo());
       if (c.classe) td.className = c.classe;
       if (c.campo) {
         td.classList.add('editavel');
@@ -3145,6 +3319,27 @@ const CORES_TEMA = [
   ['Rosa', 322],
 ];
 
+// Temas prontos: as cores de verdade estão no CSS (:root[data-tema=...]);
+// aqui só o nome e as cores da miniatura
+const TEMAS = [
+  { id: '', nome: 'Original', grupo: 'Escuros', fundo: '#0d0a18', cartao: '#1d1430', tinta: '#efeafd', acento: '#a78bfa', sucesso: '#4ade80' },
+  { id: 'dark-plus', nome: 'Dark+', grupo: 'Escuros', fundo: '#1e1e1e', cartao: '#252526', tinta: '#d4d4d4', acento: '#3794ff', sucesso: '#89d185' },
+  { id: 'one-dark', nome: 'One Dark', grupo: 'Escuros', fundo: '#21252b', cartao: '#282c34', tinta: '#d7dae0', acento: '#61afef', sucesso: '#98c379' },
+  { id: 'dracula', nome: 'Dracula', grupo: 'Escuros', fundo: '#21222c', cartao: '#282a36', tinta: '#f8f8f2', acento: '#bd93f9', sucesso: '#50fa7b' },
+  { id: 'monokai', nome: 'Monokai', grupo: 'Escuros', fundo: '#1e1f1c', cartao: '#272822', tinta: '#f8f8f2', acento: '#66d9ef', sucesso: '#a6e22e' },
+  { id: 'nord', nome: 'Nord', grupo: 'Escuros', fundo: '#2e3440', cartao: '#3b4252', tinta: '#eceff4', acento: '#88c0d0', sucesso: '#a3be8c' },
+  { id: 'github-dark', nome: 'GitHub Dark', grupo: 'Escuros', fundo: '#0d1117', cartao: '#161b22', tinta: '#e6edf3', acento: '#4493f8', sucesso: '#3fb950' },
+  { id: 'tokyo-night', nome: 'Tokyo Night', grupo: 'Escuros', fundo: '#16161e', cartao: '#1a1b26', tinta: '#c0caf5', acento: '#7aa2f7', sucesso: '#9ece6a' },
+  { id: 'solarized-dark', nome: 'Solarized Dark', grupo: 'Escuros', fundo: '#002b36', cartao: '#073642', tinta: '#dfe3df', acento: '#2aa1e8', sucesso: '#a2b830' },
+  { id: 'aura-dark', nome: 'Aura Dark', grupo: 'Escuros', fundo: '#15141b', cartao: '#1c1b22', tinta: '#edecee', acento: '#a277ff', sucesso: '#61ffca' },
+  { id: 'light-plus', nome: 'Light+', grupo: 'Claros', fundo: '#f3f3f3', cartao: '#ffffff', tinta: '#1f1f1f', acento: '#005fb8', sucesso: '#2e7d32' },
+  { id: 'github-light', nome: 'GitHub Light', grupo: 'Claros', fundo: '#f6f8fa', cartao: '#ffffff', tinta: '#1f2328', acento: '#0969da', sucesso: '#1a7f37' },
+  { id: 'solarized-light', nome: 'Solarized Light', grupo: 'Claros', fundo: '#eee8d5', cartao: '#fdf6e3', tinta: '#073642', acento: '#1f6fb5', sucesso: '#6b7c00' },
+  { id: 'latte', nome: 'Catppuccin Latte', grupo: 'Claros', fundo: '#e6e9ef', cartao: '#eff1f5', tinta: '#4c4f69', acento: '#8839ef', sucesso: '#40a02b' },
+];
+
+const temasLista = document.getElementById('temas-lista');
+const temaOriginalAjustes = document.getElementById('tema-original-ajustes');
 const seletorCor = document.getElementById('seletor-cor');
 const faixaMatiz = document.getElementById('faixa-matiz');
 const metaCorTema = document.querySelector('meta[name="theme-color"]');
@@ -3158,9 +3353,14 @@ function lerMatizSalvo() {
   }
 }
 
+// Barra do navegador/celular na cor do fundo do tema em uso
+function atualizarCorBarra() {
+  metaCorTema.content = getComputedStyle(document.documentElement).getPropertyValue('--fundo').trim();
+}
+
 function aplicarMatiz(matiz, salvar) {
   document.documentElement.style.setProperty('--matiz', matiz);
-  metaCorTema.content = `hsl(${matiz} 41% 7%)`;
+  atualizarCorBarra();
   faixaMatiz.value = matiz;
   seletorCor.querySelectorAll('.amostra-cor').forEach((amostra) => {
     amostra.setAttribute('aria-pressed', String(Number(amostra.dataset.matiz) === Number(matiz)));
@@ -3186,6 +3386,60 @@ CORES_TEMA.forEach(([nome, matiz]) => {
 faixaMatiz.addEventListener('input', () => aplicarMatiz(Number(faixaMatiz.value), true));
 
 aplicarMatiz(lerMatizSalvo(), false);
+
+function lerTemaSalvo() {
+  try { return localStorage.getItem('tema') || ''; } catch (e) { return ''; }
+}
+
+function aplicarTema(id, salvar) {
+  if (id) document.documentElement.dataset.tema = id;
+  else delete document.documentElement.dataset.tema;
+  temaOriginalAjustes.hidden = Boolean(id);
+  temasLista.querySelectorAll('.tema-opcao').forEach((botao) => {
+    botao.setAttribute('aria-pressed', String(botao.dataset.tema === id));
+  });
+  atualizarCorBarra();
+  if (carregouUmaVez) renderizarTudo(); // cores de categoria dependem do claro/escuro
+  if (salvar) {
+    try {
+      if (id) localStorage.setItem('tema', id);
+      else localStorage.removeItem('tema');
+    } catch (e) {}
+  }
+}
+
+['Escuros', 'Claros'].forEach((grupo) => {
+  const titulo = document.createElement('span');
+  titulo.className = 'temas-grupo-titulo';
+  titulo.textContent = grupo;
+  const grade = document.createElement('div');
+  grade.className = 'temas-grade';
+  grade.setAttribute('role', 'group');
+  grade.setAttribute('aria-label', `Temas ${grupo.toLowerCase()}`);
+
+  TEMAS.filter((tema) => tema.grupo === grupo).forEach((tema) => {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'tema-opcao';
+    botao.dataset.tema = tema.id;
+    botao.style.setProperty('--tema-fundo', tema.fundo);
+    botao.style.setProperty('--tema-cartao', tema.cartao);
+    botao.style.setProperty('--tema-tinta', tema.tinta);
+    botao.style.setProperty('--tema-acento', tema.acento);
+    botao.style.setProperty('--tema-sucesso', tema.sucesso);
+    const amostra = document.createElement('span');
+    amostra.className = 'tema-amostra';
+    amostra.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    const nome = document.createElement('span');
+    nome.textContent = tema.nome;
+    botao.append(amostra, nome);
+    botao.addEventListener('click', () => aplicarTema(tema.id, true));
+    grade.appendChild(botao);
+  });
+  temasLista.append(titulo, grade);
+});
+
+aplicarTema(lerTemaSalvo(), false);
 
 // ---------- Notificações push ----------
 // O servidor manda o push (ex.: cafeína perto do limite); aqui só ativa,
