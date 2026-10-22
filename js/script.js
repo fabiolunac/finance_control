@@ -256,6 +256,7 @@ async function carregar() {
 
 botaoAtualizar.addEventListener('click', () => {
   carregar();
+  if (!secaoInvestimentos.hidden) carregarInvestimentos(); // investimentos.js
   if (!secaoParametros.hidden) carregarParametros();
   if (moduloAtual.aoAtualizar) moduloAtual.aoAtualizar();
 });
@@ -3662,6 +3663,7 @@ const MODULOS = [
     // Na aba Fatura o "+" lança uma compra no cartão; nas outras, um gasto
     aoAdicionar: () => {
       if (!secaoFatura.hidden && cartoes.length) abrirGavetaCompra();
+      else if (!secaoInvestimentos.hidden) abrirGavetaAplicacao(); // investimentos.js
       else abrirGaveta();
     },
   },
@@ -3738,6 +3740,8 @@ function aplicarOcultacao() {
   if (antes === ocultarValoresAgora || !moduloAtual.ocultaValores) return;
   if (carregouUmaVez) renderizarTudo();
   if (mesFatura) renderizarFatura();
+  // investimentos.js carrega depois: na primeira chamada ainda não existe
+  if (typeof renderizarInvestimentos === 'function') renderizarInvestimentos();
 }
 
 botaoOlho.addEventListener('click', () => {

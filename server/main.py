@@ -518,3 +518,7 @@ app.include_router(rotas_push(conectar, checar_token))
 from dieta import criar_rotas as rotas_dieta  # noqa: E402
 
 app.include_router(rotas_dieta(conectar, checar_token, avisar=enviar_push))
+
+from investimentos import criar_rotas as rotas_investimentos  # noqa: E402
+
+app.include_router(rotas_investimentos(conectar, checar_token))

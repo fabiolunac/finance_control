@@ -344,12 +344,36 @@
 
     </section>
 
-    <!-- Investimentos: em construção -->
+    <!-- ========== Investimentos (investimentos.js) ========== -->
     <section id="secao-investimentos" hidden>
-      <div class="cartao-grafico investimentos-vazio">
-        <h2 class="titulo-grafico">Investimentos</h2>
-        <p class="vazio-pequeno">Em breve.</p>
+      <div class="invest-cabecalho">
+        <h2 class="titulo-secao">Renda fixa atrelada ao CDI</h2>
+        <p>Só aplicações que rendem um percentual do CDI. Valores líquidos, já sem IR e IOF estimados.</p>
       </div>
+
+      <!-- Total e rendimento lado a lado, com o mesmo destaque -->
+      <div class="cartao-resumo painel-mes">
+        <div class="painel-topo">
+          <div class="painel-total">
+            <span class="metrica-rotulo">Total no CDI · líquido</span>
+            <span class="resumo-valor" id="invest-total"></span>
+            <span class="resumo-sub" id="invest-total-sub"></span>
+          </div>
+          <div class="painel-total painel-fatura">
+            <span class="metrica-rotulo">Rende por mês · líquido</span>
+            <span class="resumo-valor invest-rende" id="invest-por-mes"></span>
+            <span class="resumo-sub" id="invest-por-dia"></span>
+          </div>
+        </div>
+        <span class="invest-cdi" id="invest-cdi"></span>
+      </div>
+
+      <p id="invest-dica" class="invest-dica" hidden></p>
+
+      <p id="invest-data-geral" class="invest-data-geral" hidden></p>
+
+      <div id="invest-lista" class="invest-lista"></div>
+      <p id="invest-vazio" class="vazio" hidden>Nenhuma aplicação ainda. Toque no + pra cadastrar.</p>
     </section>
 
     <!-- ========== Módulo Combustível (combustivel.js) ========== -->
@@ -832,6 +856,71 @@
     </div>
   </dialog>
 
+  <dialog id="gaveta-aplicacao" class="gaveta" aria-labelledby="gaveta-aplicacao-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="gaveta-aplicacao-titulo" class="titulo-grafico">Nova aplicação</h2>
+        <button id="botao-fechar-aplicacao" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="form-aplicacao" class="form-gasto">
+        <label class="campo-valor-grande">
+          <span class="campo-valor-moeda">R$</span>
+          <input id="aplicacao-saldo" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Saldo" required>
+        </label>
+
+        <input id="aplicacao-nome" type="text" placeholder="Nome (ex.: Cofrinho Mercado Pago)" maxlength="60" autocomplete="off" aria-label="Nome" required>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Saldo em</span>
+            <input id="aplicacao-data" type="date" required>
+          </label>
+          <label class="campo-rotulado">
+            <span>% do CDI</span>
+            <input id="aplicacao-percentual" type="text" inputmode="decimal" placeholder="Ex.: 120" autocomplete="off" required>
+          </label>
+        </div>
+
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Limite da taxa (R$)</span>
+            <input id="aplicacao-limite" type="text" inputmode="decimal" placeholder="Sem limite" autocomplete="off">
+          </label>
+          <label class="campo-rotulado">
+            <span>% do CDI acima</span>
+            <input id="aplicacao-acima" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
+          </label>
+        </div>
+        <p class="compra-previa">O saldo é o valor na data, já com o rendimento até ela. Depois dela o app soma o CDI de cada dia útil. Ao depositar ou resgatar, atualize o saldo e a data.</p>
+
+        <span class="temas-grupo-titulo">Imposto</span>
+        <div class="tipo-segmentado" role="radiogroup" aria-label="Como o banco mostra o saldo">
+          <label><input type="radio" name="saldo-liquido" value="0" checked><span>Banco mostra bruto</span></label>
+          <label><input type="radio" name="saldo-liquido" value="1"><span>Já sem IR</span></label>
+        </div>
+        <p class="compra-previa">O Mercado Pago mostra o saldo já sem o IR: nele o app soma o rendimento líquido e não desconta de novo.</p>
+        <div class="form-linha">
+          <label class="campo-rotulado">
+            <span>Aplicado desde</span>
+            <input id="aplicacao-desde" type="date">
+          </label>
+          <label class="campo-rotulado">
+            <span>Rendimento já no saldo (R$)</span>
+            <input id="aplicacao-rendimento-anterior" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+          </label>
+        </div>
+        <p class="compra-previa">A data define a alíquota do IR (22,5% até 180 dias, 20% até 360, 17,5% até 720, 15% depois) e o IOF dos primeiros 30 dias. Sem ela, conta como aplicado na data do saldo. O rendimento já no saldo também paga IR no resgate: está no app do banco como "rendimentos".</p>
+
+        <div class="form-acoes">
+          <button id="botao-excluir-aplicacao" class="botao-excluir" type="button" hidden>Excluir</button>
+          <button id="botao-salvar-aplicacao" class="botao-primario" type="submit">Salvar</button>
+        </div>
+      </form>
+
+      <p id="erro-aplicacao" class="erro" hidden></p>
+    </div>
+  </dialog>
+
   <dialog id="gaveta-odometro" class="gaveta" aria-labelledby="gaveta-odometro-titulo">
     <div class="gaveta-corpo">
       <div class="gaveta-cabecalho">
@@ -971,6 +1060,7 @@
   <!-- Módulos: cada um num arquivo, depois do núcleo -->
   <script src="js/combustivel.js"></script>
   <script src="js/dieta.js"></script>
+  <script src="js/investimentos.js"></script>
 
   <!-- Registro do Service Worker: é isso que torna o site um PWA -->
   <script>
