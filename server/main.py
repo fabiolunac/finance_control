@@ -428,6 +428,9 @@ def garantir_tabela_renda(client):
             # Gasto fixo que sai do salário todo mês (aluguel, internet); o app
             # considera pago quando há um gasto no mês com o mesmo Local
             "CREATE TABLE IF NOT EXISTS fixos (id INTEGER PRIMARY KEY, Local TEXT NOT NULL, Valor REAL NOT NULL)",
+            # Dinheiro guardado conferido numa data (linha única); o app desconta
+            # os gastos e soma os salários de depois dela
+            "CREATE TABLE IF NOT EXISTS guardado (id INTEGER PRIMARY KEY CHECK (id = 1), Valor REAL NOT NULL, Data TEXT NOT NULL)",
         ])
         _tabela_renda_pronta = True
 
@@ -435,6 +438,11 @@ def garantir_tabela_renda(client):
 class Renda(BaseModel):
     Salario: float = Field(ge=0)
     Vale: float = Field(ge=0)
+
+
+class Guardado(BaseModel):
+    Valor: float
+    Data: str = Field(pattern=DATA_ISO)
 
 
 class NovoFixo(BaseModel):
@@ -446,12 +454,29 @@ class NovoFixo(BaseModel):
 def ler_renda(_=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
-        rs, fixos = client.batch([
+        rs, fixos, guardado = client.batch([
             "SELECT Chave, Valor FROM renda",
             "SELECT id, Local, Valor FROM fixos ORDER BY Local",
+            "SELECT Valor, Data FROM guardado WHERE id = 1",
         ])
     valores = {chave: valor for chave, valor in rs.rows}
-    return {"Salario": valores.get("Salario", 0.0), "Vale": valores.get("Vale", 0.0), "Fixos": linhas(fixos)}
+    return {
+        "Salario": valores.get("Salario", 0.0),
+        "Vale": valores.get("Vale", 0.0),
+        "Fixos": linhas(fixos),
+        "Guardado": linhas(guardado)[0] if guardado.rows else None,
+    }
+
+
+@app.put("/api/guardado")
+def salvar_guardado(guardado: Guardado, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute(
+            "INSERT OR REPLACE INTO guardado (id, Valor, Data) VALUES (1, ?, ?)",
+            [guardado.Valor, guardado.Data],
+        )
+    return {"ok": True}
 
 
 @app.post("/api/fixos", status_code=201)

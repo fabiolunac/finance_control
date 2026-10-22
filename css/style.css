@@ -3021,3 +3021,21 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 
 .tema-original-ajustes[hidden] { display: none; }
 #temas-lista > .temas-grupo-titulo:first-child { margin-top: 0; }
+
+/* ---------- Dinheiro guardado e Investimentos ---------- */
+
+.cartao-guardado { display: block; padding: 22px; }
+.cartao-guardado .resumo-valor { font-size: clamp(1.8rem, 7vw, 2.5rem); white-space: nowrap; }
+.cartao-guardado .painel-detalhe { margin-top: 8px; }
+
+@media (min-width: 860px) {
+  .cartao-guardado { padding: 26px 28px; }
+}
+
+.investimentos-vazio { text-align: center; padding: 40px 22px; }
+
+/* Barra com cinco abas e o "+": no celular só a aba ativa mostra o nome */
+@media (max-width: 440px) {
+  .aba:not(.aba-ativa) .aba-rotulo { display: none; }
+  .aba:not(.aba-ativa) { padding: 10px 11px; }
+}

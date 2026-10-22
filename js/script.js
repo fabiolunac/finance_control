@@ -22,12 +22,14 @@ const abaVisaoGeral = document.getElementById('aba-visao-geral');
 const abaParametros = document.getElementById('botao-parametros');
 const abaConfiguracoes = document.getElementById('botao-configuracoes');
 const abaFatura = document.getElementById('aba-fatura');
+const abaInvestimentos = document.getElementById('aba-investimentos');
 const secaoTabela = document.getElementById('secao-tabela');
 const secaoGraficos = document.getElementById('secao-graficos');
 const secaoVisaoGeral = document.getElementById('secao-visao-geral');
 const secaoParametros = document.getElementById('secao-parametros');
 const secaoConfiguracoes = document.getElementById('secao-configuracoes');
 const secaoFatura = document.getElementById('secao-fatura');
+const secaoInvestimentos = document.getElementById('secao-investimentos');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const metricaLancamentos = document.getElementById('metrica-lancamentos');
@@ -36,6 +38,11 @@ const metricaFatura = document.getElementById('metrica-fatura');
 const energeticosContagem = document.getElementById('energeticos-contagem');
 const energeticosDetalhe = document.getElementById('energeticos-detalhe');
 const rendaCards = document.getElementById('renda-cards');
+const guardadoValor = document.getElementById('guardado-valor');
+const guardadoDetalhe = document.getElementById('guardado-detalhe');
+const formGuardado = document.getElementById('form-guardado');
+const guardadoCampoValor = document.getElementById('guardado-campo-valor');
+const guardadoCampoData = document.getElementById('guardado-campo-data');
 const painelFatura = document.getElementById('painel-fatura');
 const painelFaturaRotulo = document.getElementById('painel-fatura-rotulo');
 const painelFaturaValor = document.getElementById('painel-fatura-valor');
@@ -576,6 +583,7 @@ const abas = [
   [abaParametros, secaoParametros],
   [abaConfiguracoes, secaoConfiguracoes],
   [abaFatura, secaoFatura],
+  [abaInvestimentos, secaoInvestimentos],
 ];
 
 function selecionarAba(abaEscolhida) {
@@ -980,6 +988,7 @@ function renderizarVisaoGeral() {
   const n = gastosMes.length;
   metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
 
+  renderizarGuardado();
   renderizarFaturaPainel();
   renderizarRenda();
   renderizarGastoHoje();
@@ -1030,6 +1039,66 @@ function renderizarGraficoSubcategorias(gastosMes) {
   renderizarBarras(graficoSubcategoriasMes, entradas, { porcentagem: true });
 }
 
+// ---------- Dinheiro guardado ----------
+
+// Valor conferido numa data, menos o que saiu da conta depois dela, mais os
+// salários que entraram (dia 1 de cada mês a partir de INICIO_RENDA).
+// Alelo não é dinheiro da conta; a fatura fica de fora porque as compras do
+// cartão já entram como gasto no dia da compra.
+function renderizarGuardado() {
+  const guardado = renda.Guardado;
+  if (!guardado) {
+    guardadoValor.textContent = '—';
+    preencherDetalhe(guardadoDetalhe, [['Informe quanto tem guardado em Configurações']]);
+    return;
+  }
+
+  const hoje = formatarIso(new Date());
+  const saidas = calcularTotalGasto(todosGastos.filter((g) =>
+    g.Data.slice(0, 10) > guardado.Data && g.Data.slice(0, 10) <= hoje && !ehAlelo(g) && !ehFatura(g)));
+
+  let salarios = 0;
+  let quantos = 0;
+  for (let mes = INICIO_RENDA; `${mes}-01` <= hoje; mes = somarMeses(mes, 1)) {
+    if (`${mes}-01` > guardado.Data) {
+      salarios += renda.Salario;
+      quantos += 1;
+    }
+  }
+
+  animarValor(guardadoValor, guardado.Valor - saidas + salarios);
+  const linhas = [[`${formatarMoeda(guardado.Valor)} em ${formatarData(guardado.Data)}`]];
+  const mudancas = [];
+  if (saidas) mudancas.push(`${saidas > 0 ? '−' : '+'}${formatarMoeda(Math.abs(saidas))} em gastos`);
+  if (salarios) mudancas.push(`+${formatarMoeda(salarios)} de ${quantos === 1 ? 'salário' : `${quantos} salários`}`);
+  if (mudancas.length) linhas.push([`Desde então: ${mudancas.join(', ')}`]);
+  preencherDetalhe(guardadoDetalhe, linhas);
+}
+
+formGuardado.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const valor = guardadoCampoValor.value.trim().startsWith('-')
+    ? -lerValor(guardadoCampoValor.value.trim().slice(1))
+    : lerValor(guardadoCampoValor.value);
+  const guardado = { Valor: valor, Data: guardadoCampoData.value };
+  if (Number.isNaN(guardado.Valor) || !guardado.Data) {
+    mostrarNotificacao('Valor inválido. Use algo como 25000,00.');
+    return;
+  }
+  const botao = formGuardado.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('PUT', '/api/guardado', guardado, 'Erro ao salvar no servidor.');
+    renda = { ...renda, Guardado: guardado };
+    mostrarNotificacao('Valor guardado salvo');
+    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
+
 // ---------- Fatura no painel do mês ----------
 
 // Fatura que vence no mês escolhido, somando todos os cartões
@@ -1063,7 +1132,7 @@ function renderizarFaturaPainel() {
 // O emprego começa em 01/11/2026: antes disso não há salário nem vale pra comparar.
 // No mês atual, se ainda for antes, os cards aparecem zerados avisando o início.
 const INICIO_RENDA = '2026-11';
-let renda = { Salario: 0, Vale: 0, Fixos: [] };
+let renda = { Salario: 0, Vale: 0, Fixos: [], Guardado: null };
 
 async function carregarRenda() {
   try {
@@ -1074,6 +1143,8 @@ async function carregarRenda() {
   }
   rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
   rendaVale.value = renda.Vale ? String(renda.Vale).replace('.', ',') : '';
+  guardadoCampoValor.value = renda.Guardado ? String(renda.Guardado.Valor).replace('.', ',') : '';
+  guardadoCampoData.value = renda.Guardado ? renda.Guardado.Data : formatarIso(new Date());
   renderizarFixos();
 }
 

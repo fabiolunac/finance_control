@@ -84,6 +84,10 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
         <span class="aba-rotulo">Fatura</span>
       </button>
+      <button id="aba-investimentos" data-modulo="financas" class="aba" type="button">
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span class="aba-rotulo">Investimentos</span>
+      </button>
       <button id="aba-combustivel" data-modulo="combustivel" class="aba" type="button" hidden>
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
         <span class="aba-rotulo">Abastecimentos</span>
@@ -213,6 +217,13 @@
         <button class="botao-chip botao-fatura" type="button" aria-pressed="false">Com fatura</button>
       </div>
 
+      <!-- Dinheiro guardado hoje: não depende do mês escolhido -->
+      <div id="cartao-guardado" class="cartao-resumo cartao-guardado">
+        <span class="metrica-rotulo">Guardado</span>
+        <span class="resumo-valor" id="guardado-valor"></span>
+        <div class="painel-detalhe" id="guardado-detalhe"></div>
+      </div>
+
       <!-- Painel do mês: total gasto e fatura em cima; salário e Alelo (de novembro/2026 em diante) embaixo -->
       <div class="cartao-resumo painel-mes">
         <div class="painel-topo">
@@ -331,6 +342,14 @@
         <div id="grafico-fatura-futuro" class="grafico"></div>
       </div>
 
+    </section>
+
+    <!-- Investimentos: em construção -->
+    <section id="secao-investimentos" hidden>
+      <div class="cartao-grafico investimentos-vazio">
+        <h2 class="titulo-grafico">Investimentos</h2>
+        <p class="vazio-pequeno">Em breve.</p>
+      </div>
     </section>
 
     <!-- ========== Módulo Combustível (combustivel.js) ========== -->
@@ -500,6 +519,16 @@
         </span>
         <svg class="linha-config-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+
+      <div class="cartao-grafico cartao-renda">
+        <h2 class="titulo-grafico">Dinheiro guardado</h2>
+        <p class="pendentes-ajuda">Quanto você tem guardado numa data, já descontado o que gastou nesse dia. Depois dela, o app desconta os gastos (menos Alelo e pagamento de fatura) e soma o salário no dia 1 de cada mês. Atualize quando quiser acertar com o banco.</p>
+        <form id="form-guardado" class="cartao-campos renda-campos">
+          <input id="guardado-campo-valor" type="text" inputmode="decimal" placeholder="Valor guardado" autocomplete="off" required aria-label="Valor guardado">
+          <input id="guardado-campo-data" type="date" required aria-label="Data do valor">
+          <button class="botao-primario" type="submit">Salvar</button>
+        </form>
+      </div>
 
       <div class="cartao-grafico cartao-renda">
         <h2 class="titulo-grafico">Salário e vale alimentação</h2>
