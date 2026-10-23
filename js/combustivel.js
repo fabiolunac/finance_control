@@ -774,8 +774,9 @@ function criarItemAbastecimento(a, rendimentos) {
   valor.textContent = formatarMoeda(a.Valor);
   const rendimento = document.createElement('span');
   rendimento.className = km > 0 ? 'abast-rendimento' : 'abast-rendimento abast-em-uso';
+  // Em uso (sem o próximo abastecimento) ainda não tem km nem custo por km
   let medida = 'fora do consumo';
-  if (!fora) medida = kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`;
+  if (!fora && km > 0) medida = kmPorLitro ? `${umaCasa(kmPorLitro)} km/l` : `${formatarMoeda(custoKm)}/km`;
   rendimento.textContent = km > 0 ? `${formatarKm(km)} · ${medida}` : 'em uso';
   direita.append(valor, rendimento);
 
