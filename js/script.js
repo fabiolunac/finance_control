@@ -1102,12 +1102,13 @@ formGuardado.addEventListener('submit', async (evento) => {
 
 // ---------- Fatura no painel do mês ----------
 
-// Fatura que vence no mês escolhido, somando todos os cartões
+// Fatura atual (a próxima a vencer, a mesma que a aba Fatura abre),
+// qualquer que seja o mês escolhido; soma todos os cartões
 function renderizarFaturaPainel() {
   painelFatura.hidden = cartoes.length === 0;
   if (painelFatura.hidden) return;
 
-  const mes = mesSelecionado();
+  const mes = proximaFaturaAVencer();
   let total = 0;
   let aPagar = 0;
   let minha = 0;
