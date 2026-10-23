@@ -1068,7 +1068,7 @@ function renderizarGuardado() {
   }
 
   animarValor(guardadoValor, guardado.Valor - saidas + salarios);
-  const linhas = [[`${formatarMoeda(guardado.Valor)} em ${formatarData(guardado.Data)}`]];
+  const linhas = [[`${formatarData(guardado.Data)}`]];
   const mudancas = [];
   if (saidas) mudancas.push(`${saidas > 0 ? '−' : '+'}${formatarMoeda(Math.abs(saidas))} em gastos`);
   if (salarios) mudancas.push(`+${formatarMoeda(salarios)} de ${quantos === 1 ? 'salário' : `${quantos} salários`}`);
