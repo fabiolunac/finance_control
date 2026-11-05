@@ -2823,6 +2823,13 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
   const bloco = document.createElement('div');
   bloco.className = 'cartao-grafico fatura-cartao';
 
+  // Vencimento já passou: paga fica apagada; sem pagamento fica em vermelho
+  const vencimento = `${mesFatura}-${pad2(diaNoMes(mesFatura, cartao.Vencimento))}`;
+  const vencida = vencimento < formatarIso(new Date());
+  const atrasada = vencida && !paga && totalCartao > 0;
+  if (atrasada) bloco.classList.add('fatura-atrasada');
+  else if (vencida) bloco.classList.add('fatura-vencida');
+
   const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mesFatura : somarMeses(mesFatura, -1);
   const cabecalho = document.createElement('div');
   cabecalho.className = 'fatura-cartao-cabecalho';
@@ -2832,7 +2839,8 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
   nome.textContent = cartao.Nome;
   const datas = document.createElement('span');
   datas.className = 'fatura-cartao-datas';
-  datas.textContent = `vence ${dataCurta(mesFatura, cartao.Vencimento)} · fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`;
+  datas.textContent = `${vencida ? 'venceu' : 'vence'} ${dataCurta(mesFatura, cartao.Vencimento)} · fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`
+    + (atrasada ? ' · em atraso' : '');
   titulo.append(nome, datas);
   const totais = document.createElement('div');
   totais.className = 'fatura-cartao-totais';
