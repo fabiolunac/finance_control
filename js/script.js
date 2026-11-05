@@ -2885,9 +2885,7 @@ function renderizarDetalheFatura() {
   const total = somarParcelas(parcelas);
   const minha = somarMinhaParte(parcelas);
   const paga = faturasPagas.find((p) => p.Cartao === cartao.id && p.Mes === mesFatura);
-  const vencimento = `${mesFatura}-${pad2(diaNoMes(mesFatura, cartao.Vencimento))}`;
-  const vencida = vencimento < formatarIso(new Date());
-  const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mesFatura : somarMeses(mesFatura, -1);
+  const situacaoAtual = situacaoFatura(cartao, mesFatura, total, paga);
   const porTipo = { parcelada: [], unica: [], fixa: [] };
   parcelas.forEach((p) => porTipo[tipoDaParcela(p)].push(p));
 
@@ -2898,13 +2896,13 @@ function renderizarDetalheFatura() {
   const topo = elemento('div', 'detalhe-topo');
   const totais = elemento('div');
   totais.append(elemento('span', 'resumo-valor', formatarMoeda(total)));
-  const sub = [`${vencida ? 'venceu' : 'vence'} ${dataCurta(mesFatura, cartao.Vencimento)}`,
-    `fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`, textoParcelas(parcelas.length)];
+  const sub = [textoDatasFatura(cartao, mesFatura, situacaoAtual), textoParcelas(parcelas.length)];
   if (minha < total - 0.005) sub.push(`sua parte ${formatarMoeda(minha)}`);
   totais.append(elemento('span', 'resumo-sub', sub.join(' · ')));
-  let situacao = ['A vencer', 'detalhe-selo'];
+  let situacao = ['Aberta', 'detalhe-selo'];
   if (paga) situacao = [`Paga em ${formatarData(paga.Data).slice(0, 5)}`, 'detalhe-selo detalhe-selo-paga'];
-  else if (vencida && total > 0) situacao = ['Em atraso', 'detalhe-selo detalhe-selo-atraso'];
+  else if (situacaoAtual.estado === 'atrasada') situacao = ['Em atraso', 'detalhe-selo detalhe-selo-atraso'];
+  else if (situacaoAtual.estado === 'fechada') situacao = ['Fechada · pagar', 'detalhe-selo detalhe-selo-fechada'];
   topo.append(totais, elemento('span', situacao[1], situacao[0]));
   detalheFaturaCorpo.appendChild(topo);
 
@@ -3034,6 +3032,27 @@ function renderizarDetalheFatura() {
   }
 }
 
+// Situação da fatura do mês num cartão. Fecha no dia do fechamento (compra
+// desse dia já vai pra seguinte) e vence no dia do vencimento.
+//   atrasada: venceu sem pagamento · fechada: fechou, falta pagar ·
+//   encerrada: fechou ou venceu e está paga · aberta: ainda recebe compras
+function situacaoFatura(cartao, mes, total, paga) {
+  const hoje = formatarIso(new Date());
+  const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mes : somarMeses(mes, -1);
+  const vencida = `${mes}-${pad2(diaNoMes(mes, cartao.Vencimento))}` < hoje;
+  const fechada = `${mesFechamento}-${pad2(diaNoMes(mesFechamento, cartao.Fechamento))}` <= hoje;
+  let estado = 'aberta';
+  if (paga && (vencida || fechada)) estado = 'encerrada';
+  else if (vencida && total > 0) estado = 'atrasada';
+  else if (fechada && total > 0) estado = 'fechada';
+  return { mesFechamento, vencida, fechada, estado };
+}
+
+function textoDatasFatura(cartao, mes, situacao) {
+  return `${situacao.vencida ? 'venceu' : 'vence'} ${dataCurta(mes, cartao.Vencimento)}`
+    + ` · ${situacao.fechada ? 'fechou' : 'fecha'} ${dataCurta(situacao.mesFechamento, cartao.Fechamento)}`;
+}
+
 function dataCurta(mes, dia) {
   return `${pad2(diaNoMes(mes, dia))}/${mes.slice(5)}`;
 }
@@ -3042,14 +3061,11 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
   const bloco = document.createElement('div');
   bloco.className = 'cartao-grafico fatura-cartao';
 
-  // Vencimento já passou: paga fica apagada; sem pagamento fica em vermelho
-  const vencimento = `${mesFatura}-${pad2(diaNoMes(mesFatura, cartao.Vencimento))}`;
-  const vencida = vencimento < formatarIso(new Date());
-  const atrasada = vencida && !paga && totalCartao > 0;
-  if (atrasada) bloco.classList.add('fatura-atrasada');
-  else if (vencida) bloco.classList.add('fatura-vencida');
+  // Em atraso fica vermelho, fechada (falta pagar) em destaque, paga depois de fechar apagada
+  const situacao = situacaoFatura(cartao, mesFatura, totalCartao, paga);
+  const CLASSES_SITUACAO = { atrasada: 'fatura-atrasada', fechada: 'fatura-fechada', encerrada: 'fatura-vencida' };
+  if (CLASSES_SITUACAO[situacao.estado]) bloco.classList.add(CLASSES_SITUACAO[situacao.estado]);
 
-  const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mesFatura : somarMeses(mesFatura, -1);
   const cabecalho = document.createElement('div');
   cabecalho.className = 'fatura-cartao-cabecalho';
   const titulo = document.createElement('div');
@@ -3058,8 +3074,8 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
   nome.textContent = cartao.Nome;
   const datas = document.createElement('span');
   datas.className = 'fatura-cartao-datas';
-  datas.textContent = `${vencida ? 'venceu' : 'vence'} ${dataCurta(mesFatura, cartao.Vencimento)} · fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`
-    + (atrasada ? ' · em atraso' : '');
+  datas.textContent = textoDatasFatura(cartao, mesFatura, situacao)
+    + (situacao.estado === 'atrasada' ? ' · em atraso' : situacao.estado === 'fechada' ? ' · pagar' : '');
   titulo.append(nome, datas);
   const totais = document.createElement('div');
   totais.className = 'fatura-cartao-totais';
