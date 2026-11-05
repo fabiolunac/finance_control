@@ -575,6 +575,18 @@
           <button class="botao-primario" type="submit">Salvar</button>
         </form>
 
+        <h3 class="subtitulo-renda">Salário diferente num mês</h3>
+        <p class="pendentes-ajuda">Pro mês em que o salário veio diferente do valor acima (proporcional, desconto, bônus). Os outros meses continuam com o valor acima.</p>
+        <div id="lista-salarios-mes" class="lista-pendentes"></div>
+        <form id="form-salario-mes" class="pendente form-cartao">
+          <span class="pendente-local">Novo valor de um mês</span>
+          <div class="cartao-campos renda-campos">
+            <input id="salario-mes-mes" type="month" required aria-label="Mês">
+            <input id="salario-mes-valor" type="text" inputmode="decimal" placeholder="Salário do mês" autocomplete="off" required aria-label="Salário do mês">
+            <button class="botao-primario" type="submit">Salvar</button>
+          </div>
+        </form>
+
         <h3 class="subtitulo-renda">Gastos fixos do salário</h3>
         <p class="pendentes-ajuda">Contas de todo mês, como aluguel. Até você lançar um gasto com o mesmo local no mês, o valor aparece como "a pagar" e já sai da sobra.</p>
         <div id="lista-fixos" class="lista-pendentes"></div>

@@ -6,7 +6,7 @@ from typing import List, Literal, Optional
 import libsql_client
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -431,6 +431,8 @@ def garantir_tabela_renda(client):
             # Dinheiro guardado conferido numa data (linha única); o app desconta
             # os gastos e soma os salários de depois dela
             "CREATE TABLE IF NOT EXISTS guardado (id INTEGER PRIMARY KEY CHECK (id = 1), Valor REAL NOT NULL, Data TEXT NOT NULL)",
+            # Salário de um mês (YYYY-MM) diferente do padrão da tabela renda
+            "CREATE TABLE IF NOT EXISTS salarios_mes (Mes TEXT PRIMARY KEY, Valor REAL NOT NULL)",
         ])
         _tabela_renda_pronta = True
 
@@ -445,6 +447,10 @@ class Guardado(BaseModel):
     Data: str = Field(pattern=DATA_ISO)
 
 
+class SalarioMes(BaseModel):
+    Valor: float = Field(ge=0)
+
+
 class NovoFixo(BaseModel):
     Local: str = Field(min_length=1, max_length=120)
     Valor: float = Field(gt=0)
@@ -454,10 +460,11 @@ class NovoFixo(BaseModel):
 def ler_renda(_=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
-        rs, fixos, guardado = client.batch([
+        rs, fixos, guardado, salarios = client.batch([
             "SELECT Chave, Valor FROM renda",
             "SELECT id, Local, Valor FROM fixos ORDER BY Local",
             "SELECT Valor, Data FROM guardado WHERE id = 1",
+            "SELECT Mes, Valor FROM salarios_mes",
         ])
     valores = {chave: valor for chave, valor in rs.rows}
     return {
@@ -465,7 +472,23 @@ def ler_renda(_=Depends(checar_token)):
         "Vale": valores.get("Vale", 0.0),
         "Fixos": linhas(fixos),
         "Guardado": linhas(guardado)[0] if guardado.rows else None,
+        "SalariosMes": {mes: valor for mes, valor in salarios.rows},
     }
+
+
+@app.put("/api/salarios/{mes}")
+def salvar_salario_mes(mes: str = Path(pattern=MES_ISO), salario: SalarioMes = Body(), _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute("INSERT OR REPLACE INTO salarios_mes (Mes, Valor) VALUES (?, ?)", [mes, salario.Valor])
+    return {"ok": True}
+
+
+@app.delete("/api/salarios/{mes}", status_code=204)
+def remover_salario_mes(mes: str = Path(pattern=MES_ISO), _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute("DELETE FROM salarios_mes WHERE Mes = ?", [mes])
 
 
 @app.put("/api/guardado")

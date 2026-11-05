@@ -60,6 +60,10 @@ const aleloDetalhe = document.getElementById('alelo-detalhe');
 const formRenda = document.getElementById('form-renda');
 const rendaSalario = document.getElementById('renda-salario');
 const rendaVale = document.getElementById('renda-vale');
+const listaSalariosMes = document.getElementById('lista-salarios-mes');
+const formSalarioMes = document.getElementById('form-salario-mes');
+const salarioMesMes = document.getElementById('salario-mes-mes');
+const salarioMesValor = document.getElementById('salario-mes-valor');
 const listaFixos = document.getElementById('lista-fixos');
 const formFixo = document.getElementById('form-fixo');
 const fixoLocal = document.getElementById('fixo-local');
@@ -1065,7 +1069,7 @@ function renderizarGuardado() {
   let quantos = 0;
   for (let mes = INICIO_RENDA; `${mes}-01` <= hoje; mes = somarMeses(mes, 1)) {
     if (`${mes}-01` > guardado.Data) {
-      salarios += renda.Salario;
+      salarios += salarioDoMes(mes);
       quantos += 1;
     }
   }
@@ -1137,7 +1141,13 @@ function renderizarFaturaPainel() {
 // O emprego começa em 01/11/2026: antes disso não há salário nem vale pra comparar.
 // No mês atual, se ainda for antes, os cards aparecem zerados avisando o início.
 const INICIO_RENDA = '2026-11';
-let renda = { Salario: 0, Vale: 0, Fixos: [], Guardado: null };
+let renda = { Salario: 0, Vale: 0, Fixos: [], Guardado: null, SalariosMes: {} };
+
+// Salário do mês (YYYY-MM): o valor próprio dele, se houver, senão o padrão
+function salarioDoMes(mes) {
+  const proprio = (renda.SalariosMes || {})[mes];
+  return proprio != null ? proprio : renda.Salario;
+}
 
 async function carregarRenda() {
   try {
@@ -1148,6 +1158,8 @@ async function carregarRenda() {
   }
   rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
   rendaVale.value = renda.Vale ? String(renda.Vale).replace('.', ',') : '';
+  if (!salarioMesMes.value) salarioMesMes.value = mesAtual();
+  renderizarSalariosMes();
   guardadoCampoValor.value = renda.Guardado ? String(renda.Guardado.Valor).replace('.', ',') : '';
   guardadoCampoData.value = renda.Guardado ? renda.Guardado.Data : formatarIso(new Date());
   renderizarFixos();
@@ -1195,7 +1207,7 @@ function diasNoMes(mes) {
 // No mês corrente, projeta o fim do mês pelo ritmo dos gastos do dia a dia:
 // fixos e fatura são pontuais e entram pelo valor, não pelo ritmo.
 function renderizarSalario(mes, gastos, antes) {
-  const salario = renda.Salario;
+  const salario = salarioDoMes(mes);
   const fixos = renda.Fixos || [];
   if (antes) {
     animarValor(salarioSobra, salario);
@@ -1282,6 +1294,62 @@ function renderizarRenda() {
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
   renderizarAlelo(mes, gastosMes.filter(ehAlelo), antes);
 }
+
+// Meses com salário próprio, em Configurações (mais recente primeiro)
+function renderizarSalariosMes() {
+  listaSalariosMes.innerHTML = '';
+  Object.keys(renda.SalariosMes || {}).sort().reverse().forEach((mes) => {
+    const linha = document.createElement('div');
+    linha.className = 'pendente';
+    const info = document.createElement('div');
+    info.className = 'pendente-info';
+    const nome = document.createElement('span');
+    nome.className = 'pendente-local';
+    nome.textContent = `${nomeMesTitulo(mes)} · ${formatarMoeda(renda.SalariosMes[mes])}`;
+    const remover = document.createElement('button');
+    remover.type = 'button';
+    remover.className = 'botao-remover';
+    remover.textContent = '×';
+    remover.setAttribute('aria-label', `Voltar ${nomeMesTitulo(mes)} pro salário padrão`);
+    remover.addEventListener('click', async () => {
+      remover.disabled = true;
+      try {
+        await requisitar('DELETE', `/api/salarios/${mes}`, null, 'Erro ao remover o salário do mês.');
+        await carregarRenda();
+        if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+      } catch (e) {
+        mostrarNotificacao(e.message);
+        remover.disabled = false;
+      }
+    });
+    info.append(nome, remover);
+    linha.appendChild(info);
+    listaSalariosMes.appendChild(linha);
+  });
+}
+
+formSalarioMes.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const mes = salarioMesMes.value;
+  const valor = lerValor(salarioMesValor.value);
+  if (!mes || Number.isNaN(valor)) {
+    mostrarNotificacao('Valor inválido. Use algo como 3867,00.');
+    return;
+  }
+  const botao = formSalarioMes.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('PUT', `/api/salarios/${mes}`, { Valor: valor }, 'Erro ao salvar o salário do mês.');
+    salarioMesValor.value = '';
+    await carregarRenda();
+    mostrarNotificacao(`Salário de ${nomeMesTitulo(mes)}: ${formatarMoeda(valor)}`);
+    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
 
 // Lista dos fixos em Configurações
 function renderizarFixos() {
