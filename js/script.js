@@ -2813,6 +2813,225 @@ function renderizarFatura() {
   renderizarAReceber(aReceber);
 
   renderizarFaturaFutura();
+  if (gavetaDetalheFatura.open) renderizarDetalheFatura();
+}
+
+// ----- Detalhe da fatura de um cartão
+
+const gavetaDetalheFatura = document.getElementById('gaveta-fatura-detalhe');
+const detalheFaturaTitulo = document.getElementById('detalhe-fatura-titulo');
+const detalheFaturaCorpo = document.getElementById('detalhe-fatura-corpo');
+const SETA_DIREITA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>';
+const MESES_DETALHE_FUTURO = 6;
+let detalheCartaoId = null;
+
+function abrirDetalheFatura(cartaoId) {
+  detalheCartaoId = cartaoId;
+  renderizarDetalheFatura();
+  if (!gavetaDetalheFatura.open) gavetaDetalheFatura.showModal();
+}
+
+document.getElementById('botao-fechar-detalhe-fatura').addEventListener('click', () => gavetaDetalheFatura.close());
+gavetaDetalheFatura.addEventListener('click', (evento) => {
+  if (evento.target === gavetaDetalheFatura) gavetaDetalheFatura.close();
+});
+
+function elemento(tag, classe, texto) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texto != null) el.textContent = texto;
+  return el;
+}
+
+// Parcela de uma compra parcelada: número, quantas faltam depois desta,
+// quanto falta pagar e o mês da última
+function situacaoParcelada(compra, cartao, numero) {
+  let restante = 0;
+  for (let n = numero + 1; n <= compra.Parcelas; n += 1) restante += valorDaParcela(compra.Valor, compra.Parcelas, n);
+  return {
+    faltam: compra.Parcelas - numero,
+    restante,
+    ultima: somarMeses(primeiraFatura(compra.Data, cartao), compra.Parcelas - 1),
+  };
+}
+
+function tipoDaParcela(p) {
+  if (p.compra.Fixa) return 'fixa';
+  return p.compra.Parcelas > 1 ? 'parcelada' : 'unica';
+}
+
+const TIPOS_DETALHE = [
+  { id: 'parcelada', nome: 'Parceladas' },
+  { id: 'unica', nome: 'Únicas' },
+  { id: 'fixa', nome: 'Fixas' },
+];
+
+function secaoDetalhe(titulo, resumo) {
+  const secao = elemento('section', 'detalhe-secao');
+  const cabecalho = elemento('div', 'detalhe-secao-cabecalho');
+  cabecalho.append(elemento('h3', 'detalhe-secao-titulo', titulo));
+  if (resumo) cabecalho.append(elemento('span', 'detalhe-secao-resumo', resumo));
+  secao.appendChild(cabecalho);
+  return secao;
+}
+
+function renderizarDetalheFatura() {
+  const cartao = cartoes.find((c) => c.id === detalheCartaoId);
+  if (!cartao) {
+    gavetaDetalheFatura.close();
+    return;
+  }
+  const parcelas = parcelasDaFatura(mesFatura, cartao.id);
+  const total = somarParcelas(parcelas);
+  const minha = somarMinhaParte(parcelas);
+  const paga = faturasPagas.find((p) => p.Cartao === cartao.id && p.Mes === mesFatura);
+  const vencimento = `${mesFatura}-${pad2(diaNoMes(mesFatura, cartao.Vencimento))}`;
+  const vencida = vencimento < formatarIso(new Date());
+  const mesFechamento = cartao.Vencimento > cartao.Fechamento ? mesFatura : somarMeses(mesFatura, -1);
+  const porTipo = { parcelada: [], unica: [], fixa: [] };
+  parcelas.forEach((p) => porTipo[tipoDaParcela(p)].push(p));
+
+  detalheFaturaTitulo.textContent = `${cartao.Nome} · fatura de ${MESES[Number(mesFatura.slice(5)) - 1]}`;
+  detalheFaturaCorpo.innerHTML = '';
+
+  // Total e situação
+  const topo = elemento('div', 'detalhe-topo');
+  const totais = elemento('div');
+  totais.append(elemento('span', 'resumo-valor', formatarMoeda(total)));
+  const sub = [`${vencida ? 'venceu' : 'vence'} ${dataCurta(mesFatura, cartao.Vencimento)}`,
+    `fecha ${dataCurta(mesFechamento, cartao.Fechamento)}`, textoParcelas(parcelas.length)];
+  if (minha < total - 0.005) sub.push(`sua parte ${formatarMoeda(minha)}`);
+  totais.append(elemento('span', 'resumo-sub', sub.join(' · ')));
+  let situacao = ['A vencer', 'detalhe-selo'];
+  if (paga) situacao = [`Paga em ${formatarData(paga.Data).slice(0, 5)}`, 'detalhe-selo detalhe-selo-paga'];
+  else if (vencida && total > 0) situacao = ['Em atraso', 'detalhe-selo detalhe-selo-atraso'];
+  topo.append(totais, elemento('span', situacao[1], situacao[0]));
+  detalheFaturaCorpo.appendChild(topo);
+
+  if (!parcelas.length) {
+    detalheFaturaCorpo.appendChild(elemento('p', 'vazio-pequeno', 'Nenhuma compra nesta fatura.'));
+  } else {
+    // Composição: uma barra dividida pelos três tipos, com legenda
+    const composicao = elemento('div', 'detalhe-composicao');
+    const barra = elemento('div', 'detalhe-composicao-barra');
+    const legenda = elemento('div', 'detalhe-legenda');
+    TIPOS_DETALHE.forEach(({ id, nome }) => {
+      const soma = somarParcelas(porTipo[id]);
+      if (soma <= 0) return;
+      const pedaco = elemento('span', `detalhe-tipo-${id}`);
+      pedaco.style.width = `${(soma / total) * 100}%`;
+      barra.appendChild(pedaco);
+      const item = elemento('span', 'detalhe-legenda-item');
+      item.append(elemento('i', `detalhe-tipo-${id}`), `${nome} ${formatarMoeda(soma)} · ${Math.round((soma / total) * 100)}%`);
+      legenda.appendChild(item);
+    });
+    composicao.append(barra, legenda);
+    detalheFaturaCorpo.appendChild(composicao);
+  }
+
+  // Parceladas: linha do tempo de cada uma, das que acabam antes pras que acabam depois
+  if (porTipo.parcelada.length) {
+    const lista = porTipo.parcelada
+      .map((p) => ({ ...p, ...situacaoParcelada(p.compra, cartao, p.numero) }))
+      .sort((a, b) => a.ultima.localeCompare(b.ultima) || b.valor - a.valor);
+    const aindaFalta = lista.reduce((soma, p) => soma + p.restante, 0);
+    const secao = secaoDetalhe('Parceladas', `${formatarMoeda(somarParcelas(lista))} nesta fatura · ${formatarMoeda(aindaFalta)} nas próximas`);
+    lista.forEach((p) => {
+      const item = elemento('button', 'detalhe-item detalhe-parcelada');
+      item.type = 'button';
+      const linha = elemento('span', 'detalhe-item-linha');
+      linha.append(elemento('span', 'detalhe-item-nome', p.compra.Descricao),
+        elemento('span', 'detalhe-item-valor', `${formatarMoeda(p.valor)}/mês`));
+      // Um traço por parcela: as já cobradas, a desta fatura e as que faltam
+      const trilha = elemento('span', 'detalhe-parcelas');
+      trilha.setAttribute('aria-hidden', 'true');
+      for (let n = 1; n <= p.compra.Parcelas; n += 1) {
+        trilha.appendChild(elemento('i', n < p.numero ? 'parcela-feita' : n === p.numero ? 'parcela-atual' : 'parcela-falta'));
+      }
+      const info = p.faltam > 0
+        ? `${p.numero} de ${p.compra.Parcelas} · faltam ${p.faltam} (${formatarMoeda(p.restante)}) · última em ${nomeMesCurto(p.ultima)}`
+        : `${p.numero} de ${p.compra.Parcelas} · última parcela`;
+      item.append(linha, trilha, elemento('span', 'detalhe-item-info', `${info} · total ${formatarMoeda(p.compra.Valor)}`));
+      item.addEventListener('click', () => abrirGavetaCompra(p.compra));
+      secao.appendChild(item);
+    });
+    detalheFaturaCorpo.appendChild(secao);
+  }
+
+  // Únicas: barra do tamanho de cada compra perto da maior
+  if (porTipo.unica.length) {
+    const lista = [...porTipo.unica].sort((a, b) => b.valor - a.valor);
+    const maior = lista[0].valor || 1;
+    const secao = secaoDetalhe('Compras únicas do mês', `${formatarMoeda(somarParcelas(lista))} · ${lista.length} ${lista.length === 1 ? 'compra' : 'compras'}`);
+    lista.forEach((p) => {
+      const item = elemento('button', 'detalhe-item');
+      item.type = 'button';
+      const linha = elemento('span', 'detalhe-item-linha');
+      linha.append(elemento('span', 'detalhe-item-nome', p.compra.Descricao),
+        elemento('span', 'detalhe-item-valor', formatarMoeda(p.valor)));
+      const trilha = elemento('span', 'detalhe-barra');
+      const barra = elemento('i', 'detalhe-tipo-unica');
+      barra.style.width = `${(p.valor / maior) * 100}%`;
+      trilha.appendChild(barra);
+      item.append(linha, trilha, elemento('span', 'detalhe-item-info', `compra em ${formatarData(p.compra.Data).slice(0, 5)}`));
+      item.addEventListener('click', () => abrirGavetaCompra(p.compra));
+      secao.appendChild(item);
+    });
+    detalheFaturaCorpo.appendChild(secao);
+  }
+
+  // Fixas: o mesmo valor todo mês
+  if (porTipo.fixa.length) {
+    const lista = [...porTipo.fixa].sort((a, b) => b.valor - a.valor);
+    const secao = secaoDetalhe('Fixas', `${formatarMoeda(somarParcelas(lista))} todo mês`);
+    lista.forEach((p) => {
+      const item = elemento('button', 'detalhe-item detalhe-fixa');
+      item.type = 'button';
+      const linha = elemento('span', 'detalhe-item-linha');
+      linha.append(elemento('span', 'detalhe-item-nome', p.compra.Descricao),
+        elemento('span', 'detalhe-item-valor', `${formatarMoeda(p.valor)}/mês`));
+      const desde = nomeMesCurto(primeiraFatura(p.compra.Data, cartao));
+      item.append(linha, elemento('span', 'detalhe-item-info',
+        p.compra.Fim ? `de ${desde} até ${nomeMesCurto(p.compra.Fim)}` : `desde ${desde} · sem data pra acabar`));
+      item.addEventListener('click', () => abrirGavetaCompra(p.compra));
+      secao.appendChild(item);
+    });
+    detalheFaturaCorpo.appendChild(secao);
+  }
+
+  // Próximos meses deste cartão: colunas empilhadas por tipo, mostra as parcelas acabando
+  const meses = [];
+  for (let i = 0; i < MESES_DETALHE_FUTURO; i += 1) {
+    const mes = somarMeses(mesFatura, i);
+    const doMes = parcelasDaFatura(mes, cartao.id);
+    const soma = {};
+    TIPOS_DETALHE.forEach(({ id }) => { soma[id] = somarParcelas(doMes.filter((p) => tipoDaParcela(p) === id)); });
+    meses.push({ mes, soma, total: somarParcelas(doMes) });
+  }
+  const maiorMes = Math.max(...meses.map((m) => m.total), 0);
+  if (maiorMes > 0) {
+    const secao = secaoDetalhe('Próximos meses', 'só o que já está lançado');
+    const grafico = elemento('div', 'detalhe-futuro');
+    meses.forEach(({ mes, soma, total: totalMes }, i) => {
+      const coluna = elemento('div', 'detalhe-futuro-coluna' + (i === 0 ? ' detalhe-futuro-atual' : ''));
+      coluna.title = `${nomeMesCurto(mes)}: ${formatarMoeda(totalMes)}`;
+      coluna.append(elemento('span', 'detalhe-futuro-valor', totalMes > 0 ? valorCompacto(totalMes) : ''));
+      const pilha = elemento('div', 'detalhe-futuro-pilha');
+      pilha.style.height = `${(totalMes / maiorMes) * 100}%`;
+      ['fixa', 'unica', 'parcelada'].forEach((id) => {
+        if (soma[id] <= 0) return;
+        const pedaco = elemento('i', `detalhe-tipo-${id}`);
+        pedaco.style.height = `${(soma[id] / totalMes) * 100}%`;
+        pilha.appendChild(pedaco);
+      });
+      const area = elemento('div', 'detalhe-futuro-area');
+      area.appendChild(pilha);
+      coluna.append(area, elemento('span', 'detalhe-futuro-mes', nomeMesCurto(mes)));
+      grafico.appendChild(coluna);
+    });
+    secao.appendChild(grafico);
+    detalheFaturaCorpo.appendChild(secao);
+  }
 }
 
 function dataCurta(mes, dia) {
@@ -2855,8 +3074,23 @@ function criarBlocoCartao(cartao, parcelas, totalCartao, paga) {
     parte.textContent = `sua parte ${formatarMoeda(minha)}`;
     totais.appendChild(parte);
   }
+  const detalhes = document.createElement('button');
+  detalhes.type = 'button';
+  detalhes.className = 'fatura-cartao-detalhes';
+  detalhes.setAttribute('aria-label', `Ver detalhes da fatura ${cartao.Nome}`);
+  detalhes.title = 'Ver detalhes';
+  detalhes.innerHTML = SETA_DIREITA_SVG;
+  detalhes.addEventListener('click', () => abrirDetalheFatura(cartao.id));
+  totais.appendChild(detalhes);
   cabecalho.append(titulo, totais);
   bloco.appendChild(cabecalho);
+
+  // Tocar em qualquer parte do card que não seja botão ou campo abre o detalhe
+  bloco.classList.add('fatura-cartao-clicavel');
+  bloco.addEventListener('click', (evento) => {
+    if (evento.target.closest('button, input, select, textarea, a, label, form')) return;
+    abrirDetalheFatura(cartao.id);
+  });
 
   bloco.appendChild(criarStatusFatura(cartao, totalCartao, paga));
 
