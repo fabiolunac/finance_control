@@ -51,6 +51,9 @@ const salarioSobra = document.getElementById('salario-sobra');
 const salarioBarra = document.getElementById('salario-barra');
 const salarioBarraFixos = document.getElementById('salario-barra-fixos');
 const salarioDetalhe = document.getElementById('salario-detalhe');
+const cartaoAlelo = document.getElementById('cartao-alelo');
+const aleloGasto = document.getElementById('alelo-gasto');
+const aleloLancamentos = document.getElementById('alelo-lancamentos');
 const aleloSobra = document.getElementById('alelo-sobra');
 const aleloBarra = document.getElementById('alelo-barra');
 const aleloDetalhe = document.getElementById('alelo-detalhe');
@@ -1239,6 +1242,9 @@ function renderizarSalario(mes, gastos, antes) {
 // Alelo: saldo do mês e, no mês corrente, quanto dá por dia até o fim
 function renderizarAlelo(mes, gastos, antes) {
   const vale = renda.Vale;
+  const n = gastos.length;
+  animarValor(aleloGasto, calcularTotalGasto(gastos));
+  aleloLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
   if (antes) {
     animarValor(aleloSobra, vale);
     pintarBarra(aleloBarra, 0);
@@ -1269,9 +1275,10 @@ function renderizarRenda() {
   const mes = mesSelecionado();
   const antes = mes < INICIO_RENDA;
   rendaCards.hidden = antes && mes !== mesAtual();
+  cartaoAlelo.hidden = rendaCards.hidden;
   if (rendaCards.hidden) return;
 
-  const gastosMes = antes ? [] : gastosConsiderados().filter((g) => g['Mês'] === mes);
+  const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes);
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
   renderizarAlelo(mes, gastosMes.filter(ehAlelo), antes);
 }
@@ -3390,8 +3397,19 @@ let semFatura = (() => {
   try { return localStorage.getItem('semFatura') === '1'; } catch (e) { return false; }
 })();
 
-function gastosConsiderados() {
+// "Sem Alelo" (o padrão) deixa as contas só com o dinheiro do salário
+let semAlelo = (() => {
+  try { return localStorage.getItem('semAlelo') !== '0'; } catch (e) { return true; }
+})();
+
+// Só o filtro da fatura: salário e Alelo, que separam os dois por conta própria
+function gastosSemFaturaSeEscolhido() {
   return semFatura ? todosGastos.filter((g) => !ehFatura(g)) : todosGastos;
+}
+
+function gastosConsiderados() {
+  const base = gastosSemFaturaSeEscolhido();
+  return semAlelo ? base.filter((g) => !ehAlelo(g)) : base;
 }
 
 const botoesFatura = document.querySelectorAll('.botao-fatura');
@@ -3412,6 +3430,25 @@ botoesFatura.forEach((botao) => botao.addEventListener('click', () => {
 }));
 
 atualizarBotoesFatura();
+
+const botoesAlelo = document.querySelectorAll('.botao-alelo');
+
+function atualizarBotoesAlelo() {
+  botoesAlelo.forEach((botao) => {
+    botao.textContent = semAlelo ? 'Sem Alelo' : 'Com Alelo';
+    botao.setAttribute('aria-pressed', String(semAlelo));
+    botao.classList.toggle('botao-filtros-ativo', semAlelo);
+  });
+}
+
+botoesAlelo.forEach((botao) => botao.addEventListener('click', () => {
+  semAlelo = !semAlelo;
+  try { localStorage.setItem('semAlelo', semAlelo ? '1' : '0'); } catch (e) {}
+  atualizarBotoesAlelo();
+  renderizarTudo();
+}));
+
+atualizarBotoesAlelo();
 
 // ---------- Cor do tema ----------
 
