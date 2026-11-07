@@ -873,7 +873,11 @@ function renderizarGraficoDiario() {
     const iso = `${mes}-${pad2(dia)}`;
     entradas.push({ rotulo: String(dia), titulo: formatarData(iso).slice(0, 5), valor: totais[iso] || 0, atual: iso === hoje });
   }
-  renderizarColunas(graficoDiario, entradas, soma / diasCorridos);
+  const rolagem = renderizarColunas(graficoDiario, entradas, soma / diasCorridos);
+
+  // Não cabendo o mês inteiro, começa mostrando até o dia de hoje (ou o fim do mês passado)
+  const ultimo = mes === mesAtual() ? new Date().getDate() : diasNoMes;
+  rolagem.scrollLeft = Math.max(0, (rolagem.scrollWidth * ultimo) / diasNoMes - rolagem.clientWidth);
 }
 
 ligarPassoMes(graficoDiaMes, atualizarGraficosDoMes);

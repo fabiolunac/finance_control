@@ -1339,7 +1339,7 @@ body {
   transition: height .35s cubic-bezier(.2, .8, .2, 1), filter var(--t-rapida);
 }
 
-/* Valor em cima da coluna; no gráfico por dia, de pé, pra caber na coluna fina */
+/* Valor em cima da coluna, sempre na horizontal */
 .colunas-valor {
   position: absolute;
   bottom: 100%;
@@ -1353,12 +1353,7 @@ body {
   color: var(--tinta-fraca);
 }
 
-#grafico-diario .colunas-valor {
-  writing-mode: vertical-rl;
-  transform: translateX(-50%) rotate(180deg);
-  font-size: 0.56rem;
-  letter-spacing: -0.02em;
-}
+#grafico-diario .colunas-valor { letter-spacing: -0.03em; }
 
 .colunas-coluna-escolhida .colunas-barra,
 .colunas-coluna:hover .colunas-barra { filter: brightness(1.3); }
@@ -1410,6 +1405,10 @@ body {
 #grafico-mensal .colunas-eixo { min-width: calc(var(--n-colunas) * 40px); }
 
 #grafico-mensal .colunas-eixo span { font-size: 0.62rem; letter-spacing: 0; }
+
+/* Por dia: largura mínima pro valor caber deitado em cima da coluna; o mês inteiro rola */
+#grafico-diario .colunas-area,
+#grafico-diario .colunas-eixo { min-width: calc(var(--n-colunas) * 28px); }
 
 .colunas-detalhe {
   min-height: 1.3em;
