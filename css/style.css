@@ -1517,17 +1517,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.metrica-delta {
-  display: block;
-  font-family: var(--fonte-mono);
-  font-size: 0.8rem;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
-}
-
-.metrica-delta-positiva { color: var(--sucesso); }
-.metrica-delta-negativa { color: var(--erro); }
-
 .progresso-lista {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1912,9 +1901,7 @@ body {
   font-weight: 500;
 }
 
-.resumo-mes .metrica-delta { margin-top: 8px; }
 
-.resumo-fatura { font-size: 0.8rem; color: var(--tinta-muda); }
 
 /* Cards pequenos de acompanhamento (Araújo, corte de cabelo) */
 .metricas-extra {
@@ -2651,12 +2638,6 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 .painel-total { padding: 24px 22px 20px; }
 .painel-mes .resumo-valor { font-size: 2.5rem; }
 
-.painel-detalhe {
-  display: block;
-  font-size: 0.78rem;
-  color: var(--tinta-muda);
-}
-
 /* Duas colunas com o mesmo tamanho de número; sem a segunda, uma só */
 .painel-topo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .painel-topo:has(> .painel-fatura[hidden]) { grid-template-columns: minmax(0, 1fr); }
@@ -2768,11 +2749,7 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
   box-shadow: none;
 }
 
-.painel-detalhe-linha { display: block; }
-.painel-detalhe-linha + .painel-detalhe-linha { margin-top: 3px; }
-.detalhe-fixos { color: var(--tinta-fraca); }
 .detalhe-bom { color: var(--sucesso); }
-.detalhe-ruim { color: var(--erro); }
 
 /* Gasto pago com o vale */
 .selo-alelo {
@@ -2986,7 +2963,6 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 
 .cartao-guardado { display: block; padding: 22px; }
 .cartao-guardado .resumo-valor { font-size: clamp(1.8rem, 7vw, 2.5rem); white-space: nowrap; }
-.cartao-guardado .painel-detalhe { margin-top: 8px; }
 
 @media (min-width: 860px) {
   .cartao-guardado { padding: 26px 28px; }
@@ -3080,13 +3056,9 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 .invest-cabecalho p { font-size: 0.82rem; color: var(--tinta-fraca); }
 
 /* Barra dentro de uma coluna do painel (sobra do salário, saldo do Alelo) */
-.painel-trilha { display: flex; height: 6px; margin: 10px 0 8px; }
+.painel-trilha { display: flex; height: 6px; margin-top: 10px; }
 .painel-trilha .progresso-barra { flex-shrink: 0; }
 #cartao-alelo { margin-bottom: 16px; }
-
-/* Fatura atual numa linha própria embaixo do gasto e do salário */
-.painel-fatura-linha { border-top: 1px solid var(--borda); }
-.painel-mes .painel-fatura-linha .resumo-valor { font-size: clamp(1.3rem, 5.4vw, 2.5rem); white-space: nowrap; }
 
 /* Situação da fatura: paga depois de fechar fica apagada; fechada sem
    pagamento em amarelo (é a de pagar); vencida sem pagamento em vermelho */

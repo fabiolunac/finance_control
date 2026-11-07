@@ -224,30 +224,20 @@
       <div id="cartao-guardado" class="cartao-resumo cartao-guardado">
         <span class="metrica-rotulo">Guardado</span>
         <span class="resumo-valor" id="guardado-valor"></span>
-        <div class="painel-detalhe" id="guardado-detalhe"></div>
       </div>
 
-      <!-- Painel do mês: gasto mensal e sobra do salário (de novembro/2026 em diante) lado a lado; fatura atual embaixo -->
+      <!-- Painel do mês: gasto mensal e sobra do salário (de novembro/2026 em diante) lado a lado, só os números -->
       <div class="cartao-resumo painel-mes">
         <div class="painel-topo">
           <div class="painel-total">
             <span class="metrica-rotulo">Gasto mensal</span>
             <span class="resumo-valor" id="metrica-total-gasto"></span>
-            <span class="resumo-sub" id="metrica-lancamentos"></span>
-            <span class="metrica-delta" id="metrica-comparacao" hidden></span>
-            <span class="resumo-sub resumo-fatura" id="metrica-fatura" hidden></span>
           </div>
           <div id="renda-cards" class="painel-total painel-fatura" hidden>
             <span class="metrica-rotulo">Salário · sobra</span>
             <span class="resumo-valor" id="salario-sobra"></span>
             <div class="progresso-trilha painel-trilha"><div id="salario-barra" class="progresso-barra"></div><div id="salario-barra-fixos" class="progresso-barra progresso-fixos"></div></div>
-            <div class="painel-detalhe" id="salario-detalhe"></div>
           </div>
-        </div>
-        <div id="painel-fatura" class="painel-total painel-fatura-linha" hidden>
-          <span class="metrica-rotulo" id="painel-fatura-rotulo">Fatura</span>
-          <span class="resumo-valor" id="painel-fatura-valor"></span>
-          <span class="resumo-sub" id="painel-fatura-sub"></span>
         </div>
       </div>
 
@@ -257,13 +247,11 @@
           <div class="painel-total">
             <span class="metrica-rotulo">Gasto com Alelo no mês</span>
             <span class="resumo-valor" id="alelo-gasto"></span>
-            <span class="resumo-sub" id="alelo-lancamentos"></span>
           </div>
           <div class="painel-total painel-fatura">
             <span class="metrica-rotulo">Alelo · saldo</span>
             <span class="resumo-valor" id="alelo-sobra"></span>
             <div class="progresso-trilha painel-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
-            <div class="painel-detalhe" id="alelo-detalhe"></div>
           </div>
         </div>
       </div>

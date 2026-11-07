@@ -32,31 +32,20 @@ const secaoFatura = document.getElementById('secao-fatura');
 const secaoInvestimentos = document.getElementById('secao-investimentos');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
-const metricaLancamentos = document.getElementById('metrica-lancamentos');
-const metricaComparacao = document.getElementById('metrica-comparacao');
-const metricaFatura = document.getElementById('metrica-fatura');
 const energeticosContagem = document.getElementById('energeticos-contagem');
 const energeticosDetalhe = document.getElementById('energeticos-detalhe');
 const rendaCards = document.getElementById('renda-cards');
 const guardadoValor = document.getElementById('guardado-valor');
-const guardadoDetalhe = document.getElementById('guardado-detalhe');
 const formGuardado = document.getElementById('form-guardado');
 const guardadoCampoValor = document.getElementById('guardado-campo-valor');
 const guardadoCampoData = document.getElementById('guardado-campo-data');
-const painelFatura = document.getElementById('painel-fatura');
-const painelFaturaRotulo = document.getElementById('painel-fatura-rotulo');
-const painelFaturaValor = document.getElementById('painel-fatura-valor');
-const painelFaturaSub = document.getElementById('painel-fatura-sub');
 const salarioSobra = document.getElementById('salario-sobra');
 const salarioBarra = document.getElementById('salario-barra');
 const salarioBarraFixos = document.getElementById('salario-barra-fixos');
-const salarioDetalhe = document.getElementById('salario-detalhe');
 const cartaoAlelo = document.getElementById('cartao-alelo');
 const aleloGasto = document.getElementById('alelo-gasto');
-const aleloLancamentos = document.getElementById('alelo-lancamentos');
 const aleloSobra = document.getElementById('alelo-sobra');
 const aleloBarra = document.getElementById('alelo-barra');
-const aleloDetalhe = document.getElementById('alelo-detalhe');
 const formRenda = document.getElementById('form-renda');
 const rendaSalario = document.getElementById('renda-salario');
 const rendaVale = document.getElementById('renda-vale');
@@ -932,32 +921,6 @@ function mesAnterior(mes) {
 }
 
 // Compara com o mês anterior; no mês corrente, só com o mesmo trecho (dia 1 até hoje)
-function renderizarComparacao(mes, totalMes) {
-  const anterior = mesAnterior(mes);
-  const nomeAnterior = MESES[Number(anterior.slice(5)) - 1];
-  let gastosAnteriores = gastosConsiderados().filter((g) => g['Mês'] === anterior);
-  let rotulo = `vs ${nomeAnterior}`;
-
-  if (mes === mesAtual()) {
-    const dia = new Date().getDate();
-    gastosAnteriores = gastosAnteriores.filter((g) => Number(g.Data.slice(8, 10)) <= dia);
-    rotulo = `vs 1–${dia} de ${nomeAnterior}`;
-  }
-
-  const totalAnterior = calcularTotalGasto(gastosAnteriores);
-  if (totalAnterior <= 0) {
-    metricaComparacao.hidden = true;
-    return;
-  }
-
-  const variacao = (totalMes - totalAnterior) / totalAnterior;
-  const subiu = variacao > 0;
-  metricaComparacao.textContent = `${subiu ? '▲' : '▼'} ${Math.abs(variacao * 100).toFixed(0)}% ${rotulo}`;
-  // Gastar mais é o lado ruim: vermelho quando sobe
-  metricaComparacao.className = 'metrica-delta ' + (subiu ? 'metrica-delta-negativa' : 'metrica-delta-positiva');
-  metricaComparacao.hidden = false;
-}
-
 const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 // Conta do valor anterior até o novo em ~0,6 s
@@ -989,19 +952,9 @@ function mesSelecionado() {
 function renderizarVisaoGeral() {
   const gastosMes = gastosConsiderados().filter((g) => g['Mês'] === mesSelecionado());
 
-  const totalMes = calcularTotalGasto(gastosMes);
-  animarValor(metricaTotalGasto, totalMes);
-  renderizarComparacao(mesSelecionado(), totalMes);
-
-  // Com a fatura fora, diz quanto ficou de fora (e confirma o que foi reconhecido)
-  const faturasMes = todosGastos.filter((g) => g['Mês'] === mesSelecionado() && ehFatura(g));
-  metricaFatura.hidden = !semFatura || faturasMes.length === 0;
-  metricaFatura.textContent = `Sem fatura · ${formatarMoeda(calcularTotalGasto(faturasMes))} fora do total`;
-  const n = gastosMes.length;
-  metricaLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
+  animarValor(metricaTotalGasto, calcularTotalGasto(gastosMes));
 
   renderizarGuardado();
-  renderizarFaturaPainel();
   renderizarRenda();
   renderizarGastoHoje();
   renderizarUltimaCompra();
@@ -1061,7 +1014,7 @@ function renderizarGuardado() {
   const guardado = renda.Guardado;
   if (!guardado) {
     guardadoValor.textContent = '—';
-    preencherDetalhe(guardadoDetalhe, [['Informe quanto tem guardado em Configurações']]);
+    guardadoValor.title = 'Informe quanto tem guardado em Configurações';
     return;
   }
 
@@ -1070,21 +1023,12 @@ function renderizarGuardado() {
     g.Data.slice(0, 10) > guardado.Data && g.Data.slice(0, 10) <= hoje && !ehAlelo(g) && !ehFatura(g)));
 
   let salarios = 0;
-  let quantos = 0;
   for (let mes = INICIO_RENDA; `${mes}-01` <= hoje; mes = somarMeses(mes, 1)) {
-    if (`${mes}-01` > guardado.Data) {
-      salarios += salarioDoMes(mes);
-      quantos += 1;
-    }
+    if (`${mes}-01` > guardado.Data) salarios += salarioDoMes(mes);
   }
 
+  guardadoValor.title = '';
   animarValor(guardadoValor, guardado.Valor - saidas + salarios);
-  const linhas = [[`${formatarData(guardado.Data)}`]];
-  const mudancas = [];
-  if (saidas) mudancas.push(`${saidas > 0 ? '−' : '+'}${formatarMoeda(Math.abs(saidas))} em gastos`);
-  if (salarios) mudancas.push(`+${formatarMoeda(salarios)} de ${quantos === 1 ? 'salário' : `${quantos} salários`}`);
-  if (mudancas.length) linhas.push([`Desde então: ${mudancas.join(', ')}`]);
-  preencherDetalhe(guardadoDetalhe, linhas);
 }
 
 formGuardado.addEventListener('submit', async (evento) => {
@@ -1110,35 +1054,6 @@ formGuardado.addEventListener('submit', async (evento) => {
     botao.disabled = false;
   }
 });
-
-// ---------- Fatura no painel do mês ----------
-
-// Fatura atual (a próxima a vencer, a mesma que a aba Fatura abre),
-// qualquer que seja o mês escolhido; soma todos os cartões
-function renderizarFaturaPainel() {
-  painelFatura.hidden = cartoes.length === 0;
-  if (painelFatura.hidden) return;
-
-  const mes = proximaFaturaAVencer();
-  let total = 0;
-  let aPagar = 0;
-  let minha = 0;
-  cartoes.forEach((cartao) => {
-    const parcelas = parcelasDaFatura(mes, cartao.id);
-    const totalCartao = somarParcelas(parcelas);
-    total += totalCartao;
-    minha += somarMinhaParte(parcelas);
-    if (!faturasPagas.some((p) => p.Cartao === cartao.id && p.Mes === mes)) aPagar += totalCartao;
-  });
-
-  painelFaturaRotulo.textContent = `Fatura de ${MESES[Number(mes.slice(5)) - 1]}`;
-  animarValor(painelFaturaValor, total);
-  const partes = [];
-  if (total > 0) partes.push(aPagar < 0.005 ? 'paga' : aPagar < total - 0.005 ? `falta pagar ${formatarMoeda(aPagar)}` : 'a pagar');
-  else partes.push('nada lançado');
-  if (minha < total - 0.005) partes.push(`sua parte ${formatarMoeda(minha)}`);
-  painelFaturaSub.textContent = partes.join(' · ');
-}
 
 // ---------- Salário e vale alimentação (Alelo) ----------
 
@@ -1185,31 +1100,14 @@ function mesmoLocal(a, b) {
   return semAcento(a || '').trim().toLowerCase() === semAcento(b || '').trim().toLowerCase();
 }
 
-// Linhas da legenda de cada divisão do painel; classe opcional pra colorir
-function preencherDetalhe(elemento, linhas) {
-  elemento.innerHTML = '';
-  linhas.filter(Boolean).forEach(([texto, classe]) => {
-    const linha = document.createElement('span');
-    linha.className = 'painel-detalhe-linha' + (classe ? ` ${classe}` : '');
-    linha.textContent = texto;
-    elemento.appendChild(linha);
-  });
-}
-
 function pintarBarra(barra, fracao) {
   barra.style.width = `${Math.min(Math.max(fracao, 0), 1) * 100}%`;
   barra.className = 'progresso-barra ' +
     (fracao >= 1 ? 'progresso-critico' : fracao >= 0.7 ? 'progresso-alerta' : 'progresso-ok');
 }
 
-function diasNoMes(mes) {
-  const [ano, m] = mes.split('-').map(Number);
-  return new Date(ano, m, 0).getDate();
-}
-
-// Salário: gasto (barra cheia) + fixos ainda não lançados (barra listrada).
-// No mês corrente, projeta o fim do mês pelo ritmo dos gastos do dia a dia:
-// fixos e fatura são pontuais e entram pelo valor, não pelo ritmo.
+// Salário: sobra depois do gasto e dos fixos ainda não lançados.
+// Barra: gasto (cheia) + fixos a pagar (listrada).
 function renderizarSalario(mes, gastos, antes) {
   const salario = salarioDoMes(mes);
   const fixos = renda.Fixos || [];
@@ -1217,7 +1115,6 @@ function renderizarSalario(mes, gastos, antes) {
     animarValor(salarioSobra, salario);
     pintarBarra(salarioBarra, 0);
     salarioBarraFixos.style.width = '0';
-    preencherDetalhe(salarioDetalhe, [[`Começa em 01/11 · ${formatarMoeda(salario)} por mês`]]);
     return;
   }
 
@@ -1230,61 +1127,15 @@ function renderizarSalario(mes, gastos, antes) {
   pintarBarra(salarioBarra, fracao);
   const espaco = Math.max(1 - Math.min(Math.max(fracao, 0), 1), 0);
   salarioBarraFixos.style.width = `${Math.min(salario > 0 ? aPagar / salario : 0, espaco) * 100}%`;
-
-  if (!salario) {
-    preencherDetalhe(salarioDetalhe, [[`Gasto ${formatarMoeda(gasto)} · salário não cadastrado em Configurações`]]);
-    return;
-  }
-
-  const linhas = [[`Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(salario)} (${Math.round(fracao * 100)}%)`]];
-  if (aPagar > 0) {
-    linhas.push([`${formatarMoeda(aPagar)} em fixos a pagar (${pendentes.map((f) => f.Local).join(', ')})`, 'detalhe-fixos']);
-  }
-
-  // Projeção só a partir do dia 5: antes disso o ritmo de 1 ou 2 dias engana
-  const dia = new Date().getDate();
-  if (mes === mesAtual() && dia >= 5) {
-    const pontuais = calcularTotalGasto(gastos.filter((g) =>
-      ehFatura(g) || fixos.some((f) => mesmoLocal(g.Local, f.Local))));
-    const ritmo = (gasto - pontuais) / dia;
-    const fim = salario - gasto - aPagar - ritmo * (diasNoMes(mes) - dia);
-    linhas.push(fim >= 0
-      ? [`No ritmo atual, sobram ${formatarMoeda(fim)} no fim do mês`, 'detalhe-bom']
-      : [`No ritmo atual, faltam ${formatarMoeda(-fim)} no fim do mês`, 'detalhe-ruim']);
-  }
-  preencherDetalhe(salarioDetalhe, linhas);
 }
 
-// Alelo: saldo do mês e, no mês corrente, quanto dá por dia até o fim
-function renderizarAlelo(mes, gastos, antes) {
+// Alelo: gasto e saldo do mês
+function renderizarAlelo(gastos, antes) {
   const vale = renda.Vale;
-  const n = gastos.length;
-  animarValor(aleloGasto, calcularTotalGasto(gastos));
-  aleloLancamentos.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
-  if (antes) {
-    animarValor(aleloSobra, vale);
-    pintarBarra(aleloBarra, 0);
-    preencherDetalhe(aleloDetalhe, [[`Começa em 01/11 · ${formatarMoeda(vale)} por mês`]]);
-    return;
-  }
-
   const gasto = calcularTotalGasto(gastos);
-  const saldo = vale - gasto;
-  animarValor(aleloSobra, saldo);
-  const fracao = vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0);
-  pintarBarra(aleloBarra, fracao);
-
-  if (!vale) {
-    preencherDetalhe(aleloDetalhe, [[`Gasto ${formatarMoeda(gasto)} · vale não cadastrado em Configurações`]]);
-    return;
-  }
-
-  const linhas = [[`Gasto ${formatarMoeda(gasto)} de ${formatarMoeda(vale)} (${Math.round(fracao * 100)}%)`]];
-  if (mes === mesAtual() && saldo > 0) {
-    const diasRestantes = diasNoMes(mes) - new Date().getDate() + 1; // contando hoje
-    linhas.push([`${formatarMoeda(saldo / diasRestantes)} por dia até o fim do mês`, 'detalhe-bom']);
-  }
-  preencherDetalhe(aleloDetalhe, linhas);
+  animarValor(aleloGasto, gasto);
+  animarValor(aleloSobra, antes ? vale : vale - gasto);
+  pintarBarra(aleloBarra, antes ? 0 : vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0));
 }
 
 function renderizarRenda() {
@@ -1296,7 +1147,7 @@ function renderizarRenda() {
 
   const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes);
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
-  renderizarAlelo(mes, gastosMes.filter(ehAlelo), antes);
+  renderizarAlelo(gastosMes.filter(ehAlelo), antes);
 }
 
 // Meses com salário próprio, em Configurações (mais recente primeiro)
@@ -2658,7 +2509,6 @@ async function carregarFatura() {
     if (!mesFatura) mesFatura = proximaFaturaAVencer();
     renderizarFatura();
     renderizarCartoes();
-    if (!secaoVisaoGeral.hidden) renderizarFaturaPainel();
   } catch (e) {
     mostrarErro(e.message);
   }
