@@ -3264,3 +3264,14 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 
 .detalhe-futuro-valor { font-family: var(--fonte-mono); }
 .detalhe-futuro-atual .detalhe-futuro-mes { color: var(--acento-claro); font-weight: 700; }
+
+/* ---------- Detalhe do Alelo ---------- */
+
+.cartao-clicavel { cursor: pointer; transition: border-color var(--t-rapida); }
+.cartao-clicavel:hover { border-color: var(--borda-forte); }
+.cartao-clicavel:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.detalhe-alelo-ritmo { margin: 10px 0 0; }
+.detalhe-item-estatico { cursor: default; }
+.detalhe-item-estatico:hover { background: none; }
+.detalhe-item-nome .ponto-categoria { margin-right: 2px; }

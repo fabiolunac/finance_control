@@ -1148,6 +1148,139 @@ function renderizarRenda() {
   const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes);
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
   renderizarAlelo(gastosMes.filter(ehAlelo), antes);
+  if (gavetaDetalheAlelo.open) renderizarDetalheAlelo();
+}
+
+// ----- Detalhe do Alelo: saldo, ritmo, categorias, locais e os gastos do mês
+
+const gavetaDetalheAlelo = document.getElementById('gaveta-alelo-detalhe');
+const detalheAleloTitulo = document.getElementById('detalhe-alelo-titulo');
+const detalheAleloCorpo = document.getElementById('detalhe-alelo-corpo');
+
+function abrirDetalheAlelo() {
+  renderizarDetalheAlelo();
+  if (!gavetaDetalheAlelo.open) gavetaDetalheAlelo.showModal();
+}
+
+cartaoAlelo.addEventListener('click', abrirDetalheAlelo);
+cartaoAlelo.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' && evento.key !== ' ') return;
+  evento.preventDefault();
+  abrirDetalheAlelo();
+});
+document.getElementById('botao-fechar-detalhe-alelo').addEventListener('click', () => gavetaDetalheAlelo.close());
+gavetaDetalheAlelo.addEventListener('click', (evento) => {
+  if (evento.target === gavetaDetalheAlelo) gavetaDetalheAlelo.close();
+});
+
+function renderizarDetalheAlelo() {
+  const mes = mesSelecionado();
+  const antes = mes < INICIO_RENDA;
+  const gastos = antes ? [] : gastosSemFaturaSeEscolhido()
+    .filter((g) => g['Mês'] === mes && ehAlelo(g))
+    .sort((a, b) => b.Data.localeCompare(a.Data));
+  const vale = renda.Vale || 0;
+  const gasto = calcularTotalGasto(gastos);
+  const saldo = vale - gasto;
+
+  detalheAleloTitulo.textContent = `Alelo · ${MESES[Number(mes.slice(5)) - 1]}`;
+  detalheAleloCorpo.innerHTML = '';
+
+  // Saldo e situação
+  const topo = elemento('div', 'detalhe-topo');
+  const totais = elemento('div');
+  totais.append(elemento('span', 'resumo-valor', formatarMoeda(saldo)));
+  const sub = [`saldo de ${formatarMoeda(vale)}`, `gastou ${formatarMoeda(gasto)}`];
+  if (vale > 0) sub.push(`${Math.round((gasto / vale) * 100)}% do vale`);
+  totais.append(elemento('span', 'resumo-sub', sub.join(' · ')));
+  const estourou = saldo < -0.005;
+  topo.append(totais, elemento('span', estourou ? 'detalhe-selo detalhe-selo-atraso' : 'detalhe-selo detalhe-selo-paga',
+    estourou ? 'Passou do vale' : 'Dentro do vale'));
+  detalheAleloCorpo.appendChild(topo);
+
+  const trilha = elemento('div', 'progresso-trilha');
+  const barra = elemento('div', 'progresso-barra');
+  trilha.appendChild(barra);
+  pintarBarra(barra, vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0));
+  detalheAleloCorpo.appendChild(trilha);
+
+  // Ritmo: média até hoje e quanto dá por dia no que falta (só no mês corrente)
+  const [ano, m] = mes.split('-').map(Number);
+  const diasMes = new Date(ano, m, 0).getDate();
+  const hoje = new Date();
+  const corrente = mes === mesAtual();
+  const diasPassados = corrente ? hoje.getDate() : diasMes;
+  const ritmo = [`média de ${formatarMoeda(gasto / diasPassados)} por dia`];
+  if (corrente) {
+    const faltam = diasMes - hoje.getDate() + 1;
+    if (saldo > 0) ritmo.push(`dá ${formatarMoeda(saldo / faltam)} por dia nos ${faltam} ${faltam === 1 ? 'dia que falta' : 'dias que faltam'}`);
+    if (diasPassados > 0 && gasto > 0) ritmo.push(`nesse ritmo fecha o mês em ${formatarMoeda((gasto / diasPassados) * diasMes)}`);
+  }
+  if (gastos.length) detalheAleloCorpo.appendChild(elemento('p', 'detalhe-item-info detalhe-alelo-ritmo', ritmo.join(' · ')));
+
+  if (!gastos.length) {
+    detalheAleloCorpo.appendChild(elemento('p', 'vazio-pequeno', 'Nenhum gasto com Alelo neste mês.'));
+    return;
+  }
+
+  // Por categoria
+  const porCategoria = {};
+  const geralDa = {};
+  gastos.forEach((g) => {
+    porCategoria[g.Categoria] = (porCategoria[g.Categoria] || 0) + valorLiquido(g);
+    geralDa[g.Categoria] = g['Categoria Geral'];
+  });
+  const secaoCategorias = secaoDetalhe('Por categoria', `${Object.keys(porCategoria).length} ${Object.keys(porCategoria).length === 1 ? 'categoria' : 'categorias'}`);
+  const graficoCategorias = elemento('div', 'grafico grafico-com-nomes');
+  renderizarBarras(graficoCategorias, Object.keys(porCategoria)
+    .sort((a, b) => porCategoria[b] - porCategoria[a])
+    .map((c) => [c, porCategoria[c], corCategoria(geralDa[c])]), { porcentagem: true });
+  secaoCategorias.appendChild(graficoCategorias);
+  detalheAleloCorpo.appendChild(secaoCategorias);
+
+  // Por local: onde mais vai o vale, com quantas vezes
+  const porLocal = new Map();
+  gastos.forEach((g) => {
+    const chave = semAcento(g.Local || '').trim().toLowerCase();
+    const atual = porLocal.get(chave) || { nome: g.Local, total: 0, vezes: 0 };
+    atual.total += valorLiquido(g);
+    atual.vezes += g.tipo === 'Gasto' ? 1 : 0;
+    porLocal.set(chave, atual);
+  });
+  const locais = [...porLocal.values()].sort((a, b) => b.total - a.total);
+  const maiorLocal = Math.max(locais[0].total, 0) || 1;
+  const secaoLocais = secaoDetalhe('Por local', `${locais.length} ${locais.length === 1 ? 'lugar' : 'lugares'}`);
+  locais.forEach((l) => {
+    const item = elemento('div', 'detalhe-item detalhe-item-estatico');
+    const linha = elemento('span', 'detalhe-item-linha');
+    linha.append(elemento('span', 'detalhe-item-nome', l.nome), elemento('span', 'detalhe-item-valor', formatarMoeda(l.total)));
+    const trilhaLocal = elemento('span', 'detalhe-barra');
+    const barraLocal = elemento('i', 'detalhe-tipo-unica');
+    barraLocal.style.width = `${(Math.max(l.total, 0) / maiorLocal) * 100}%`;
+    trilhaLocal.appendChild(barraLocal);
+    const info = `${l.vezes} ${l.vezes === 1 ? 'vez' : 'vezes'}${l.vezes > 1 ? ` · ${formatarMoeda(l.total / l.vezes)} em média` : ''}`;
+    item.append(linha, trilhaLocal, elemento('span', 'detalhe-item-info', info));
+    secaoLocais.appendChild(item);
+  });
+  detalheAleloCorpo.appendChild(secaoLocais);
+
+  // Gastos do mês, do mais recente pro mais antigo; tocar abre pra editar
+  const secaoGastos = secaoDetalhe('Gastos do mês', `${gastos.length} ${gastos.length === 1 ? 'lançamento' : 'lançamentos'}`);
+  gastos.forEach((g) => {
+    const item = elemento('button', 'detalhe-item');
+    item.type = 'button';
+    const linha = elemento('span', 'detalhe-item-linha');
+    const nome = elemento('span', 'detalhe-item-nome');
+    nome.append(criarPonto(corCategoria(g['Categoria Geral'])), ` ${g.Local}`);
+    const valor = elemento('span', 'detalhe-item-valor', formatarMoeda(valorLiquido(g)));
+    valor.classList.toggle('valor-que-volta', g.tipo === 'Pagamento');
+    linha.append(nome, valor);
+    item.append(linha, elemento('span', 'detalhe-item-info', `${rotuloDia(g.Data.slice(0, 10))} · ${g.Categoria}`));
+    item.disabled = g.rowid == null;
+    item.addEventListener('click', () => abrirGaveta(g));
+    secaoGastos.appendChild(item);
+  });
+  detalheAleloCorpo.appendChild(secaoGastos);
 }
 
 // Meses com salário próprio, em Configurações (mais recente primeiro)

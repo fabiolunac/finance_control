@@ -242,7 +242,7 @@
       </div>
 
       <!-- Alelo (vale alimentação) à parte: gasto e saldo do mês -->
-      <div id="cartao-alelo" class="cartao-resumo painel-mes" hidden>
+      <div id="cartao-alelo" class="cartao-resumo painel-mes cartao-clicavel" role="button" tabindex="0" aria-label="Ver detalhes do Alelo" hidden>
         <div class="painel-topo">
           <div class="painel-total">
             <span class="metrica-rotulo">Gasto com Alelo no mês</span>
@@ -732,6 +732,17 @@
 
       <!-- Lançados em sequência com "Adicionar e continuar" -->
       <div id="lote-gastos" class="lote" hidden></div>
+    </div>
+  </dialog>
+
+  <!-- Detalhe do Alelo: saldo, ritmo, categorias, locais e gastos do mês -->
+  <dialog id="gaveta-alelo-detalhe" class="gaveta gaveta-larga" aria-labelledby="detalhe-alelo-titulo">
+    <div class="gaveta-corpo">
+      <div class="gaveta-cabecalho">
+        <h2 id="detalhe-alelo-titulo" class="titulo-grafico">Alelo</h2>
+        <button id="botao-fechar-detalhe-alelo" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
+      </div>
+      <div id="detalhe-alelo-corpo"></div>
     </div>
   </dialog>
 
