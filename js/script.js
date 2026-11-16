@@ -538,23 +538,83 @@ function bancoDe(gasto) {
   return gasto.banco || 'Sem banco';
 }
 
+// ---------- Filtro por dia (Tabela) ----------
+
+const filtroDias = document.getElementById('filtro-dias');
+let diaSelecionado = null; // YYYY-MM-DD ou null
+let mesDosDias = null;     // mês cujos dias estão na faixa, pra saber quando rolar pro fim
+
+// Monta um botão por data que tem lançamento no mês escolhido. Só aparece
+// com um único mês selecionado; com vários ou nenhum seriam dias demais.
+function renderizarFiltroDias(gastos) {
+  const mes = filtroMes.selecionados.size === 1 ? [...filtroMes.selecionados][0] : null;
+  if (!mes) {
+    filtroDias.hidden = true;
+    filtroDias.innerHTML = '';
+    diaSelecionado = null;
+    mesDosDias = null;
+    return;
+  }
+
+  const dias = [...new Set(gastos.map((g) => g.Data.slice(0, 10)))].sort();
+  if (!dias.includes(diaSelecionado)) diaSelecionado = null;
+  // O mês de pagamento pode juntar compras de dois meses do calendário
+  const variosMeses = new Set(dias.map((d) => d.slice(0, 7))).size > 1;
+
+  const rolagem = filtroDias.scrollLeft;
+  filtroDias.innerHTML = '';
+  dias.forEach((dia) => {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'botao-dia';
+    botao.setAttribute('aria-pressed', String(dia === diaSelecionado));
+    botao.title = formatarData(dia);
+
+    const semana = document.createElement('span');
+    semana.className = 'botao-dia-semana';
+    semana.textContent = DIAS_SEMANA[(dataLocal(dia).getDay() + 6) % 7];
+    const numero = document.createElement('span');
+    numero.className = 'botao-dia-numero';
+    numero.textContent = variosMeses ? formatarData(dia).slice(0, 5) : dia.slice(8, 10);
+    botao.append(semana, numero);
+
+    botao.addEventListener('click', () => {
+      diaSelecionado = diaSelecionado === dia ? null : dia;
+      aplicarFiltros();
+    });
+    filtroDias.appendChild(botao);
+  });
+  filtroDias.hidden = dias.length === 0;
+
+  // Mês novo começa mostrando os dias mais recentes; senão mantém onde estava
+  if (mes !== mesDosDias) {
+    mesDosDias = mes;
+    filtroDias.scrollLeft = filtroDias.scrollWidth;
+  } else {
+    filtroDias.scrollLeft = rolagem;
+  }
+}
+
 function aplicarFiltros() {
-  const filtrados = gastosConsiderados().filter((g) =>
+  const doMes = gastosConsiderados().filter((g) =>
     multiSelectCombina(filtroMes, g['Mês']) &&
     multiSelectCombina(filtroCategoria, g.Categoria) &&
     multiSelectCombina(filtroCategoriaGeral, g['Categoria Geral']) &&
     multiSelectCombina(filtroLocal, g.Local) &&
     multiSelectCombina(filtroBanco, bancoDe(g))
   );
+  renderizarFiltroDias(doMes);
+  const filtrados = diaSelecionado ? doMes.filter((g) => g.Data.startsWith(diaSelecionado)) : doMes;
   renderizar(filtrados);
   totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
-  rotuloTotalFiltrado.textContent = semFatura ? 'Total gasto (filtro atual, sem fatura)' : 'Total gasto (filtro atual)';
+  const escopo = diaSelecionado ? `em ${formatarData(diaSelecionado)}` : '(filtro atual)';
+  rotuloTotalFiltrado.textContent = `Total gasto ${escopo}${semFatura ? ', sem fatura' : ''}`;
 
   const ativos = [filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco]
     .filter((root) => root.selecionados.size > 0).length;
   botaoFiltros.textContent = ativos ? `Filtros (${ativos})` : 'Filtros';
   botaoFiltros.classList.toggle('botao-filtros-ativo', ativos > 0);
-  botaoLimparFiltros.hidden = !filtrosTabela.some((root) => root.selecionados.size > 0);
+  botaoLimparFiltros.hidden = !diaSelecionado && !filtrosTabela.some((root) => root.selecionados.size > 0);
 }
 
 // Todos os filtros da Tabela, inclusive o de mês
@@ -562,6 +622,7 @@ const filtrosTabela = [filtroMes, filtroCategoria, filtroCategoriaGeral, filtroL
 
 botaoLimparFiltros.addEventListener('click', () => {
   filtrosTabela.forEach(limparMultiSelect);
+  diaSelecionado = null;
   aplicarFiltros();
 });
 

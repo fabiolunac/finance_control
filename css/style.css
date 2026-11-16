@@ -644,6 +644,46 @@ body {
   margin-bottom: 14px;
 }
 
+/* Faixa de dias da Tabela: rola de lado quando não cabe */
+.filtro-dias {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: -4px 0 14px;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.botao-dia {
+  flex: 0 0 auto;
+  min-width: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 8px;
+  font: inherit;
+  border: 1px solid var(--borda-forte);
+  border-radius: 12px;
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+  cursor: pointer;
+  transition: background var(--t-rapida), color var(--t-rapida), border-color var(--t-rapida), transform var(--t-rapida);
+}
+
+.botao-dia:hover { background: var(--acento-media); color: var(--tinta); border-color: var(--acento); }
+.botao-dia:active { transform: scale(.96); }
+
+.botao-dia[aria-pressed="true"] {
+  background: var(--gradiente);
+  border-color: transparent;
+  color: var(--tinta-sobre-acento);
+}
+
+.botao-dia-semana { font-size: 0.68rem; opacity: .8; }
+.botao-dia-numero { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+
 .multiselect {
   position: relative;
   flex: 1 1 160px;
