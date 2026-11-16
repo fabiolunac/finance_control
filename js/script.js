@@ -30,6 +30,10 @@ const secaoParametros = document.getElementById('secao-parametros');
 const secaoConfiguracoes = document.getElementById('secao-configuracoes');
 const secaoFatura = document.getElementById('secao-fatura');
 const secaoInvestimentos = document.getElementById('secao-investimentos');
+const abaAlelo = document.getElementById('aba-alelo');
+const secaoAlelo = document.getElementById('secao-alelo');
+const aleloMes = document.getElementById('alelo-mes');
+const aleloAntes = document.getElementById('alelo-antes');
 
 const metricaTotalGasto = document.getElementById('metrica-total-gasto');
 const energeticosContagem = document.getElementById('energeticos-contagem');
@@ -266,6 +270,7 @@ function renderizarTudo() {
   aplicarFiltros();
   if (!secaoGraficos.hidden) atualizarGraficos();
   if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+  if (!secaoAlelo.hidden) renderizarAbaAlelo();
   if (paramCarregado && !secaoParametros.hidden) renderizarPendentes();
 }
 
@@ -642,6 +647,7 @@ const abas = [
   [abaConfiguracoes, secaoConfiguracoes],
   [abaFatura, secaoFatura],
   [abaInvestimentos, secaoInvestimentos],
+  [abaAlelo, secaoAlelo],
 ];
 
 function selecionarAba(abaEscolhida) {
@@ -654,6 +660,7 @@ function selecionarAba(abaEscolhida) {
   erro.hidden = true;
   if (abaEscolhida === abaGraficos) atualizarGraficos();
   if (abaEscolhida === abaVisaoGeral) renderizarVisaoGeral();
+  if (abaEscolhida === abaAlelo) renderizarAbaAlelo();
   if (abaEscolhida === abaParametros) carregarParametros();
   if (abaEscolhida === abaFatura || abaEscolhida === abaConfiguracoes) carregarFatura();
   (aoAbrirAba.get(abaEscolhida) || []).forEach((funcao) => funcao());
@@ -1109,6 +1116,7 @@ formGuardado.addEventListener('submit', async (evento) => {
     renda = { ...renda, Guardado: guardado };
     mostrarNotificacao('Valor guardado salvo');
     if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+    if (!secaoAlelo.hidden) renderizarAbaAlelo();
   } catch (e) {
     mostrarNotificacao(e.message);
   } finally {
@@ -1143,6 +1151,7 @@ async function carregarRenda() {
   guardadoCampoValor.value = renda.Guardado ? String(renda.Guardado.Valor).replace('.', ',') : '';
   guardadoCampoData.value = renda.Guardado ? renda.Guardado.Data : formatarIso(new Date());
   renderizarFixos();
+  if (!secaoAlelo.hidden) renderizarAbaAlelo();
 }
 
 function ehAlelo(gasto) {
@@ -1203,14 +1212,53 @@ function renderizarRenda() {
   const mes = mesSelecionado();
   const antes = mes < INICIO_RENDA;
   rendaCards.hidden = antes && mes !== mesAtual();
-  cartaoAlelo.hidden = rendaCards.hidden;
   if (rendaCards.hidden) return;
 
   const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes);
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
-  renderizarAlelo(gastosMes.filter(ehAlelo), antes);
+}
+
+// ----- Aba Alelo: por enquanto só o card de gasto e saldo, com mês próprio
+
+function mesAleloSelecionado() {
+  return aleloMes.value || mesAtual();
+}
+
+function preencherMesesAlelo() {
+  const meses = valoresUnicos('Mês').sort().reverse();
+  if (!meses.includes(mesAtual())) meses.unshift(mesAtual());
+  const atual = aleloMes.value;
+  aleloMes.innerHTML = '';
+  meses.forEach((mes) => {
+    const opcao = document.createElement('option');
+    opcao.value = mes;
+    opcao.textContent = nomeMesTitulo(mes);
+    aleloMes.appendChild(opcao);
+  });
+  aleloMes.value = meses.includes(atual) ? atual : mesAtual();
+  atualizarPassoMes(aleloMes);
+}
+
+function renderizarAbaAlelo() {
+  preencherMesesAlelo();
+  const mes = mesAleloSelecionado();
+  const antes = mes < INICIO_RENDA;
+  // Antes do início do vale só o mês atual mostra o card (zerado)
+  cartaoAlelo.hidden = antes && mes !== mesAtual();
+  aleloAntes.hidden = !cartaoAlelo.hidden;
+  if (!cartaoAlelo.hidden) {
+    const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes && ehAlelo(g));
+    renderizarAlelo(gastosMes, antes);
+  }
   if (gavetaDetalheAlelo.open) renderizarDetalheAlelo();
 }
+
+ligarPassoMes(aleloMes, renderizarAbaAlelo);
+
+document.getElementById('botao-mes-atual-alelo').addEventListener('click', () => {
+  aleloMes.value = mesAtual();
+  renderizarAbaAlelo();
+});
 
 // ----- Detalhe do Alelo: saldo, ritmo, categorias, locais e os gastos do mês
 
@@ -1235,7 +1283,7 @@ gavetaDetalheAlelo.addEventListener('click', (evento) => {
 });
 
 function renderizarDetalheAlelo() {
-  const mes = mesSelecionado();
+  const mes = mesAleloSelecionado();
   const antes = mes < INICIO_RENDA;
   const gastos = antes ? [] : gastosSemFaturaSeEscolhido()
     .filter((g) => g['Mês'] === mes && ehAlelo(g))
@@ -1366,6 +1414,7 @@ function renderizarSalariosMes() {
         await requisitar('DELETE', `/api/salarios/${mes}`, null, 'Erro ao remover o salário do mês.');
         await carregarRenda();
         if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+        if (!secaoAlelo.hidden) renderizarAbaAlelo();
       } catch (e) {
         mostrarNotificacao(e.message);
         remover.disabled = false;
@@ -1393,6 +1442,7 @@ formSalarioMes.addEventListener('submit', async (evento) => {
     await carregarRenda();
     mostrarNotificacao(`Salário de ${nomeMesTitulo(mes)}: ${formatarMoeda(valor)}`);
     if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+    if (!secaoAlelo.hidden) renderizarAbaAlelo();
   } catch (e) {
     mostrarNotificacao(e.message);
   } finally {
@@ -1422,6 +1472,7 @@ function renderizarFixos() {
         await requisitar('DELETE', `/api/fixos/${fixo.id}`, null, 'Erro ao remover o gasto fixo.');
         await carregarRenda();
         if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+        if (!secaoAlelo.hidden) renderizarAbaAlelo();
       } catch (e) {
         mostrarNotificacao(e.message);
         remover.disabled = false;
@@ -1469,6 +1520,7 @@ formRenda.addEventListener('submit', async (evento) => {
     renda = { ...renda, ...nova };
     mostrarNotificacao('Salário e vale salvos');
     if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+    if (!secaoAlelo.hidden) renderizarAbaAlelo();
   } catch (e) {
     mostrarNotificacao(e.message);
   } finally {

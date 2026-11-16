@@ -84,6 +84,10 @@
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
         <span class="aba-rotulo">Fatura</span>
       </button>
+      <button id="aba-alelo" data-modulo="financas" class="aba" type="button">
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a3 3 0 0 0 6 0V2"/><line x1="6" y1="2" x2="6" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
+        <span class="aba-rotulo">Alelo</span>
+      </button>
       <button id="aba-investimentos" data-modulo="financas" class="aba" type="button">
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span class="aba-rotulo">Investimentos</span>
@@ -210,6 +214,36 @@
 
     </section>
 
+    <section id="secao-alelo" hidden>
+
+      <div class="filtros filtros-dia filtros-visao">
+        <div class="passo-mes">
+          <button class="passo-mes-seta" type="button" data-passo="1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <select id="alelo-mes" class="passo-mes-select" aria-label="Selecionar mês"></select>
+          <button class="passo-mes-seta" type="button" data-passo="-1" aria-label="Próximo mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+        <button id="botao-mes-atual-alelo" class="botao-chip" type="button">Mês atual</button>
+      </div>
+
+      <!-- Alelo (vale alimentação) à parte: gasto e saldo do mês -->
+      <div id="cartao-alelo" class="cartao-resumo painel-mes cartao-clicavel" role="button" tabindex="0" aria-label="Ver detalhes do Alelo">
+        <div class="painel-topo">
+          <div class="painel-total">
+            <span class="metrica-rotulo">Gasto com Alelo no mês</span>
+            <span class="resumo-valor" id="alelo-gasto"></span>
+          </div>
+          <div class="painel-total painel-fatura">
+            <span class="metrica-rotulo">Alelo · saldo</span>
+            <span class="resumo-valor" id="alelo-sobra"></span>
+            <div class="progresso-trilha painel-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <p id="alelo-antes" class="vazio" hidden>O vale começa em novembro de 2026.</p>
+
+    </section>
+
     <section id="secao-visao-geral">
 
       <div class="filtros filtros-dia filtros-visao">
@@ -240,21 +274,6 @@
             <span class="metrica-rotulo">Salário · sobra</span>
             <span class="resumo-valor" id="salario-sobra"></span>
             <div class="progresso-trilha painel-trilha"><div id="salario-barra" class="progresso-barra"></div><div id="salario-barra-fixos" class="progresso-barra progresso-fixos"></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Alelo (vale alimentação) à parte: gasto e saldo do mês -->
-      <div id="cartao-alelo" class="cartao-resumo painel-mes cartao-clicavel" role="button" tabindex="0" aria-label="Ver detalhes do Alelo" hidden>
-        <div class="painel-topo">
-          <div class="painel-total">
-            <span class="metrica-rotulo">Gasto com Alelo no mês</span>
-            <span class="resumo-valor" id="alelo-gasto"></span>
-          </div>
-          <div class="painel-total painel-fatura">
-            <span class="metrica-rotulo">Alelo · saldo</span>
-            <span class="resumo-valor" id="alelo-sobra"></span>
-            <div class="progresso-trilha painel-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
           </div>
         </div>
       </div>
