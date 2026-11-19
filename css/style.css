@@ -1360,6 +1360,7 @@ body {
 }
 
 .colunas-coluna {
+  position: relative;
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -1412,6 +1413,19 @@ body {
   outline-offset: -1px;
 }
 .colunas-coluna-projecao .colunas-valor { color: var(--tinta-muda); }
+
+/* Traço do mês anterior no mesmo dia, por cima da coluna */
+.colunas-referencia {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  height: 0;
+  border-top: 2px solid var(--tinta-fraca);
+  pointer-events: none;
+}
+
+.comparacao-acima { color: var(--erro); }
+.comparacao-abaixo { color: var(--sucesso); }
 
 /* Linha do salário: rótulo à esquerda pra não brigar com o da média */
 .colunas-teto { border-top-color: var(--erro); }

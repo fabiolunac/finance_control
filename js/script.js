@@ -96,6 +96,8 @@ const variacaoCategorias = document.getElementById('variacao-categorias');
 const variacaoVazio = document.getElementById('variacao-vazio');
 const salarioPorDia = document.getElementById('salario-por-dia');
 const gastoSemFaturaTexto = document.getElementById('gasto-sem-fatura');
+const comparacaoMes = document.getElementById('comparacao-mes');
+const acumuladoLegenda = document.getElementById('acumulado-legenda');
 const aleloPorDia = document.getElementById('alelo-por-dia');
 const botaoMesAtualDia = document.getElementById('botao-mes-atual-dia');
 
@@ -874,10 +876,11 @@ function valorCompacto(valor) {
 // Colunas verticais, uma por entrada (com ou sem valor), e linha tracejada da média.
 // entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo),
 //   extra (texto a mais no detalhe), queda (pinta a coluna de verde),
-//   projecao (coluna apagada, valor estimado), semValor (não escreve o valor em cima) }
+//   projecao (coluna apagada, valor estimado), semValor (não escreve o valor em cima),
+//   referencia (valor marcado com um traço na coluna) }
 // teto: { valor, rotulo } desenha uma segunda linha de referência (ex.: salário)
 function renderizarColunas(container, entradas, media, { teto = null } = {}) {
-  const maior = Math.max(0, media, teto ? teto.valor : 0, ...entradas.map((e) => e.valor));
+  const maior = Math.max(0, media, teto ? teto.valor : 0, ...entradas.map((e) => Math.max(e.valor, e.referencia || 0)));
   const escala = maior * 1.25 || 1; // folga em cima pro valor da coluna mais alta
   container.innerHTML = '';
 
@@ -933,6 +936,13 @@ function renderizarColunas(container, entradas, media, { teto = null } = {}) {
       barra.appendChild(valor);
     }
     coluna.appendChild(barra);
+    // Marca de referência (ex.: mês anterior no mesmo dia)
+    if (entrada.referencia > 0) {
+      const marcaRef = document.createElement('span');
+      marcaRef.className = 'colunas-referencia';
+      marcaRef.style.bottom = `${(entrada.referencia / escala) * 100}%`;
+      coluna.appendChild(marcaRef);
+    }
     area.appendChild(coluna);
 
     const marca = document.createElement('span');
@@ -1027,6 +1037,7 @@ function renderizarGraficoDiario() {
     graficoDiario.innerHTML = '';
     graficoAcumulado.innerHTML = '';
     acumuladoResumo.hidden = true;
+    acumuladoLegenda.hidden = true;
     return;
   }
 
@@ -1092,6 +1103,42 @@ function renderizarGraficoDiario() {
     // Muito acima dos gastos, a linha achataria as colunas: aí fica só no texto
     if (valor > 0) teto = { valor, rotulo: semAlelo ? 'salário' : 'salário + vale' };
   }
+  // Mês anterior no mesmo dia: uma marca em cada coluna com o acumulado de lá,
+  // com os mesmos filtros e o mesmo botão de fatura das colunas
+  const anterior = somarMeses(mes, -1);
+  const doAnterior = gastosFiltradosGrafico().filter((g) => g['Mês'] === anterior);
+  acumuladoLegenda.hidden = !doAnterior.length;
+  if (doAnterior.length) {
+    const [anoAnt, mAnt] = anterior.split('-').map(Number);
+    const diasAnterior = new Date(anoAnt, mAnt, 0).getDate();
+    const porDiaAnterior = {};
+    doAnterior.forEach((g) => {
+      // Mesma regra das colunas: só conta o que tem data dentro do mês
+      const data = g.Data.slice(0, 10);
+      if (data.slice(0, 7) !== anterior) return;
+      const dia = Number(data.slice(8, 10));
+      porDiaAnterior[dia] = (porDiaAnterior[dia] || 0) + valorLiquido(g);
+    });
+    let somaAnterior = 0;
+    const acumuladoAnterior = [];
+    for (let dia = 1; dia <= diasAnterior; dia += 1) {
+      somaAnterior += porDiaAnterior[dia] || 0;
+      acumuladoAnterior.push(somaAnterior);
+    }
+    const nomeAnterior = nomeMesCurto(anterior);
+    entradasAcumuladas.forEach((entrada, i) => {
+      const referencia = acumuladoAnterior[Math.min(i, diasAnterior - 1)];
+      entrada.referencia = referencia;
+      entrada.extra = `${entrada.extra || ''} · ${nomeAnterior}: ${formatarMoeda(referencia)}`;
+    });
+    const hojeAnterior = acumuladoAnterior[Math.min(diasCorridos, diasAnterior) - 1];
+    const agora = entradasAcumuladas[diasCorridos - 1].valor;
+    const diferenca = agora - hojeAnterior;
+    acumuladoLegenda.textContent = mes === mesAtual()
+      ? `Marcas: ${nomeAnterior} no mesmo dia. Até hoje, ${formatarMoeda(Math.abs(diferenca))} ${diferenca >= 0 ? 'a mais' : 'a menos'} que lá.`
+      : `Marcas: ${nomeAnterior} no mesmo dia.`;
+  }
+
   const tetoNoGrafico = teto && fechamento >= teto.valor * 0.5 ? teto : null;
   const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0, { teto: tetoNoGrafico });
 
@@ -1192,6 +1239,32 @@ function animarValor(elemento, valor) {
   elemento._quadro = requestAnimationFrame(passo);
 }
 
+// Mês escolhido contra o anterior, sem fatura (o gasto que se controla).
+// No mês corrente compara até o dia de hoje; num mês fechado, o mês inteiro.
+function renderizarComparacaoMes() {
+  const mes = mesSelecionado();
+  const anterior = somarMeses(mes, -1);
+  const base = gastosComFatura().filter((g) => !ehFatura(g));
+  const temAnterior = base.some((g) => g['Mês'] === anterior);
+  comparacaoMes.hidden = !temAnterior;
+  if (!temAnterior) return;
+
+  const corrente = mes === mesAtual();
+  const dia = corrente ? new Date().getDate() : 31;
+  const agora = calcularTotalGasto(gastosAteODia(base, mes, dia));
+  const antes = calcularTotalGasto(gastosAteODia(base, anterior, dia));
+  const diferenca = agora - antes;
+  const quando = corrente ? ` até o dia ${dia}` : '';
+  const nome = nomeMesCurto(anterior);
+
+  comparacaoMes.classList.toggle('comparacao-acima', diferenca > 0);
+  comparacaoMes.classList.toggle('comparacao-abaixo', diferenca < 0);
+  comparacaoMes.textContent = Math.abs(diferenca) < 1
+    ? `igual a ${nome}${quando}`
+    : `${formatarMoeda(Math.abs(diferenca))} ${diferenca > 0 ? 'a mais' : 'a menos'} que ${nome}${quando}`;
+  comparacaoMes.title = `${nomeMesCurto(mes)}: ${formatarMoeda(agora)} · ${nome}: ${formatarMoeda(antes)} (sem fatura)`;
+}
+
 // Mês escolhido no filtro da aba (cai no mês atual enquanto não há opções)
 function mesSelecionado() {
   return visaoMes.value || mesAtual();
@@ -1203,6 +1276,7 @@ function renderizarVisaoGeral() {
   animarValor(metricaTotalGasto, calcularTotalGasto(gastosMes));
   const semFaturaMes = calcularTotalGasto(gastosMes.filter((g) => !ehFatura(g)));
   gastoSemFaturaTexto.textContent = `${formatarMoeda(semFaturaMes)} sem fatura`;
+  renderizarComparacaoMes();
 
   renderizarGuardado();
   renderizarRenda();
@@ -4032,6 +4106,14 @@ let semAlelo = (() => {
 })();
 
 // Só o filtro da fatura: salário e Alelo, que separam os dois por conta própria
+// Gastos de um mês até o dia "dia" (data da compra). Mês de 30 dias com dia 31
+// vai até o 30. Compras de cartão datadas no mês anterior entram inteiras.
+function gastosAteODia(gastos, mes, dia) {
+  const [ano, m] = mes.split('-').map(Number);
+  const limite = `${mes}-${pad2(Math.min(dia, new Date(ano, m, 0).getDate()))}`;
+  return gastos.filter((g) => g['Mês'] === mes && g.Data.slice(0, 10) <= limite);
+}
+
 // Pros números que contam sempre com a fatura (gasto mensal, sobra, projeção):
 // o botão de fatura não mexe neles; o do Alelo continua valendo
 function gastosComFatura() {
