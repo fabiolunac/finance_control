@@ -780,7 +780,8 @@ function valorCompacto(valor) {
 }
 
 // Colunas verticais, uma por entrada (com ou sem valor), e linha tracejada da média.
-// entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo) }
+// entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo),
+//   extra (texto a mais no detalhe), queda (pinta a coluna de verde) }
 function renderizarColunas(container, entradas, media) {
   const maior = Math.max(0, media, ...entradas.map((e) => e.valor));
   const escala = maior * 1.25 || 1; // folga em cima pro valor da coluna mais alta
@@ -807,7 +808,8 @@ function renderizarColunas(container, entradas, media) {
     const coluna = document.createElement('button');
     coluna.type = 'button';
     coluna.className = 'colunas-coluna';
-    coluna.title = `${entrada.titulo}: ${formatarMoeda(entrada.valor)}`;
+    coluna.classList.toggle('colunas-coluna-queda', Boolean(entrada.queda));
+    coluna.title = `${entrada.titulo}: ${formatarMoeda(entrada.valor)}${entrada.extra || ''}`;
     coluna.setAttribute('aria-label', coluna.title);
     coluna.addEventListener('click', () => {
       const escolhida = !coluna.classList.contains('colunas-coluna-escolhida');
@@ -936,12 +938,17 @@ function renderizarGraficoDiario() {
   }
   const rolagem = renderizarColunas(graficoDiario, entradas, soma / diasCorridos);
 
-  // Acumulado: soma do dia 1 até cada dia. No mês corrente, os dias que
-  // ainda não chegaram ficam sem coluna em vez de repetir o total de hoje.
+  // Acumulado: soma líquida do dia 1 até cada dia (Pagamento desconta, como
+  // no resto do app). Dia em que o acumulado desce fica verde e o detalhe diz
+  // quanto o dia tirou. No mês corrente, os dias que ainda não chegaram ficam
+  // sem coluna em vez de repetir o total de hoje.
   let acumulado = 0;
   const entradasAcumuladas = entradas.map((entrada, i) => {
     acumulado += entrada.valor;
-    return { ...entrada, valor: i < diasCorridos ? acumulado : 0 };
+    if (i >= diasCorridos) return { ...entrada, valor: 0 };
+    const queda = entrada.valor < 0;
+    const extra = queda ? ` (${formatarMoeda(entrada.valor)} no dia, entrou pagamento)` : '';
+    return { ...entrada, valor: acumulado, queda, extra };
   });
   const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0);
 
