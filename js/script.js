@@ -90,6 +90,12 @@ const graficoDiario = document.getElementById('grafico-diario');
 const graficoDiarioVazio = document.getElementById('grafico-diario-vazio');
 const graficoAcumulado = document.getElementById('grafico-acumulado');
 const graficoAcumuladoVazio = document.getElementById('grafico-acumulado-vazio');
+const acumuladoResumo = document.getElementById('acumulado-resumo');
+const variacaoBase = document.getElementById('variacao-base');
+const variacaoCategorias = document.getElementById('variacao-categorias');
+const variacaoVazio = document.getElementById('variacao-vazio');
+const salarioPorDia = document.getElementById('salario-por-dia');
+const aleloPorDia = document.getElementById('alelo-por-dia');
 const botaoMesAtualDia = document.getElementById('botao-mes-atual-dia');
 
 const filtroMes = document.getElementById('filtro-mes');
@@ -709,6 +715,91 @@ function atualizarGraficosDoMes() {
   const gastosMes = gastosFiltradosGrafico().filter((g) => g['Mês'] === graficoDiaMes.value);
   renderizarGraficoCategoriasGerais(gastosMes);
   renderizarGraficoSubcategorias(gastosMes);
+  renderizarVariacaoCategorias();
+}
+
+// ----- Variação por categoria: mês escolhido contra a média dos 3 anteriores.
+// No mês corrente compara no mesmo ponto: até o dia de hoje em cada mês.
+
+const LIMITE_VARIACAO = 8;
+const VARIACAO_MINIMA = 20; // em reais; abaixo disso é ruído
+
+function renderizarVariacaoCategorias() {
+  const mes = graficoDiaMes.value;
+  const todos = gastosFiltradosGrafico();
+  variacaoCategorias.innerHTML = '';
+  variacaoBase.textContent = '';
+
+  const meses = todos.map((g) => g['Mês']).sort();
+  const anteriores = [1, 2, 3].map((n) => somarMeses(mes || mesAtual(), -n)).filter((m) => meses.length && m >= meses[0]);
+  if (!mes || !anteriores.length) {
+    variacaoVazio.textContent = 'Ainda não há meses anteriores pra comparar.';
+    variacaoVazio.hidden = false;
+    return;
+  }
+
+  const corrente = mes === mesAtual();
+  const diaHoje = new Date().getDate();
+  const corte = (m) => {
+    if (!corrente) return null;
+    const [ano, mm] = m.split('-').map(Number);
+    return `${m}-${pad2(Math.min(diaHoje, new Date(ano, mm, 0).getDate()))}`;
+  };
+
+  const geralDe = {};
+  const totaisDo = (m) => {
+    const limite = corte(m);
+    const totais = {};
+    todos.forEach((g) => {
+      if (g['Mês'] !== m || (limite && g.Data.slice(0, 10) > limite)) return;
+      totais[g.Categoria] = (totais[g.Categoria] || 0) + valorLiquido(g);
+      geralDe[g.Categoria] = g['Categoria Geral'];
+    });
+    return totais;
+  };
+
+  const atual = totaisDo(mes);
+  const passados = anteriores.map(totaisDo);
+  const categorias = new Set([...Object.keys(atual), ...passados.flatMap(Object.keys)]);
+
+  const linhas = [...categorias].map((categoria) => {
+    const valor = atual[categoria] || 0;
+    const media = passados.reduce((soma, t) => soma + (t[categoria] || 0), 0) / passados.length;
+    return { categoria, valor, media, diferenca: valor - media };
+  })
+    .filter((l) => Math.abs(l.diferenca) >= VARIACAO_MINIMA)
+    .sort((a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca))
+    .slice(0, LIMITE_VARIACAO);
+
+  const nomes = anteriores.map(nomeMesCurto);
+  const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
+  variacaoBase.textContent = corrente
+    ? `Até o dia ${diaHoje}, contra a média de ${lista} no mesmo dia.`
+    : `Contra a média de ${lista}.`;
+
+  variacaoVazio.textContent = 'Nenhuma categoria mudou mais que R$ 20 em relação à média.';
+  variacaoVazio.hidden = linhas.length > 0;
+
+  linhas.forEach(({ categoria, valor, media, diferenca }) => {
+    const linha = elemento('div', `variacao-linha ${diferenca > 0 ? 'variacao-sobe' : 'variacao-desce'}`);
+
+    const nome = elemento('span', 'variacao-nome', categoria);
+    nome.prepend(criarPonto(corCategoria(geralDe[categoria])));
+
+    const valores = elemento('span', 'variacao-valores',
+      `${formatarMoeda(valor)} · média ${formatarMoeda(media)}`);
+
+    const sinal = diferenca > 0 ? '+' : '−';
+    const pct = media > 0 ? `${sinal}${Math.round(Math.abs(diferenca / media) * 100)}%` : 'nova';
+    const selo = elemento('span', 'variacao-selo', pct);
+    selo.title = `${sinal}${formatarMoeda(Math.abs(diferenca))}`;
+    const diferencaTexto = elemento('span', 'variacao-diferenca', `${sinal}${formatarMoeda(Math.abs(diferenca))}`);
+
+    const direita = elemento('span', 'variacao-direita');
+    direita.append(selo, diferencaTexto);
+    linha.append(nome, direita, valores);
+    variacaoCategorias.appendChild(linha);
+  });
 }
 
 function renderizarGraficoCategoriasGerais(gastosMes) {
@@ -781,9 +872,11 @@ function valorCompacto(valor) {
 
 // Colunas verticais, uma por entrada (com ou sem valor), e linha tracejada da média.
 // entradas: { rotulo (eixo x), titulo (ao tocar), valor, atual (realça o rótulo),
-//   extra (texto a mais no detalhe), queda (pinta a coluna de verde) }
-function renderizarColunas(container, entradas, media) {
-  const maior = Math.max(0, media, ...entradas.map((e) => e.valor));
+//   extra (texto a mais no detalhe), queda (pinta a coluna de verde),
+//   projecao (coluna apagada, valor estimado), semValor (não escreve o valor em cima) }
+// teto: { valor, rotulo } desenha uma segunda linha de referência (ex.: salário)
+function renderizarColunas(container, entradas, media, { teto = null } = {}) {
+  const maior = Math.max(0, media, teto ? teto.valor : 0, ...entradas.map((e) => e.valor));
   const escala = maior * 1.25 || 1; // folga em cima pro valor da coluna mais alta
   container.innerHTML = '';
 
@@ -804,11 +897,22 @@ function renderizarColunas(container, entradas, media) {
     area.appendChild(linha);
   }
 
+  if (teto && teto.valor > 0) {
+    const linha = document.createElement('div');
+    linha.className = 'colunas-media colunas-teto';
+    linha.style.bottom = `${(teto.valor / escala) * 100}%`;
+    const rotuloLinha = document.createElement('span');
+    rotuloLinha.textContent = `${teto.rotulo} ${formatarMoeda(teto.valor)}`;
+    linha.appendChild(rotuloLinha);
+    area.appendChild(linha);
+  }
+
   entradas.forEach((entrada) => {
     const coluna = document.createElement('button');
     coluna.type = 'button';
     coluna.className = 'colunas-coluna';
     coluna.classList.toggle('colunas-coluna-queda', Boolean(entrada.queda));
+    coluna.classList.toggle('colunas-coluna-projecao', Boolean(entrada.projecao));
     coluna.title = `${entrada.titulo}: ${formatarMoeda(entrada.valor)}${entrada.extra || ''}`;
     coluna.setAttribute('aria-label', coluna.title);
     coluna.addEventListener('click', () => {
@@ -821,7 +925,7 @@ function renderizarColunas(container, entradas, media) {
     const barra = document.createElement('div');
     barra.className = 'colunas-barra';
     barra.style.height = `${(Math.max(entrada.valor, 0) / escala) * 100}%`;
-    if (entrada.valor > 0) {
+    if (entrada.valor > 0 && !entrada.semValor) {
       const valor = document.createElement('span');
       valor.className = 'colunas-valor';
       valor.textContent = valorCompacto(entrada.valor);
@@ -921,6 +1025,7 @@ function renderizarGraficoDiario() {
   if (!filtrados.length) {
     graficoDiario.innerHTML = '';
     graficoAcumulado.innerHTML = '';
+    acumuladoResumo.hidden = true;
     return;
   }
 
@@ -950,7 +1055,49 @@ function renderizarGraficoDiario() {
     const extra = queda ? ` (${formatarMoeda(entrada.valor)} no dia, entrou pagamento)` : '';
     return { ...entrada, valor: acumulado, queda, extra };
   });
-  const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0);
+
+  // Mês corrente: os dias que faltam viram colunas apagadas no ritmo de hoje
+  // (gasto até hoje ÷ dias corridos), só com o valor do último dia escrito
+  const ateHoje = entradasAcumuladas[diasCorridos - 1].valor;
+  const ritmo = ateHoje / diasCorridos;
+  const projetando = mes === mesAtual() && diasCorridos < diasNoMes && ritmo > 0;
+  if (projetando) {
+    for (let i = diasCorridos; i < diasNoMes; i += 1) {
+      Object.assign(entradasAcumuladas[i], {
+        valor: ritmo * (i + 1),
+        projecao: true,
+        semValor: i < diasNoMes - 1,
+        extra: ' (projeção no ritmo atual)',
+      });
+    }
+  }
+  const fechamento = projetando ? ritmo * diasNoMes : ateHoje;
+
+  // Teto: o que entra no mês pra cobrir esses gastos. Só faz sentido sem
+  // filtro de categoria/local; com o Alelo incluído, o vale entra junto.
+  let teto = null;
+  if (mes >= INICIO_RENDA && !filtrosGrafico.some((root) => root.selecionados.size > 0)) {
+    const valor = salarioDoMes(mes) + (semAlelo ? 0 : renda.Vale || 0);
+    // Muito acima dos gastos, a linha achataria as colunas: aí fica só no texto
+    if (valor > 0) teto = { valor, rotulo: semAlelo ? 'salário' : 'salário + vale' };
+  }
+  const tetoNoGrafico = teto && Math.max(fechamento, ateHoje) >= teto.valor * 0.5 ? teto : null;
+  const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0, { teto: tetoNoGrafico });
+
+  acumuladoResumo.hidden = !projetando;
+  if (projetando) {
+    let texto = `No ritmo atual (${formatarMoeda(ritmo)}/dia), o mês fecha em ${formatarMoeda(fechamento)}`;
+    if (teto) {
+      const folga = teto.valor - fechamento;
+      texto += folga >= 0
+        ? `, ${formatarMoeda(folga)} abaixo do ${teto.rotulo}.`
+        : `, ${formatarMoeda(-folga)} acima do ${teto.rotulo}.`;
+    } else {
+      texto += '.';
+    }
+    acumuladoResumo.textContent = texto;
+    acumuladoResumo.classList.toggle('grafico-nota-alerta', Boolean(teto) && fechamento > teto.valor);
+  }
 
   // Não cabendo o mês inteiro, começa mostrando até o dia de hoje (ou o fim do mês passado)
   const ultimo = mes === mesAtual() ? new Date().getDate() : diasNoMes;
@@ -1200,9 +1347,24 @@ function pintarBarra(barra, fracao) {
 
 // Salário: sobra depois do gasto e dos fixos ainda não lançados.
 // Barra: gasto (cheia) + fixos a pagar (listrada).
+// "R$ 85 por dia até o dia 30": sobra dividida pelos dias que faltam, contando hoje.
+// Só no mês corrente; noutro mês não há "daqui pra frente".
+function escreverPorDia(alvo, sobra, mes, antes) {
+  alvo.hidden = antes || mes !== mesAtual();
+  if (alvo.hidden) return;
+  const hoje = new Date();
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+  const restantes = diasNoMes - hoje.getDate() + 1;
+  alvo.classList.toggle('painel-por-dia-estourou', sobra < 0);
+  alvo.textContent = sobra < 0
+    ? `passou ${formatarMoeda(-sobra)} do limite`
+    : `${formatarMoeda(sobra / restantes)} por dia até o dia ${diasNoMes}`;
+}
+
 function renderizarSalario(mes, gastos, antes) {
   const salario = salarioDoMes(mes);
   const fixos = renda.Fixos || [];
+  escreverPorDia(salarioPorDia, 0, mes, true);
   if (antes) {
     animarValor(salarioSobra, salario);
     pintarBarra(salarioBarra, 0);
@@ -1214,6 +1376,7 @@ function renderizarSalario(mes, gastos, antes) {
   const pendentes = fixos.filter((f) => !gastos.some((g) => g.tipo === 'Gasto' && mesmoLocal(g.Local, f.Local)));
   const aPagar = pendentes.reduce((soma, f) => soma + f.Valor, 0);
   animarValor(salarioSobra, salario - gasto - aPagar);
+  escreverPorDia(salarioPorDia, salario - gasto - aPagar, mes, false);
 
   const fracao = salario > 0 ? gasto / salario : (gasto > 0 ? 1 : 0);
   pintarBarra(salarioBarra, fracao);
@@ -1222,11 +1385,12 @@ function renderizarSalario(mes, gastos, antes) {
 }
 
 // Alelo: gasto e saldo do mês
-function renderizarAlelo(gastos, antes) {
+function renderizarAlelo(gastos, antes, mes) {
   const vale = renda.Vale;
   const gasto = calcularTotalGasto(gastos);
   animarValor(aleloGasto, gasto);
   animarValor(aleloSobra, antes ? vale : vale - gasto);
+  escreverPorDia(aleloPorDia, vale - gasto, mes, antes);
   pintarBarra(aleloBarra, antes ? 0 : vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0));
 }
 
@@ -1270,7 +1434,7 @@ function renderizarAbaAlelo() {
   aleloAntes.hidden = !cartaoAlelo.hidden;
   if (!cartaoAlelo.hidden) {
     const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes && ehAlelo(g));
-    renderizarAlelo(gastosMes, antes);
+    renderizarAlelo(gastosMes, antes, mes);
   }
   if (gavetaDetalheAlelo.open) renderizarDetalheAlelo();
 }

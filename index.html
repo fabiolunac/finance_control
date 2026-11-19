@@ -201,6 +201,7 @@
       <div class="cartao-grafico">
         <h2 class="titulo-grafico">Gastos acumulados no mês</h2>
         <div id="grafico-acumulado" class="grafico"></div>
+        <p id="acumulado-resumo" class="grafico-nota" hidden></p>
         <p id="grafico-acumulado-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
       </div>
 
@@ -216,6 +217,14 @@
           <div id="grafico-subcategorias-mes" class="grafico grafico-com-nomes"></div>
           <p id="grafico-subcategorias-vazio" class="vazio" hidden>Nenhum gasto nesse mês.</p>
         </div>
+      </div>
+
+      <!-- Categorias que mais fugiram da média dos 3 meses anteriores -->
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Variação por categoria</h2>
+        <p id="variacao-base" class="grafico-nota grafico-nota-topo"></p>
+        <div id="variacao-categorias" class="variacao-lista"></div>
+        <p id="variacao-vazio" class="vazio" hidden></p>
       </div>
 
     </section>
@@ -241,6 +250,7 @@
           <div class="painel-total painel-fatura">
             <span class="metrica-rotulo">Alelo · saldo</span>
             <span class="resumo-valor" id="alelo-sobra"></span>
+            <span class="painel-por-dia" id="alelo-por-dia" hidden></span>
             <div class="progresso-trilha painel-trilha"><div id="alelo-barra" class="progresso-barra"></div></div>
           </div>
         </div>
@@ -279,6 +289,7 @@
           <div id="renda-cards" class="painel-total painel-fatura" hidden>
             <span class="metrica-rotulo">Salário · sobra</span>
             <span class="resumo-valor" id="salario-sobra"></span>
+            <span class="painel-por-dia" id="salario-por-dia" hidden></span>
             <div class="progresso-trilha painel-trilha"><div id="salario-barra" class="progresso-barra"></div><div id="salario-barra-fixos" class="progresso-barra progresso-fixos"></div></div>
           </div>
         </div>

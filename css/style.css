@@ -1405,6 +1405,70 @@ body {
 }
 .colunas-coluna-queda .colunas-valor { color: var(--sucesso); }
 
+/* Acumulado: dias que faltam, estimados no ritmo atual */
+.colunas-coluna-projecao .colunas-barra {
+  background: color-mix(in srgb, var(--acento) 18%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--acento) 55%, transparent);
+  outline-offset: -1px;
+}
+.colunas-coluna-projecao .colunas-valor { color: var(--tinta-muda); }
+
+/* Linha do salário: rótulo à esquerda pra não brigar com o da média */
+.colunas-teto { border-top-color: var(--erro); }
+.colunas-teto span { right: auto; left: 0; color: var(--erro); }
+
+.grafico-nota {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--tinta-fraca);
+}
+.grafico-nota-topo { margin: -4px 0 12px; text-align: left; }
+.grafico-nota-alerta { color: var(--erro); }
+
+/* Variação por categoria */
+.variacao-lista { display: flex; flex-direction: column; }
+
+.variacao-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--borda);
+}
+.variacao-linha:first-child { border-top: none; }
+
+.variacao-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.variacao-direita { display: flex; align-items: center; gap: 8px; justify-self: end; }
+
+.variacao-valores {
+  grid-column: 1 / -1;
+  font-family: var(--fonte-mono);
+  font-size: 0.74rem;
+  color: var(--tinta-muda);
+}
+
+.variacao-selo {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-family: var(--fonte-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.variacao-diferenca { font-family: var(--fonte-mono); font-size: 0.8rem; font-weight: 600; }
+
+.variacao-sobe .variacao-selo { background: var(--erro-suave); color: var(--erro); }
+.variacao-sobe .variacao-diferenca { color: var(--erro); }
+.variacao-desce .variacao-selo { background: var(--sucesso-suave); color: var(--sucesso); }
+.variacao-desce .variacao-diferenca { color: var(--sucesso); }
+
 .colunas-media {
   position: absolute;
   left: 0;
@@ -3106,6 +3170,16 @@ button.cafeina-coluna:hover .cafeina-barra { filter: brightness(1.3); }
 
 /* Barra dentro de uma coluna do painel (sobra do salário, saldo do Alelo) */
 .painel-trilha { display: flex; height: 6px; margin-top: 10px; }
+
+/* Quanto dá pra gastar por dia até o fim do mês */
+.painel-por-dia {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--fonte-mono);
+  font-size: 0.74rem;
+  color: var(--tinta-fraca);
+}
+.painel-por-dia-estourou { color: var(--erro); }
 .painel-trilha .progresso-barra { flex-shrink: 0; }
 #cartao-alelo { margin-bottom: 16px; }
 
