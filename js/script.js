@@ -95,6 +95,7 @@ const variacaoBase = document.getElementById('variacao-base');
 const variacaoCategorias = document.getElementById('variacao-categorias');
 const variacaoVazio = document.getElementById('variacao-vazio');
 const salarioPorDia = document.getElementById('salario-por-dia');
+const gastoSemFaturaTexto = document.getElementById('gasto-sem-fatura');
 const aleloPorDia = document.getElementById('alelo-por-dia');
 const botaoMesAtualDia = document.getElementById('botao-mes-atual-dia');
 
@@ -1056,22 +1057,32 @@ function renderizarGraficoDiario() {
     return { ...entrada, valor: acumulado, queda, extra };
   });
 
-  // Mês corrente: os dias que faltam viram colunas apagadas no ritmo de hoje
-  // (gasto até hoje ÷ dias corridos), só com o valor do último dia escrito
-  const ateHoje = entradasAcumuladas[diasCorridos - 1].valor;
-  const ritmo = ateHoje / diasCorridos;
+  // Mês corrente: os dias que faltam viram colunas apagadas. A projeção parte
+  // do total até hoje SEMPRE com a fatura (independe do botão) e soma o ritmo
+  // diário SEM a fatura: ela é um valor de uma vez só, e projetá-la inflaria
+  // o resto do mês. Com "Sem fatura", a primeira coluna projetada pula o valor
+  // da fatura, de propósito.
+  const limiteHoje = `${mes}-${pad2(diasCorridos)}`;
+  const doMesAteHoje = gastosComFatura().filter((g) =>
+    (g.tipo === 'Gasto' || g.tipo === 'Pagamento') &&
+    multiSelectCombina(graficoCategoria, g.Categoria) &&
+    multiSelectCombina(graficoCategoriaGeral, g['Categoria Geral']) &&
+    multiSelectCombina(graficoLocal, g.Local) &&
+    g['Mês'] === mes && g.Data.slice(0, 10) <= limiteHoje);
+  const ateHoje = calcularTotalGasto(doMesAteHoje);
+  const ritmo = calcularTotalGasto(doMesAteHoje.filter((g) => !ehFatura(g))) / diasCorridos;
   const projetando = mes === mesAtual() && diasCorridos < diasNoMes && ritmo > 0;
   if (projetando) {
     for (let i = diasCorridos; i < diasNoMes; i += 1) {
       Object.assign(entradasAcumuladas[i], {
-        valor: ritmo * (i + 1),
+        valor: ateHoje + ritmo * (i + 1 - diasCorridos),
         projecao: true,
         semValor: i < diasNoMes - 1,
-        extra: ' (projeção no ritmo atual)',
+        extra: ' (projeção no ritmo atual, sem fatura)',
       });
     }
   }
-  const fechamento = projetando ? ritmo * diasNoMes : ateHoje;
+  const fechamento = projetando ? ateHoje + ritmo * (diasNoMes - diasCorridos) : ateHoje;
 
   // Teto: o que entra no mês pra cobrir esses gastos. Só faz sentido sem
   // filtro de categoria/local; com o Alelo incluído, o vale entra junto.
@@ -1081,12 +1092,12 @@ function renderizarGraficoDiario() {
     // Muito acima dos gastos, a linha achataria as colunas: aí fica só no texto
     if (valor > 0) teto = { valor, rotulo: semAlelo ? 'salário' : 'salário + vale' };
   }
-  const tetoNoGrafico = teto && Math.max(fechamento, ateHoje) >= teto.valor * 0.5 ? teto : null;
+  const tetoNoGrafico = teto && fechamento >= teto.valor * 0.5 ? teto : null;
   const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0, { teto: tetoNoGrafico });
 
   acumuladoResumo.hidden = !projetando;
   if (projetando) {
-    let texto = `No ritmo atual (${formatarMoeda(ritmo)}/dia), o mês fecha em ${formatarMoeda(fechamento)}`;
+    let texto = `No ritmo atual sem fatura (${formatarMoeda(ritmo)}/dia), o mês fecha em ${formatarMoeda(fechamento)} com a fatura`;
     if (teto) {
       const folga = teto.valor - fechamento;
       texto += folga >= 0
@@ -1187,9 +1198,11 @@ function mesSelecionado() {
 }
 
 function renderizarVisaoGeral() {
-  const gastosMes = gastosConsiderados().filter((g) => g['Mês'] === mesSelecionado());
-
+  // Gasto mensal: sempre com a fatura; embaixo, quanto foi sem ela
+  const gastosMes = gastosComFatura().filter((g) => g['Mês'] === mesSelecionado());
   animarValor(metricaTotalGasto, calcularTotalGasto(gastosMes));
+  const semFaturaMes = calcularTotalGasto(gastosMes.filter((g) => !ehFatura(g)));
+  gastoSemFaturaTexto.textContent = `${formatarMoeda(semFaturaMes)} sem fatura`;
 
   renderizarGuardado();
   renderizarRenda();
@@ -1376,7 +1389,10 @@ function renderizarSalario(mes, gastos, antes) {
   const pendentes = fixos.filter((f) => !gastos.some((g) => g.tipo === 'Gasto' && mesmoLocal(g.Local, f.Local)));
   const aPagar = pendentes.reduce((soma, f) => soma + f.Valor, 0);
   animarValor(salarioSobra, salario - gasto - aPagar);
-  escreverPorDia(salarioPorDia, salario - gasto - aPagar, mes, false);
+  // O "por dia" ignora a fatura sempre: acompanha só o gasto do dia a dia,
+  // independente do botão "Com fatura"
+  const gastoSemFatura = calcularTotalGasto(gastos.filter((g) => !ehFatura(g)));
+  escreverPorDia(salarioPorDia, salario - gastoSemFatura - aPagar, mes, false);
 
   const fracao = salario > 0 ? gasto / salario : (gasto > 0 ? 1 : 0);
   pintarBarra(salarioBarra, fracao);
@@ -1390,7 +1406,7 @@ function renderizarAlelo(gastos, antes, mes) {
   const gasto = calcularTotalGasto(gastos);
   animarValor(aleloGasto, gasto);
   animarValor(aleloSobra, antes ? vale : vale - gasto);
-  escreverPorDia(aleloPorDia, vale - gasto, mes, antes);
+  escreverPorDia(aleloPorDia, vale - calcularTotalGasto(gastos.filter((g) => !ehFatura(g))), mes, antes);
   pintarBarra(aleloBarra, antes ? 0 : vale > 0 ? gasto / vale : (gasto > 0 ? 1 : 0));
 }
 
@@ -1400,7 +1416,8 @@ function renderizarRenda() {
   rendaCards.hidden = antes && mes !== mesAtual();
   if (rendaCards.hidden) return;
 
-  const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes);
+  // Sobra sempre com a fatura, independente do botão
+  const gastosMes = antes ? [] : todosGastos.filter((g) => g['Mês'] === mes);
   renderizarSalario(mes, gastosMes.filter((g) => !ehAlelo(g)), antes);
 }
 
@@ -4015,6 +4032,12 @@ let semAlelo = (() => {
 })();
 
 // Só o filtro da fatura: salário e Alelo, que separam os dois por conta própria
+// Pros números que contam sempre com a fatura (gasto mensal, sobra, projeção):
+// o botão de fatura não mexe neles; o do Alelo continua valendo
+function gastosComFatura() {
+  return semAlelo ? todosGastos.filter((g) => !ehAlelo(g)) : todosGastos;
+}
+
 function gastosSemFaturaSeEscolhido() {
   return semFatura ? todosGastos.filter((g) => !ehFatura(g)) : todosGastos;
 }
