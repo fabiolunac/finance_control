@@ -812,7 +812,7 @@ function renderizarCalendarioCombustivel(lista, rendimentos) {
     cabecalho.textContent = dia;
     combCalendario.appendChild(cabecalho);
   });
-  const vazias = (new Date(ano, m - 1, 1).getDay() + 6) % 7; // semana começa na segunda
+  const vazias = new Date(ano, m - 1, 1).getDay(); // semana começa no domingo
   for (let i = 0; i < vazias; i += 1) combCalendario.appendChild(document.createElement('span'));
 
   const hoje = formatarIso(new Date());

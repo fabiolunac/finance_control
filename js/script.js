@@ -588,7 +588,7 @@ function renderizarFiltroDias(gastos) {
 
     const semana = document.createElement('span');
     semana.className = 'botao-dia-semana';
-    semana.textContent = DIAS_SEMANA[(dataLocal(dia).getDay() + 6) % 7];
+    semana.textContent = DIAS_SEMANA[dataLocal(dia).getDay()];
     const numero = document.createElement('span');
     numero.className = 'botao-dia-numero';
     numero.textContent = variosMeses ? formatarData(dia).slice(0, 5) : dia.slice(8, 10);
@@ -1968,7 +1968,7 @@ function renderizarGraficoSemanal() {
 
 // ---------- Calendário do mês ----------
 
-const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']; // índice = getDay()
 
 let diaCalendario = null; // dia tocado no calendário (YYYY-MM-DD)
 
@@ -2002,7 +2002,7 @@ function renderizarCalendario() {
   });
 
   // Casas vazias até a primeira segunda-feira do mês
-  const vazias = (new Date(ano, m - 1, 1).getDay() + 6) % 7;
+  const vazias = new Date(ano, m - 1, 1).getDay(); // semana começa no domingo
   for (let i = 0; i < vazias; i += 1) {
     calendario.appendChild(document.createElement('span'));
   }
@@ -2405,7 +2405,7 @@ function rotuloDia(dataIso) {
   if (dataIso === formatarIso(hoje)) return 'Hoje';
   if (dataIso === formatarIso(ontem)) return 'Ontem';
   const data = dataLocal(dataIso);
-  return `${DIAS_SEMANA[(data.getDay() + 6) % 7]}, ${formatarData(dataIso).slice(0, 5)}`;
+  return `${DIAS_SEMANA[data.getDay()]}, ${formatarData(dataIso).slice(0, 5)}`;
 }
 
 function renderizar(gastos) {
