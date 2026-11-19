@@ -88,6 +88,8 @@ const graficoVazio = document.getElementById('grafico-vazio');
 const graficoDiaMes = document.getElementById('grafico-dia-mes');
 const graficoDiario = document.getElementById('grafico-diario');
 const graficoDiarioVazio = document.getElementById('grafico-diario-vazio');
+const graficoAcumulado = document.getElementById('grafico-acumulado');
+const graficoAcumuladoVazio = document.getElementById('grafico-acumulado-vazio');
 const botaoMesAtualDia = document.getElementById('botao-mes-atual-dia');
 
 const filtroMes = document.getElementById('filtro-mes');
@@ -913,8 +915,10 @@ function renderizarGraficoDiario() {
 
   const mes = graficoDiaMes.value;
   graficoDiarioVazio.hidden = filtrados.length > 0;
+  graficoAcumuladoVazio.hidden = filtrados.length > 0;
   if (!filtrados.length) {
     graficoDiario.innerHTML = '';
+    graficoAcumulado.innerHTML = '';
     return;
   }
 
@@ -932,9 +936,20 @@ function renderizarGraficoDiario() {
   }
   const rolagem = renderizarColunas(graficoDiario, entradas, soma / diasCorridos);
 
+  // Acumulado: soma do dia 1 até cada dia. No mês corrente, os dias que
+  // ainda não chegaram ficam sem coluna em vez de repetir o total de hoje.
+  let acumulado = 0;
+  const entradasAcumuladas = entradas.map((entrada, i) => {
+    acumulado += entrada.valor;
+    return { ...entrada, valor: i < diasCorridos ? acumulado : 0 };
+  });
+  const rolagemAcumulado = renderizarColunas(graficoAcumulado, entradasAcumuladas, 0);
+
   // Não cabendo o mês inteiro, começa mostrando até o dia de hoje (ou o fim do mês passado)
   const ultimo = mes === mesAtual() ? new Date().getDate() : diasNoMes;
-  rolagem.scrollLeft = Math.max(0, (rolagem.scrollWidth * ultimo) / diasNoMes - rolagem.clientWidth);
+  [rolagem, rolagemAcumulado].forEach((r) => {
+    r.scrollLeft = Math.max(0, (r.scrollWidth * ultimo) / diasNoMes - r.clientWidth);
+  });
 }
 
 ligarPassoMes(graficoDiaMes, atualizarGraficosDoMes);
