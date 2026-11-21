@@ -435,6 +435,8 @@ def garantir_tabela_renda(client):
             "CREATE TABLE IF NOT EXISTS salarios_mes (Mes TEXT PRIMARY KEY, Valor REAL NOT NULL)",
             # Saldo passado de uma carteira do Alelo pra outra (De: alimentacao|refeicao)
             "CREATE TABLE IF NOT EXISTS alelo_transferencias (id INTEGER PRIMARY KEY, Data TEXT NOT NULL, De TEXT NOT NULL, Valor REAL NOT NULL)",
+            # Crédito do Alelo de um mês (YYYY-MM) diferente do padrão, por carteira
+            "CREATE TABLE IF NOT EXISTS vales_mes (Mes TEXT PRIMARY KEY, Alimentacao REAL NOT NULL, Refeicao REAL NOT NULL)",
         ])
         _tabela_renda_pronta = True
 
@@ -446,6 +448,11 @@ class Renda(BaseModel):
     Vale: float = Field(default=0, ge=0)
     ValeAlimentacao: Optional[float] = Field(default=None, ge=0)
     ValeRefeicao: Optional[float] = Field(default=None, ge=0)
+
+
+class ValeMes(BaseModel):
+    Alimentacao: float = Field(ge=0)
+    Refeicao: float = Field(ge=0)
 
 
 class TransferenciaAlelo(BaseModel):
@@ -472,12 +479,13 @@ class NovoFixo(BaseModel):
 def ler_renda(_=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
-        rs, fixos, guardado, salarios, transferencias = client.batch([
+        rs, fixos, guardado, salarios, transferencias, vales = client.batch([
             "SELECT Chave, Valor FROM renda",
             "SELECT id, Local, Valor FROM fixos ORDER BY Local",
             "SELECT Valor, Data FROM guardado WHERE id = 1",
             "SELECT Mes, Valor FROM salarios_mes",
             "SELECT id, Data, De, Valor FROM alelo_transferencias ORDER BY Data, id",
+            "SELECT Mes, Alimentacao, Refeicao FROM vales_mes",
         ])
     valores = {chave: valor for chave, valor in rs.rows}
     vale = valores.get("Vale", 0.0)
@@ -490,6 +498,7 @@ def ler_renda(_=Depends(checar_token)):
         "ValeAlimentacao": alimentacao,
         "ValeRefeicao": refeicao,
         "AleloTransferencias": linhas(transferencias),
+        "ValesMes": {mes: {"Alimentacao": a, "Refeicao": r} for mes, a, r in vales.rows},
         "Fixos": linhas(fixos),
         "Guardado": linhas(guardado)[0] if guardado.rows else None,
         "SalariosMes": {mes: valor for mes, valor in salarios.rows},
@@ -550,6 +559,24 @@ def salvar_renda(renda: Renda, _=Depends(checar_token)):
             ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('ValeRefeicao', ?)", [refeicao]),
         ])
     return {"ok": True}
+
+
+@app.put("/api/vales/{mes}")
+def salvar_vale_mes(mes: str = Path(pattern=MES_ISO), vale: ValeMes = Body(), _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute(
+            "INSERT OR REPLACE INTO vales_mes (Mes, Alimentacao, Refeicao) VALUES (?, ?, ?)",
+            [mes, vale.Alimentacao, vale.Refeicao],
+        )
+    return {"ok": True}
+
+
+@app.delete("/api/vales/{mes}", status_code=204)
+def remover_vale_mes(mes: str = Path(pattern=MES_ISO), _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute("DELETE FROM vales_mes WHERE Mes = ?", [mes])
 
 
 @app.post("/api/alelo/transferencias", status_code=201)

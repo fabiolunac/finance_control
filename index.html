@@ -648,6 +648,19 @@
           </div>
         </form>
 
+        <h3 class="subtitulo-renda">Alelo diferente num mês</h3>
+        <p class="pendentes-ajuda">Pro mês em que o crédito do Alelo veio diferente dos valores acima. Os outros meses continuam com os valores acima.</p>
+        <div id="lista-vales-mes" class="lista-pendentes"></div>
+        <form id="form-vale-mes" class="pendente form-cartao">
+          <span class="pendente-local">Novo valor de um mês</span>
+          <div class="cartao-campos renda-campos">
+            <input id="vale-mes-mes" type="month" required aria-label="Mês">
+            <input id="vale-mes-alimentacao" type="text" inputmode="decimal" placeholder="Alimentação" autocomplete="off" required aria-label="Alelo alimentação do mês">
+            <input id="vale-mes-refeicao" type="text" inputmode="decimal" placeholder="Refeição" autocomplete="off" required aria-label="Alelo refeição do mês">
+            <button class="botao-primario" type="submit">Salvar</button>
+          </div>
+        </form>
+
         <h3 class="subtitulo-renda">Gastos fixos do salário</h3>
         <p class="pendentes-ajuda">Contas de todo mês, como aluguel. Até você lançar um gasto com o mesmo local no mês, o valor aparece como "a pagar" e já sai da sobra.</p>
         <div id="lista-fixos" class="lista-pendentes"></div>

@@ -58,6 +58,11 @@ const listaSalariosMes = document.getElementById('lista-salarios-mes');
 const formSalarioMes = document.getElementById('form-salario-mes');
 const salarioMesMes = document.getElementById('salario-mes-mes');
 const salarioMesValor = document.getElementById('salario-mes-valor');
+const listaValesMes = document.getElementById('lista-vales-mes');
+const formValeMes = document.getElementById('form-vale-mes');
+const valeMesMes = document.getElementById('vale-mes-mes');
+const valeMesAlimentacao = document.getElementById('vale-mes-alimentacao');
+const valeMesRefeicao = document.getElementById('vale-mes-refeicao');
 const listaFixos = document.getElementById('lista-fixos');
 const formFixo = document.getElementById('form-fixo');
 const fixoLocal = document.getElementById('fixo-local');
@@ -1100,7 +1105,7 @@ function renderizarGraficoDiario() {
   // filtro de categoria/local; com o Alelo incluído, o vale entra junto.
   let teto = null;
   if (mes >= INICIO_RENDA && !filtrosGrafico.some((root) => root.selecionados.size > 0)) {
-    const valor = salarioDoMes(mes) + (semAlelo ? 0 : renda.Vale || 0);
+    const valor = salarioDoMes(mes) + (semAlelo ? 0 : valeDoMes(mes));
     // Muito acima dos gastos, a linha achataria as colunas: aí fica só no texto
     if (valor > 0) teto = { valor, rotulo: semAlelo ? 'salário' : 'salário + vale' };
   }
@@ -1411,6 +1416,9 @@ async function carregarRenda() {
   rendaValeRefeicao.value = paraCampo(renda.ValeRefeicao);
   if (!salarioMesMes.value) salarioMesMes.value = mesAtual();
   renderizarSalariosMes();
+  if (!renda.ValesMes) renda.ValesMes = {};
+  if (!valeMesMes.value) valeMesMes.value = mesAtual();
+  renderizarValesMes();
   guardadoCampoValor.value = renda.Guardado ? String(renda.Guardado.Valor).replace('.', ',') : '';
   guardadoCampoData.value = renda.Guardado ? renda.Guardado.Data : formatarIso(new Date());
   renderizarFixos();
@@ -1424,9 +1432,20 @@ function ehAlelo(gasto) {
 }
 
 const CARTEIRAS_ALELO = {
-  alimentacao: { nome: 'Alimentação', banco: 'Alelo', credito: () => renda.ValeAlimentacao || 0 },
-  refeicao: { nome: 'Refeição', banco: 'Alelo Refeição', credito: () => renda.ValeRefeicao || 0 },
+  alimentacao: { nome: 'Alimentação', banco: 'Alelo', campo: 'Alimentacao', padrao: () => renda.ValeAlimentacao || 0 },
+  refeicao: { nome: 'Refeição', banco: 'Alelo Refeição', campo: 'Refeicao', padrao: () => renda.ValeRefeicao || 0 },
 };
+
+// Crédito de uma carteira num mês: o valor próprio do mês, se houver, senão o padrão
+function creditoAlelo(carteira, mes) {
+  const proprio = (renda.ValesMes || {})[mes];
+  return proprio ? proprio[CARTEIRAS_ALELO[carteira].campo] : CARTEIRAS_ALELO[carteira].padrao();
+}
+
+// Crédito das duas carteiras somadas no mês
+function valeDoMes(mes) {
+  return creditoAlelo('alimentacao', mes) + creditoAlelo('refeicao', mes);
+}
 
 function carteiraAlelo(gasto) {
   return semAcento(gasto.banco || '').toLowerCase().includes('refeicao') ? 'refeicao' : 'alimentacao';
@@ -1440,7 +1459,7 @@ function saldoAnteriorAlelo(mes, carteira = null) {
   for (let m = INICIO_RENDA; m < mes; m = somarMeses(m, 1)) {
     const carteiras = carteira ? [carteira] : Object.keys(CARTEIRAS_ALELO);
     carteiras.forEach((c) => {
-      saldo += CARTEIRAS_ALELO[c].credito();
+      saldo += creditoAlelo(c, m);
       saldo -= calcularTotalGasto(todosGastos.filter((g) => g['Mês'] === m && ehAlelo(g) && carteiraAlelo(g) === c));
       transferenciasDoMes(m).forEach((t) => { saldo += t.De === c ? -t.Valor : t.Valor; });
     });
@@ -1517,7 +1536,7 @@ function renderizarSalario(mes, gastos, antes) {
 // Alelo: gasto e saldo do mês
 function renderizarAlelo(gastos, antes, mes) {
   // Disponível no mês: o que sobrou dos anteriores + o crédito do mês
-  const vale = (renda.Vale || 0) + (antes ? 0 : saldoAnteriorAlelo(mes));
+  const vale = valeDoMes(mes) + (antes ? 0 : saldoAnteriorAlelo(mes));
   const gasto = calcularTotalGasto(gastos);
   animarValor(aleloGasto, gasto);
   animarValor(aleloSobra, antes ? vale : vale - gasto);
@@ -1618,7 +1637,7 @@ function passosDaCarteira(carteira, mes) {
 
 function renderizarCascataAlelo(carteira, mes, antes) {
   const container = document.getElementById(`cascata-${carteira}`);
-  const credito = CARTEIRAS_ALELO[carteira].credito();
+  const credito = creditoAlelo(carteira, mes);
   const passos = antes ? [] : passosDaCarteira(carteira, mes);
 
   // Cada barra vai de "antes" até "depois"; as das pontas partem do zero.
@@ -1792,7 +1811,7 @@ function renderizarDetalheAlelo() {
     .filter((g) => g['Mês'] === mes && ehAlelo(g))
     .sort((a, b) => b.Data.localeCompare(a.Data));
   // Disponível no mês: sobra dos meses anteriores + crédito do mês
-  const vale = (renda.Vale || 0) + (antes ? 0 : saldoAnteriorAlelo(mes));
+  const vale = valeDoMes(mes) + (antes ? 0 : saldoAnteriorAlelo(mes));
   const gasto = calcularTotalGasto(gastos);
   const saldo = vale - gasto;
 
@@ -1945,6 +1964,61 @@ formSalarioMes.addEventListener('submit', async (evento) => {
     salarioMesValor.value = '';
     await carregarRenda();
     mostrarNotificacao(`Salário de ${nomeMesTitulo(mes)}: ${formatarMoeda(valor)}`);
+    if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+    if (!secaoAlelo.hidden) renderizarAbaAlelo();
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
+
+// Alelo com crédito diferente num mês (Configurações)
+function renderizarValesMes() {
+  listaValesMes.innerHTML = '';
+  Object.keys(renda.ValesMes || {}).sort().reverse().forEach((mes) => {
+    const vale = renda.ValesMes[mes];
+    const linha = elemento('div', 'pendente');
+    const info = elemento('div', 'pendente-info');
+    const nome = elemento('span', 'pendente-local',
+      `${nomeMesTitulo(mes)} · alim. ${formatarMoeda(vale.Alimentacao)} · ref. ${formatarMoeda(vale.Refeicao)}`);
+    const remover = elemento('button', 'botao-remover', '×');
+    remover.type = 'button';
+    remover.setAttribute('aria-label', `Voltar ${nomeMesTitulo(mes)} pro Alelo padrão`);
+    remover.addEventListener('click', async () => {
+      remover.disabled = true;
+      try {
+        await requisitar('DELETE', `/api/vales/${mes}`, null, 'Erro ao remover o Alelo do mês.');
+        await carregarRenda();
+        if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
+        if (!secaoAlelo.hidden) renderizarAbaAlelo();
+      } catch (e) {
+        mostrarNotificacao(e.message);
+        remover.disabled = false;
+      }
+    });
+    info.append(nome, remover);
+    linha.appendChild(info);
+    listaValesMes.appendChild(linha);
+  });
+}
+
+formValeMes.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const mes = valeMesMes.value;
+  const vale = { Alimentacao: lerValor(valeMesAlimentacao.value), Refeicao: lerValor(valeMesRefeicao.value) };
+  if (!mes || Number.isNaN(vale.Alimentacao) || Number.isNaN(vale.Refeicao)) {
+    mostrarNotificacao('Valor inválido. Use algo como 1200,00.');
+    return;
+  }
+  const botao = formValeMes.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('PUT', `/api/vales/${mes}`, vale, 'Erro ao salvar o Alelo do mês.');
+    valeMesAlimentacao.value = '';
+    valeMesRefeicao.value = '';
+    await carregarRenda();
+    mostrarNotificacao(`Alelo de ${nomeMesTitulo(mes)} salvo`);
     if (!secaoVisaoGeral.hidden) renderizarVisaoGeral();
     if (!secaoAlelo.hidden) renderizarAbaAlelo();
   } catch (e) {
