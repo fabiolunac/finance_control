@@ -1427,6 +1427,63 @@ body {
 .comparacao-acima { color: var(--erro); }
 .comparacao-abaixo { color: var(--sucesso); }
 
+/* Cascata do Alelo: barras flutuando entre o saldo de antes e o de depois */
+.cascata .cascata-area,
+.cascata .colunas-eixo { min-width: calc(var(--n-colunas) * 28px); }
+
+.cascata-area {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 180px;
+  border-bottom: 1px solid var(--borda-forte);
+}
+
+.cascata-coluna {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.cascata-barra {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 3px;
+  transition: filter var(--t-rapida);
+}
+
+.cascata-total .cascata-barra { background: linear-gradient(0deg, var(--acento-forte), var(--acento)); }
+.cascata-negativo .cascata-barra { background: var(--erro); }
+.cascata-sai .cascata-barra { background: color-mix(in srgb, var(--erro) 70%, transparent); }
+.cascata-entra .cascata-barra { background: var(--sucesso); }
+.cascata-credito .cascata-barra { background: color-mix(in srgb, var(--acento) 55%, transparent); }
+.cascata-credito .colunas-valor { color: var(--acento-claro); }
+.cascata-transferencia .cascata-barra { background: var(--aviso); }
+.cascata-sai .colunas-valor { color: var(--erro); }
+.cascata-entra .colunas-valor { color: var(--sucesso); }
+.cascata-transferencia .colunas-valor { color: var(--aviso); }
+.cascata .colunas-valor { letter-spacing: -0.03em; }
+
+.cascata-coluna.colunas-coluna-escolhida .cascata-barra,
+.cascata-coluna:hover .cascata-barra { filter: brightness(1.3); }
+
+.cascata-zero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--tinta-muda);
+  pointer-events: none;
+}
+
+#alelo-cascatas { margin-bottom: 16px; }
+#form-transferencia .tipo-segmentado { margin: 8px 0; }
+
 /* Linha do salário: rótulo à esquerda pra não brigar com o da média */
 .colunas-teto { border-top-color: var(--erro); }
 .colunas-teto span { right: auto; left: 0; color: var(--erro); }

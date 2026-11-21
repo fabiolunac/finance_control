@@ -433,13 +433,25 @@ def garantir_tabela_renda(client):
             "CREATE TABLE IF NOT EXISTS guardado (id INTEGER PRIMARY KEY CHECK (id = 1), Valor REAL NOT NULL, Data TEXT NOT NULL)",
             # Salário de um mês (YYYY-MM) diferente do padrão da tabela renda
             "CREATE TABLE IF NOT EXISTS salarios_mes (Mes TEXT PRIMARY KEY, Valor REAL NOT NULL)",
+            # Saldo passado de uma carteira do Alelo pra outra (De: alimentacao|refeicao)
+            "CREATE TABLE IF NOT EXISTS alelo_transferencias (id INTEGER PRIMARY KEY, Data TEXT NOT NULL, De TEXT NOT NULL, Valor REAL NOT NULL)",
         ])
         _tabela_renda_pronta = True
 
 
+# O Alelo tem duas carteiras: alimentação e refeição. "Vale" é a soma das duas,
+# mantida pra quem ainda lê só ela.
 class Renda(BaseModel):
     Salario: float = Field(ge=0)
-    Vale: float = Field(ge=0)
+    Vale: float = Field(default=0, ge=0)
+    ValeAlimentacao: Optional[float] = Field(default=None, ge=0)
+    ValeRefeicao: Optional[float] = Field(default=None, ge=0)
+
+
+class TransferenciaAlelo(BaseModel):
+    Data: str = Field(pattern=DATA_ISO)
+    De: Literal["alimentacao", "refeicao"]
+    Valor: float = Field(gt=0)
 
 
 class Guardado(BaseModel):
@@ -460,16 +472,24 @@ class NovoFixo(BaseModel):
 def ler_renda(_=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
-        rs, fixos, guardado, salarios = client.batch([
+        rs, fixos, guardado, salarios, transferencias = client.batch([
             "SELECT Chave, Valor FROM renda",
             "SELECT id, Local, Valor FROM fixos ORDER BY Local",
             "SELECT Valor, Data FROM guardado WHERE id = 1",
             "SELECT Mes, Valor FROM salarios_mes",
+            "SELECT id, Data, De, Valor FROM alelo_transferencias ORDER BY Data, id",
         ])
     valores = {chave: valor for chave, valor in rs.rows}
+    vale = valores.get("Vale", 0.0)
+    # Antes da divisão, o vale inteiro conta como alimentação
+    alimentacao = valores.get("ValeAlimentacao", vale)
+    refeicao = valores.get("ValeRefeicao", 0.0)
     return {
         "Salario": valores.get("Salario", 0.0),
-        "Vale": valores.get("Vale", 0.0),
+        "Vale": alimentacao + refeicao,
+        "ValeAlimentacao": alimentacao,
+        "ValeRefeicao": refeicao,
+        "AleloTransferencias": linhas(transferencias),
         "Fixos": linhas(fixos),
         "Guardado": linhas(guardado)[0] if guardado.rows else None,
         "SalariosMes": {mes: valor for mes, valor in salarios.rows},
@@ -521,11 +541,33 @@ def remover_fixo(id: int, _=Depends(checar_token)):
 def salvar_renda(renda: Renda, _=Depends(checar_token)):
     with conectar() as client:
         garantir_tabela_renda(client)
+        alimentacao = renda.ValeAlimentacao if renda.ValeAlimentacao is not None else renda.Vale
+        refeicao = renda.ValeRefeicao if renda.ValeRefeicao is not None else 0.0
         client.batch([
             ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('Salario', ?)", [renda.Salario]),
-            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('Vale', ?)", [renda.Vale]),
+            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('Vale', ?)", [alimentacao + refeicao]),
+            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('ValeAlimentacao', ?)", [alimentacao]),
+            ("INSERT OR REPLACE INTO renda (Chave, Valor) VALUES ('ValeRefeicao', ?)", [refeicao]),
         ])
     return {"ok": True}
+
+
+@app.post("/api/alelo/transferencias", status_code=201)
+def adicionar_transferencia_alelo(transferencia: TransferenciaAlelo, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        rs = client.execute(
+            "INSERT INTO alelo_transferencias (Data, De, Valor) VALUES (?, ?, ?)",
+            [transferencia.Data, transferencia.De, transferencia.Valor],
+        )
+    return {"ok": True, "id": rs.last_insert_rowid}
+
+
+@app.delete("/api/alelo/transferencias/{id}", status_code=204)
+def remover_transferencia_alelo(id: int, _=Depends(checar_token)):
+    with conectar() as client:
+        garantir_tabela_renda(client)
+        client.execute("DELETE FROM alelo_transferencias WHERE id = ?", [id])
 
 
 # ---------- Módulos em arquivos próprios ----------

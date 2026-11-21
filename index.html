@@ -259,6 +259,36 @@
 
       <p id="alelo-antes" class="vazio" hidden>O vale começa em novembro de 2026.</p>
 
+      <!-- Cascata de cada carteira: crédito do mês, cada gasto e transferência, saldo -->
+      <div id="alelo-cascatas" class="grade-categorias">
+        <div class="cartao-grafico">
+          <h2 class="titulo-grafico">Alimentação</h2>
+          <div id="cascata-alimentacao" class="grafico"></div>
+        </div>
+        <div class="cartao-grafico">
+          <h2 class="titulo-grafico">Refeição</h2>
+          <div id="cascata-refeicao" class="grafico"></div>
+        </div>
+      </div>
+
+      <div id="alelo-transferencias" class="cartao-grafico">
+        <h2 class="titulo-grafico">Transferências entre carteiras</h2>
+        <p class="pendentes-ajuda">Saldo passado de uma carteira pra outra no app da Alelo. Entra na cascata das duas.</p>
+        <div id="lista-transferencias" class="lista-pendentes"></div>
+        <form id="form-transferencia" class="pendente form-cartao">
+          <span class="pendente-local">Nova transferência</span>
+          <div class="tipo-segmentado" role="radiogroup" aria-label="Direção da transferência">
+            <label><input type="radio" name="de" value="alimentacao" checked><span>Alim. → Ref.</span></label>
+            <label><input type="radio" name="de" value="refeicao"><span>Ref. → Alim.</span></label>
+          </div>
+          <div class="cartao-campos renda-campos">
+            <input id="transferencia-data" type="date" required aria-label="Data da transferência">
+            <input id="transferencia-valor" type="text" inputmode="decimal" placeholder="Valor" autocomplete="off" required aria-label="Valor da transferência">
+            <button class="botao-primario" type="submit">Adicionar</button>
+          </div>
+        </form>
+      </div>
+
     </section>
 
     <section id="secao-visao-geral">
@@ -597,11 +627,12 @@
       </div>
 
       <div class="cartao-grafico cartao-renda">
-        <h2 class="titulo-grafico">Salário e vale alimentação</h2>
-        <p class="pendentes-ajuda">Valor que entra por mês, a partir de 01/11/2026. Gasto com Alelo sai do vale; o resto sai do salário.</p>
+        <h2 class="titulo-grafico">Salário e Alelo</h2>
+        <p class="pendentes-ajuda">Valor que entra por mês, a partir de 01/11/2026. Gasto com Alelo sai da carteira dele (alimentação ou refeição); o resto sai do salário.</p>
         <form id="form-renda" class="cartao-campos renda-campos">
           <input id="renda-salario" type="text" inputmode="decimal" placeholder="Salário" autocomplete="off" required aria-label="Salário">
-          <input id="renda-vale" type="text" inputmode="decimal" placeholder="Vale alimentação" autocomplete="off" required aria-label="Vale alimentação">
+          <input id="renda-vale" type="text" inputmode="decimal" placeholder="Alelo alimentação" autocomplete="off" required aria-label="Alelo alimentação">
+          <input id="renda-vale-refeicao" type="text" inputmode="decimal" placeholder="Alelo refeição" autocomplete="off" required aria-label="Alelo refeição">
           <button class="botao-primario" type="submit">Salvar</button>
         </form>
 
@@ -740,12 +771,14 @@
             </div>
           </div>
 
-          <!-- Alelo (vale alimentação) vai como banco "Alelo" e sai do saldo do salário -->
+          <!-- Alelo: banco "Alelo" é a carteira de alimentação (os antigos ficam nela);
+               "Alelo Refeição" é a de refeição. Os dois saem do vale, não do salário -->
           <div class="detalhe-linha">
             <span class="detalhe-rotulo">Pago com</span>
             <div class="tipo-segmentado" role="radiogroup" aria-label="Pago com">
               <label><input type="radio" name="pagocom" value="" checked><span>Banco</span></label>
-              <label><input type="radio" name="pagocom" value="Alelo"><span>Alelo</span></label>
+              <label><input type="radio" name="pagocom" value="Alelo"><span>Alelo alim.</span></label>
+              <label><input type="radio" name="pagocom" value="Alelo Refeição"><span>Alelo ref.</span></label>
             </div>
             <input id="campo-banco" list="opcoes-banco" placeholder="Qual banco" autocomplete="off" aria-label="Banco" required>
             <datalist id="opcoes-banco"></datalist>

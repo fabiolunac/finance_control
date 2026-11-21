@@ -53,6 +53,7 @@ const aleloBarra = document.getElementById('alelo-barra');
 const formRenda = document.getElementById('form-renda');
 const rendaSalario = document.getElementById('renda-salario');
 const rendaVale = document.getElementById('renda-vale');
+const rendaValeRefeicao = document.getElementById('renda-vale-refeicao');
 const listaSalariosMes = document.getElementById('lista-salarios-mes');
 const formSalarioMes = document.getElementById('form-salario-mes');
 const salarioMesMes = document.getElementById('salario-mes-mes');
@@ -1385,7 +1386,7 @@ formGuardado.addEventListener('submit', async (evento) => {
 // O emprego começa em 01/11/2026: antes disso não há salário nem vale pra comparar.
 // No mês atual, se ainda for antes, os cards aparecem zerados avisando o início.
 const INICIO_RENDA = '2026-11';
-let renda = { Salario: 0, Vale: 0, Fixos: [], Guardado: null, SalariosMes: {} };
+let renda = { Salario: 0, Vale: 0, ValeAlimentacao: 0, ValeRefeicao: 0, AleloTransferencias: [], Fixos: [], Guardado: null, SalariosMes: {} };
 
 // Salário do mês (YYYY-MM): o valor próprio dele, se houver, senão o padrão
 function salarioDoMes(mes) {
@@ -1401,7 +1402,13 @@ async function carregarRenda() {
     return;
   }
   rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
-  rendaVale.value = renda.Vale ? String(renda.Vale).replace('.', ',') : '';
+  // Servidor antigo só manda "Vale": tudo conta como alimentação
+  if (renda.ValeAlimentacao == null) renda.ValeAlimentacao = renda.Vale || 0;
+  if (renda.ValeRefeicao == null) renda.ValeRefeicao = 0;
+  if (!renda.AleloTransferencias) renda.AleloTransferencias = [];
+  const paraCampo = (valor) => (valor ? String(valor).replace('.', ',') : '');
+  rendaVale.value = paraCampo(renda.ValeAlimentacao);
+  rendaValeRefeicao.value = paraCampo(renda.ValeRefeicao);
   if (!salarioMesMes.value) salarioMesMes.value = mesAtual();
   renderizarSalariosMes();
   guardadoCampoValor.value = renda.Guardado ? String(renda.Guardado.Valor).replace('.', ',') : '';
@@ -1410,15 +1417,48 @@ async function carregarRenda() {
   if (!secaoAlelo.hidden) renderizarAbaAlelo();
 }
 
+// Alelo tem duas carteiras: banco "Alelo" é alimentação (inclusive os antigos)
+// e "Alelo Refeição" é refeição
 function ehAlelo(gasto) {
-  return semAcento(gasto.banco || '').toLowerCase() === 'alelo';
+  return semAcento(gasto.banco || '').toLowerCase().startsWith('alelo');
+}
+
+const CARTEIRAS_ALELO = {
+  alimentacao: { nome: 'Alimentação', banco: 'Alelo', credito: () => renda.ValeAlimentacao || 0 },
+  refeicao: { nome: 'Refeição', banco: 'Alelo Refeição', credito: () => renda.ValeRefeicao || 0 },
+};
+
+function carteiraAlelo(gasto) {
+  return semAcento(gasto.banco || '').toLowerCase().includes('refeicao') ? 'refeicao' : 'alimentacao';
+}
+
+// O Alelo acumula: o que sobra num mês passa pro seguinte. Saldo que chega no
+// início de "mes" = soma, de INICIO_RENDA até o mês anterior, de crédito − gastos
+// ± transferências. Sem carteira, as duas juntas (as transferências se anulam).
+function saldoAnteriorAlelo(mes, carteira = null) {
+  let saldo = 0;
+  for (let m = INICIO_RENDA; m < mes; m = somarMeses(m, 1)) {
+    const carteiras = carteira ? [carteira] : Object.keys(CARTEIRAS_ALELO);
+    carteiras.forEach((c) => {
+      saldo += CARTEIRAS_ALELO[c].credito();
+      saldo -= calcularTotalGasto(todosGastos.filter((g) => g['Mês'] === m && ehAlelo(g) && carteiraAlelo(g) === c));
+      transferenciasDoMes(m).forEach((t) => { saldo += t.De === c ? -t.Valor : t.Valor; });
+    });
+  }
+  return saldo;
+}
+
+// Valor do "Pago com" no formulário pra um gasto existente
+function pagoComDe(gasto) {
+  if (!gasto || !ehAlelo(gasto)) return '';
+  return CARTEIRAS_ALELO[carteiraAlelo(gasto)].banco;
 }
 
 // Selo pequeno nos gastos pagos com o vale (lista, calendário, sequência)
-function criarSeloAlelo() {
+function criarSeloAlelo(gasto) {
   const selo = document.createElement('span');
   selo.className = 'selo-alelo';
-  selo.textContent = 'Alelo';
+  selo.textContent = gasto && carteiraAlelo(gasto) === 'refeicao' ? 'Alelo ref.' : 'Alelo';
   return selo;
 }
 
@@ -1476,7 +1516,8 @@ function renderizarSalario(mes, gastos, antes) {
 
 // Alelo: gasto e saldo do mês
 function renderizarAlelo(gastos, antes, mes) {
-  const vale = renda.Vale;
+  // Disponível no mês: o que sobrou dos anteriores + o crédito do mês
+  const vale = (renda.Vale || 0) + (antes ? 0 : saldoAnteriorAlelo(mes));
   const gasto = calcularTotalGasto(gastos);
   animarValor(aleloGasto, gasto);
   animarValor(aleloSobra, antes ? vale : vale - gasto);
@@ -1527,8 +1568,193 @@ function renderizarAbaAlelo() {
     const gastosMes = antes ? [] : gastosSemFaturaSeEscolhido().filter((g) => g['Mês'] === mes && ehAlelo(g));
     renderizarAlelo(gastosMes, antes, mes);
   }
+  aleloCascatas.hidden = cartaoAlelo.hidden;
+  aleloTransferencias.hidden = cartaoAlelo.hidden;
+  if (!cartaoAlelo.hidden) {
+    renderizarCascataAlelo('alimentacao', mes, antes);
+    renderizarCascataAlelo('refeicao', mes, antes);
+    renderizarTransferencias(mes);
+  }
   if (gavetaDetalheAlelo.open) renderizarDetalheAlelo();
 }
+
+// ----- Cascata de uma carteira: crédito do mês, cada gasto e transferência
+// em ordem de data, e o saldo no fim
+
+const aleloCascatas = document.getElementById('alelo-cascatas');
+const aleloTransferencias = document.getElementById('alelo-transferencias');
+const listaTransferencias = document.getElementById('lista-transferencias');
+const formTransferencia = document.getElementById('form-transferencia');
+const transferenciaData = document.getElementById('transferencia-data');
+const transferenciaValor = document.getElementById('transferencia-valor');
+
+function transferenciasDoMes(mes) {
+  return (renda.AleloTransferencias || []).filter((t) => t.Data.slice(0, 7) === mes);
+}
+
+function passosDaCarteira(carteira, mes) {
+  const outra = carteira === 'alimentacao' ? 'refeicao' : 'alimentacao';
+  const gastos = todosGastos
+    .filter((g) => g['Mês'] === mes && ehAlelo(g) && carteiraAlelo(g) === carteira)
+    .map((g) => ({
+      data: g.Data.slice(0, 10),
+      ordem: g.rowid,
+      titulo: g.Local,
+      delta: -valorLiquido(g),
+      tipo: g.tipo === 'Pagamento' ? 'entra' : 'sai',
+    }));
+  const transferencias = transferenciasDoMes(mes).map((t) => {
+    const sai = t.De === carteira;
+    return {
+      data: t.Data,
+      ordem: t.id,
+      titulo: sai ? `Transferência pra ${CARTEIRAS_ALELO[outra].nome.toLowerCase()}` : `Transferência da ${CARTEIRAS_ALELO[outra].nome.toLowerCase()}`,
+      delta: sai ? -t.Valor : t.Valor,
+      tipo: 'transferencia',
+    };
+  });
+  return [...gastos, ...transferencias].sort((a, b) => a.data.localeCompare(b.data) || a.ordem - b.ordem);
+}
+
+function renderizarCascataAlelo(carteira, mes, antes) {
+  const container = document.getElementById(`cascata-${carteira}`);
+  const credito = CARTEIRAS_ALELO[carteira].credito();
+  const passos = antes ? [] : passosDaCarteira(carteira, mes);
+
+  // Cada barra vai de "antes" até "depois"; as das pontas partem do zero.
+  // Começa no que sobrou do mês anterior, e o crédito do mês entra por cima.
+  const anterior = antes ? 0 : saldoAnteriorAlelo(mes, carteira);
+  let saldo = anterior + credito;
+  const barras = [];
+  if (mes > INICIO_RENDA) {
+    barras.push({ rotulo: 'ant', titulo: 'Sobra do mês anterior', de: 0, ate: anterior, tipo: anterior < 0 ? 'negativo' : 'total' });
+    barras.push({ rotulo: 'créd', titulo: 'Crédito do mês', de: anterior, ate: saldo, tipo: 'credito', delta: credito });
+  } else {
+    barras.push({ rotulo: 'créd', titulo: 'Crédito do mês', de: 0, ate: saldo, tipo: 'total' });
+  }
+  passos.forEach((p) => {
+    barras.push({ rotulo: p.data.slice(8, 10), titulo: `${formatarData(p.data).slice(0, 5)} ${p.titulo}`, de: saldo, ate: saldo + p.delta, tipo: p.tipo, delta: p.delta });
+    saldo += p.delta;
+  });
+  barras.push({ rotulo: 'fim', titulo: 'Saldo', de: 0, ate: saldo, tipo: saldo < 0 ? 'negativo' : 'total' });
+  renderizarCascata(container, barras);
+}
+
+function renderizarCascata(container, barras) {
+  const valores = barras.flatMap((b) => [b.de, b.ate]);
+  const minimo = Math.min(0, ...valores);
+  const maximo = Math.max(0, ...valores);
+  const faixa = (maximo - minimo) * 1.2 || 1; // folga em cima pro valor
+  const posicao = (v) => ((v - minimo) / faixa) * 100;
+  container.innerHTML = '';
+
+  const area = elemento('div', 'cascata-area');
+  const eixo = elemento('div', 'colunas-eixo');
+  const detalhe = elemento('p', 'colunas-detalhe');
+
+  if (minimo < 0) {
+    const zero = elemento('div', 'cascata-zero');
+    zero.style.bottom = `${posicao(0)}%`;
+    area.appendChild(zero);
+  }
+
+  barras.forEach((b) => {
+    const coluna = document.createElement('button');
+    coluna.type = 'button';
+    coluna.className = `cascata-coluna cascata-${b.tipo}`;
+    const valorTexto = b.delta != null
+      ? `${b.delta < 0 ? '−' : '+'}${formatarMoeda(Math.abs(b.delta))} · saldo ${formatarMoeda(b.ate)}`
+      : formatarMoeda(b.ate);
+    coluna.title = `${b.titulo}: ${valorTexto}`;
+    coluna.setAttribute('aria-label', coluna.title);
+    coluna.addEventListener('click', () => {
+      const escolhida = !coluna.classList.contains('colunas-coluna-escolhida');
+      area.querySelectorAll('.colunas-coluna-escolhida').forEach((c) => c.classList.remove('colunas-coluna-escolhida'));
+      coluna.classList.toggle('colunas-coluna-escolhida', escolhida);
+      detalhe.textContent = escolhida ? coluna.title : '';
+    });
+
+    const barra = elemento('div', 'cascata-barra');
+    const baixo = Math.min(b.de, b.ate);
+    const alto = Math.max(b.de, b.ate);
+    barra.style.bottom = `${posicao(baixo)}%`;
+    barra.style.height = `max(2px, ${posicao(alto) - posicao(baixo)}%)`;
+    const numero = b.delta != null ? Math.abs(b.delta) : Math.abs(b.ate);
+    const valor = elemento('span', 'colunas-valor', `${b.delta != null && b.delta < 0 ? '−' : ''}${valorCompacto(numero)}`);
+    barra.appendChild(valor);
+    coluna.appendChild(barra);
+    area.appendChild(coluna);
+
+    eixo.appendChild(elemento('span', null, b.rotulo));
+  });
+
+  const rolagem = elemento('div', 'colunas-rolagem cascata');
+  rolagem.style.setProperty('--n-colunas', barras.length);
+  rolagem.append(area, eixo);
+  container.append(rolagem, detalhe);
+  rolagem.scrollLeft = rolagem.scrollWidth; // começa mostrando o saldo
+}
+
+// ----- Transferências entre as carteiras
+
+function renderizarTransferencias(mes) {
+  listaTransferencias.innerHTML = '';
+  if (!transferenciaData.value || transferenciaData.value.slice(0, 7) !== mes) {
+    transferenciaData.value = mes === mesAtual() ? formatarIso(new Date()) : `${mes}-01`;
+  }
+  transferenciasDoMes(mes).slice().reverse().forEach((t) => {
+    const linha = elemento('div', 'pendente');
+    const info = elemento('div', 'pendente-info');
+    const de = CARTEIRAS_ALELO[t.De].nome;
+    const para = CARTEIRAS_ALELO[t.De === 'alimentacao' ? 'refeicao' : 'alimentacao'].nome;
+    const nome = elemento('span', 'pendente-local', `${formatarData(t.Data).slice(0, 5)} · ${de} → ${para} · ${formatarMoeda(t.Valor)}`);
+    const remover = elemento('button', 'botao-remover', '×');
+    remover.type = 'button';
+    remover.setAttribute('aria-label', `Remover transferência de ${formatarMoeda(t.Valor)}`);
+    remover.addEventListener('click', async () => {
+      remover.disabled = true;
+      try {
+        await requisitar('DELETE', `/api/alelo/transferencias/${t.id}`, null, 'Erro ao remover a transferência.');
+        await carregarRenda();
+        renderizarAbaAlelo();
+      } catch (e) {
+        mostrarNotificacao(e.message);
+        remover.disabled = false;
+      }
+    });
+    info.append(nome, remover);
+    linha.appendChild(info);
+    listaTransferencias.appendChild(linha);
+  });
+}
+
+formTransferencia.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const transferencia = {
+    Data: transferenciaData.value,
+    De: formTransferencia.elements.de.value,
+    Valor: lerValor(transferenciaValor.value),
+  };
+  if (!transferencia.Data || !(transferencia.Valor > 0)) {
+    mostrarNotificacao('Valor inválido. Use algo como 100,00.');
+    return;
+  }
+  const botao = formTransferencia.querySelector('button');
+  botao.disabled = true;
+  try {
+    await requisitar('POST', '/api/alelo/transferencias', transferencia, 'Erro ao salvar a transferência.');
+    transferenciaValor.value = '';
+    await carregarRenda();
+    // Abre o mês da transferência, pra ela aparecer na cascata
+    aleloMes.value = transferencia.Data.slice(0, 7);
+    renderizarAbaAlelo();
+    mostrarNotificacao('Transferência salva');
+  } catch (e) {
+    mostrarNotificacao(e.message);
+  } finally {
+    botao.disabled = false;
+  }
+});
 
 ligarPassoMes(aleloMes, renderizarAbaAlelo);
 
@@ -1565,7 +1791,8 @@ function renderizarDetalheAlelo() {
   const gastos = antes ? [] : gastosSemFaturaSeEscolhido()
     .filter((g) => g['Mês'] === mes && ehAlelo(g))
     .sort((a, b) => b.Data.localeCompare(a.Data));
-  const vale = renda.Vale || 0;
+  // Disponível no mês: sobra dos meses anteriores + crédito do mês
+  const vale = (renda.Vale || 0) + (antes ? 0 : saldoAnteriorAlelo(mes));
   const gasto = calcularTotalGasto(gastos);
   const saldo = vale - gasto;
 
@@ -1785,8 +2012,15 @@ formFixo.addEventListener('submit', async (evento) => {
 
 formRenda.addEventListener('submit', async (evento) => {
   evento.preventDefault();
-  const nova = { Salario: lerValor(rendaSalario.value), Vale: lerValor(rendaVale.value) };
-  if (Number.isNaN(nova.Salario) || Number.isNaN(nova.Vale)) {
+  const alimentacao = lerValor(rendaVale.value);
+  const refeicao = lerValor(rendaValeRefeicao.value);
+  const nova = {
+    Salario: lerValor(rendaSalario.value),
+    Vale: alimentacao + refeicao, // servidor antigo só lê este
+    ValeAlimentacao: alimentacao,
+    ValeRefeicao: refeicao,
+  };
+  if ([nova.Salario, alimentacao, refeicao].some(Number.isNaN)) {
     mostrarNotificacao('Valor inválido. Use algo como 3500,00.');
     return;
   }
@@ -2065,7 +2299,7 @@ function renderizarDetalheCalendario() {
     const local = document.createElement('span');
     local.className = 'mini-lista-local';
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
-    if (ehAlelo(gasto)) local.append(criarSeloAlelo());
+    if (ehAlelo(gasto)) local.append(criarSeloAlelo(gasto));
     const valor = document.createElement('span');
     valor.className = 'mini-lista-valor';
     // Pagamento aparece como valor que volta: sinal de menos e verde
@@ -2099,13 +2333,13 @@ function lerUltimoBanco() {
 
 function salvarUltimoBanco(banco) {
   // Alelo é escolhido no seletor, não fica como banco padrão
-  if (semAcento(banco).toLowerCase() === 'alelo') return;
+  if (semAcento(banco).toLowerCase().startsWith('alelo')) return;
   try { localStorage.setItem('ultimoBanco', banco); } catch (e) {}
 }
 
 // "Alelo" esconde o campo do banco: o gasto vai com banco "Alelo"
 function aplicarPagoCom() {
-  const alelo = formGasto.elements.pagocom.value === 'Alelo';
+  const alelo = formGasto.elements.pagocom.value.startsWith('Alelo');
   campoBanco.hidden = alelo;
   campoBanco.required = !alelo;
 }
@@ -2125,7 +2359,7 @@ campoLocal.addEventListener('input', () => {
   if (gastoEditando || pagoComManual) return;
   const anteriores = todosGastos.filter((g) => g.tipo === 'Gasto' && mesmoLocal(g.Local, campoLocal.value));
   if (!anteriores.length) return;
-  formGasto.elements.pagocom.value = ehAlelo(maisRecente(anteriores)) ? 'Alelo' : '';
+  formGasto.elements.pagocom.value = pagoComDe(maisRecente(anteriores));
   aplicarPagoCom();
 });
 
@@ -2168,7 +2402,7 @@ function abrirGaveta(gasto = null, doLote = false) {
     campoValor.value = String(gasto.Valor).replace('.', ',');
     campoLocal.value = gasto.Local;
     campoData.value = gasto.Data.slice(0, 10);
-    formGasto.elements.pagocom.value = ehAlelo(gasto) ? 'Alelo' : '';
+    formGasto.elements.pagocom.value = pagoComDe(gasto);
     campoBanco.value = ehAlelo(gasto) ? lerUltimoBanco() : gasto.banco || '';
     formGasto.elements.tipo.value = gasto.tipo;
     formGasto.elements.energetico.value = gasto.Energetico || '';
@@ -2177,7 +2411,7 @@ function abrirGaveta(gasto = null, doLote = false) {
     campoLocal.value = '';
     campoData.value = camposLote ? camposLote.Data : formatarIso(new Date());
     const loteAlelo = Boolean(camposLote) && ehAlelo(camposLote);
-    formGasto.elements.pagocom.value = loteAlelo ? 'Alelo' : '';
+    formGasto.elements.pagocom.value = loteAlelo ? pagoComDe(camposLote) : '';
     campoBanco.value = camposLote && !loteAlelo ? camposLote.banco : lerUltimoBanco();
     formGasto.elements.tipo.value = camposLote ? camposLote.tipo : 'Gasto';
     formGasto.elements.energetico.value = '';
@@ -2227,7 +2461,7 @@ function renderizarLote() {
     const local = document.createElement('span');
     local.className = 'mini-lista-local';
     local.append(criarPonto(corCategoria(gasto['Categoria Geral'])), gasto.Local);
-    if (ehAlelo(gasto)) local.append(criarSeloAlelo());
+    if (ehAlelo(gasto)) local.append(criarSeloAlelo(gasto));
     const valor = document.createElement('span');
     valor.className = 'mini-lista-valor';
     valor.textContent = formatarMoeda(gasto.Valor);
@@ -2455,7 +2689,7 @@ function renderizar(gastos) {
       const td = document.createElement('td');
       td.textContent = c.texto;
       if (c.ponto) td.prepend(criarPonto(corCategoria(gasto['Categoria Geral'])));
-      if (c.campo === 'Local' && ehAlelo(gasto)) td.append(criarSeloAlelo());
+      if (c.campo === 'Local' && ehAlelo(gasto)) td.append(criarSeloAlelo(gasto));
       if (c.classe) td.className = c.classe;
       if (c.campo) {
         td.classList.add('editavel');
