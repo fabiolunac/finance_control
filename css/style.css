@@ -708,6 +708,9 @@ body {
   color: var(--erro);
 }
 
+.botao-apagar-filtrados { display: block; margin: -4px 0 14px auto; }
+.botao-chip.botao-apagar-armado { background: var(--erro); color: var(--tinta-sobre-acento); border-color: transparent; }
+
 .botao-chip.botao-limpar-filtros:hover {
   background: color-mix(in srgb, var(--erro) 22%, transparent);
   border-color: var(--erro);

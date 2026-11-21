@@ -628,6 +628,7 @@ function aplicarFiltros() {
   renderizarFiltroDias(doMes);
   const filtrados = diaSelecionado ? doMes.filter((g) => g.Data.startsWith(diaSelecionado)) : doMes;
   renderizar(filtrados);
+  atualizarBotaoApagarFiltrados(filtrados);
   totalFiltrado.textContent = formatarMoeda(calcularTotalGasto(filtrados));
   const escopo = diaSelecionado ? `em ${formatarData(diaSelecionado)}` : '(filtro atual)';
   rotuloTotalFiltrado.textContent = `Total gasto ${escopo}${semFatura ? ', sem fatura' : ''}`;
@@ -641,6 +642,69 @@ function aplicarFiltros() {
 
 // Todos os filtros da Tabela, inclusive o de mês
 const filtrosTabela = [filtroMes, filtroCategoria, filtroCategoriaGeral, filtroLocal, filtroBanco];
+
+// ----- Apagar tudo o que o filtro mostra. Primeiro toque arma, o segundo apaga;
+// depois ainda dá pra desfazer, como na remoção de um gasto só.
+
+const botaoApagarFiltrados = document.getElementById('botao-apagar-filtrados');
+let filtradosParaApagar = [];
+let apagarArmado = null; // timer enquanto espera o segundo toque
+
+function desarmarApagar() {
+  clearTimeout(apagarArmado);
+  apagarArmado = null;
+  botaoApagarFiltrados.classList.remove('botao-apagar-armado');
+  const n = filtradosParaApagar.length;
+  botaoApagarFiltrados.textContent = `Apagar ${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
+}
+
+function atualizarBotaoApagarFiltrados(filtrados) {
+  const comFiltro = Boolean(diaSelecionado) || filtrosTabela.some((root) => root.selecionados.size > 0);
+  filtradosParaApagar = comFiltro ? filtrados.slice() : [];
+  botaoApagarFiltrados.hidden = filtradosParaApagar.length === 0;
+  desarmarApagar();
+}
+
+botaoApagarFiltrados.addEventListener('click', () => {
+  const lista = filtradosParaApagar.slice();
+  if (!lista.length) return;
+  if (!apagarArmado) {
+    botaoApagarFiltrados.classList.add('botao-apagar-armado');
+    botaoApagarFiltrados.textContent = `Toque de novo pra apagar ${lista.length} (${formatarMoeda(calcularTotalGasto(lista))})`;
+    apagarArmado = setTimeout(desarmarApagar, 4000);
+    return;
+  }
+  desarmarApagar();
+  apagarEmLote(lista);
+});
+
+function apagarEmLote(lista) {
+  erro.hidden = true;
+  const rowids = new Set(lista.map((g) => g.rowid));
+  removerComDesfazer(`${lista.length} ${lista.length === 1 ? 'lançamento apagado' : 'lançamentos apagados'}`, {
+    tirar: () => {
+      rowids.forEach((id) => gastosRemovendo.add(id));
+      todosGastos = todosGastos.filter((g) => !rowids.has(g.rowid));
+      renderizarTudo();
+    },
+    devolver: () => {
+      rowids.forEach((id) => gastosRemovendo.delete(id));
+      todosGastos = ordenarGastos([...todosGastos, ...lista]);
+      renderizarTudo();
+    },
+    // Todos de uma vez (keepalive), pra irem mesmo se o app for pro fundo
+    enviar: async () => {
+      const resultados = await Promise.allSettled([...rowids].map((id) =>
+        requisitar('DELETE', `/api/gastos/${id}`, null, 'Erro ao remover no servidor.')));
+      rowids.forEach((id) => gastosRemovendo.delete(id));
+      const falhas = resultados.filter((r) => r.status === 'rejected').length;
+      if (falhas) {
+        mostrarErro(`${falhas} de ${lista.length} não foram apagados no servidor. Recarreguei a lista.`);
+        carregar();
+      }
+    },
+  });
+}
 
 botaoLimparFiltros.addEventListener('click', () => {
   filtrosTabela.forEach(limparMultiSelect);
