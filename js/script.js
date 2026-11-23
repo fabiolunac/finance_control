@@ -132,6 +132,9 @@ const botaoContinuarGasto = document.getElementById('botao-continuar-gasto');
 const loteGastos = document.getElementById('lote-gastos');
 const erroAdicionar = document.getElementById('erro-adicionar');
 const gavetaAdicionar = document.getElementById('gaveta-adicionar');
+const formFrase = document.getElementById('form-frase');
+const campoFrase = document.getElementById('campo-frase');
+const botaoFrase = document.getElementById('botao-frase');
 const botaoAdicionar = document.getElementById('botao-adicionar');
 const botaoFecharGaveta = document.getElementById('botao-fechar-gaveta');
 
@@ -2555,6 +2558,9 @@ function abrirGaveta(gasto = null, doLote = false) {
     formGasto.elements.energetico.value = '';
   }
 
+  formFrase.hidden = Boolean(gasto);
+  campoFrase.value = '';
+
   pagoComManual = false;
   aplicarPagoCom();
   renderizarLote();
@@ -2678,6 +2684,53 @@ async function salvarGasto(evento) {
 }
 
 formGasto.addEventListener('submit', salvarGasto);
+
+// ---------- Gasto por frase ----------
+// "R$ 3 na padaria hoje": o servidor pergunta ao Claude e devolve os campos.
+// Só preenche o formulário; o gasto entra quando você toca em Adicionar.
+
+async function preencherPorFrase(evento) {
+  evento.preventDefault();
+  const texto = campoFrase.value.trim();
+  if (!texto) return;
+
+  erroAdicionar.hidden = true;
+  botaoFrase.disabled = true;
+  botaoFrase.textContent = 'Lendo…';
+  try {
+    const resposta = await requisitar('POST', '/api/interpretar',
+      { texto, hoje: formatarIso(new Date()) }, 'Não consegui interpretar a frase.');
+    const campos = await resposta.json();
+
+    campoValor.value = campos.Valor.toFixed(2).replace('.', ',');
+    campoData.value = campos.Data;
+    formGasto.elements.tipo.value = campos.tipo;
+    campoLocal.value = campos.Local;
+    // Deixa o local puxar o "pago com" da última vez, como quando se digita
+    pagoComManual = false;
+    campoLocal.dispatchEvent(new Event('input'));
+    // O que a frase disse explicitamente vence o histórico
+    if (campos.pagocom) {
+      formGasto.elements.pagocom.value = campos.pagocom;
+      pagoComManual = true;
+    } else if (campos.banco) {
+      formGasto.elements.pagocom.value = '';
+      campoBanco.value = campos.banco;
+      pagoComManual = true;
+    }
+    aplicarPagoCom();
+    campoFrase.value = '';
+    botaoSalvarGasto.focus();
+  } catch (e) {
+    erroAdicionar.textContent = e.message || 'Não consegui interpretar a frase.';
+    erroAdicionar.hidden = false;
+  } finally {
+    botaoFrase.disabled = false;
+    botaoFrase.textContent = 'Preencher';
+  }
+}
+
+formFrase.addEventListener('submit', preencherPorFrase);
 
 botaoExcluirGasto.addEventListener('click', () => {
   const gasto = gastoEditando;

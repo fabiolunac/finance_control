@@ -452,6 +452,17 @@ body {
 
 .gaveta .erro { margin: 16px 0 0; }
 
+/* Frase que o Claude transforma nos campos do formulário */
+.form-frase {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-frase input { flex: 1 1 auto; min-width: 0; }
+.form-frase .botao-secundario { flex: 0 0 auto; padding: 10px 16px; }
+.form-frase[hidden] { display: none; }
+
 /* Formulário da gaveta: valor grande em cima, tipo em dois botões */
 .form-gasto {
   display: grid;
@@ -969,6 +980,7 @@ body {
 .novo-gasto input,
 .novo-gasto select,
 .form-gasto input:not([type="radio"]),
+.form-frase input,
 .pendente input,
 .fatura-pagar input {
   font: inherit;
@@ -987,12 +999,14 @@ body {
 
 .novo-gasto input::placeholder,
 .form-gasto input::placeholder,
+.form-frase input::placeholder,
 .pendente input::placeholder,
 .fatura-pagar input::placeholder { color: var(--tinta-muda); }
 
 .novo-gasto input:focus,
 .novo-gasto select:focus,
 .form-gasto input:not([type="radio"]):focus,
+.form-frase input:focus,
 .pendente input:focus,
 .fatura-pagar input:focus {
   border-color: var(--acento);

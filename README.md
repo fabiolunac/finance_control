@@ -20,6 +20,7 @@ GitHub Pages (frontend estático)  --HTTPS-->  Render (API FastAPI + pandas)  --
 | `commit.sh` | Commit + pull --rebase + push numa linha só |
 | `server/main.py` | API FastAPI que devolve a tabela tratada |
 | `server/combustivel.py`, `server/dieta.py` | Rotas dos módulos Combustível e Dieta |
+| `server/interpretar.py` | Gasto descrito numa frase: o Claude devolve valor, local, data e forma de pagamento |
 | `server/notificacoes.py` | Notificações push: inscrição dos aparelhos, teste e envio (usado pelo aviso de cafeína) |
 | `server/transform_db.py` | Pré-processamento com pandas: Categoria, Categoria Geral e Mês (calendário) |
 | `finance_control.db`, `local_param.db` | Bancos originais da fase Suíça (fora do git) — hoje preservados no Turso como `gastos_ch`/`param_ch` |
@@ -51,6 +52,7 @@ Web Service apontando pra este repositório:
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - Env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `API_TOKEN` (código de acesso do app), `ALLOWED_ORIGIN` (URL do GitHub Pages)
+- Gasto por frase (opcional): `ANTHROPIC_API_KEY`, chave da API da Anthropic (console.anthropic.com). Com ela, o campo no topo de "Novo gasto" transforma "R$ 3 na padaria hoje" nos campos do formulário, usando o Claude Sonnet 5.5 (`server/interpretar.py`). Nada é gravado sem você tocar em Adicionar. Sem a chave, o campo avisa que o servidor não tem o Claude.
 - Notificações push (opcional): `VAPID_PRIVATE_KEY` e `VAPID_PUBLIC_KEY` (par de chaves VAPID em base64url). O contato exigido pela Apple sai de `ALLOWED_ORIGIN`, ou de `VAPID_SUBJECT` se definida. Sem as chaves, o app só mostra que o servidor não tem notificações.
 
 ### 3. Frontend no GitHub Pages

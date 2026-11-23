@@ -762,6 +762,13 @@
         <h2 id="gaveta-titulo" class="titulo-grafico">Novo gasto</h2>
         <button id="botao-fechar-gaveta" class="botao-remover" type="button" aria-label="Fechar">&times;</button>
       </div>
+      <!-- Gasto descrito numa frase: o Claude preenche o formulário abaixo, que você confere e confirma.
+           Form separado pra Enter aqui não lançar o gasto -->
+      <form id="form-frase" class="form-frase">
+        <input id="campo-frase" type="text" placeholder="R$ 3 na padaria hoje" enterkeyhint="go" autocomplete="off" maxlength="300" aria-label="Descrever o gasto numa frase">
+        <button id="botao-frase" class="botao-secundario" type="submit">Preencher</button>
+      </form>
+
       <!-- Valor, local e data à esquerda; o resto num painel de detalhes ao lado (embaixo no celular) -->
       <form id="form-gasto" class="form-gasto form-gasto-dividido">
         <div class="form-principal">
