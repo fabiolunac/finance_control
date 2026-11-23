@@ -52,7 +52,7 @@ Web Service apontando pra este repositório:
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - Env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `API_TOKEN` (código de acesso do app), `ALLOWED_ORIGIN` (URL do GitHub Pages)
-- Gasto por frase (opcional): `ANTHROPIC_API_KEY`, chave da API da Anthropic (console.anthropic.com). Com ela, o campo no topo de "Novo gasto" transforma "R$ 3 na padaria hoje" nos campos do formulário, usando o Claude Sonnet 5.5 (`server/interpretar.py`). Nada é gravado sem você tocar em Adicionar. Sem a chave, o campo avisa que o servidor não tem o Claude.
+- Gasto por frase (opcional): `ANTHROPIC_API_KEY`, chave da API da Anthropic (console.anthropic.com). Com ela, o botão do Claude ao lado do "+" recebe uma frase como "padaria R$3 hoje" e grava o gasto, com a grafia do local corrigida (Claude Sonnet 5.5, `server/interpretar.py`). Sem banco na frase, vai o da última vez naquele local. O aviso tem "Desfazer". Sem a chave, a gaveta avisa que o servidor não tem o Claude.
 - Notificações push (opcional): `VAPID_PRIVATE_KEY` e `VAPID_PUBLIC_KEY` (par de chaves VAPID em base64url). O contato exigido pela Apple sai de `ALLOWED_ORIGIN`, ou de `VAPID_SUBJECT` se definida. Sem as chaves, o app só mostra que o servidor não tem notificações.
 
 ### 3. Frontend no GitHub Pages

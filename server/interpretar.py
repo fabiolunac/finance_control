@@ -1,10 +1,10 @@
-"""Lançamento por frase: "R$ 3 na padaria hoje" vira os campos do formulário.
+"""Lançamento por frase: "padaria R$3 hoje" vira os campos de um gasto.
 
 O app manda a frase e a data de hoje (a do aparelho, não a do servidor, que
 roda em UTC). O Claude devolve valor, local, data, tipo e forma de pagamento,
-usando os locais e bancos que já existem na tabela pra não criar variações do
-mesmo nome. Nada é gravado aqui: o app só preenche o formulário e quem
-confirma é você, no botão Adicionar.
+corrigindo a grafia e usando os locais e bancos que já existem na tabela pra
+não criar variações do mesmo nome. Esta rota não grava nada: quem grava é o
+app, pela rota normal de gastos, e o aviso dele tem "Desfazer".
 
 Sem ANTHROPIC_API_KEY configurada, a rota responde 503 e o app avisa.
 """
@@ -52,7 +52,7 @@ SISTEMA = """Você converte uma frase curta, escrita ou ditada em português, nu
 
 Regras:
 - valor: em reais. "3 conto", "três reais", "R$3" e "3,50" são valores. Sem valor na frase, entendeu = false.
-- local: o estabelecimento ou o que foi comprado. Se algum dos locais já cadastrados corresponde ao que a frase diz, use esse nome exatamente como está escrito na lista. Se a frase é genérica ("padaria") e só um local cadastrado é claramente uma padaria, use ele; se houver vários ou nenhum, escreva o termo da frase com a inicial maiúscula ("Padaria").
+- local: o estabelecimento ou o que foi comprado. A frase vem digitada às pressas no celular: erros de digitação, falta de acento e letras trocadas são comuns ("padsria", "farmacia", "mercadp"). Se algum dos locais já cadastrados corresponde ao que a frase diz, mesmo com erro de grafia, use esse nome exatamente como está escrito na lista. Se a frase é genérica ("padaria") e só um local cadastrado é claramente uma padaria, use ele; se houver vários ou nenhum, escreva o termo da frase com a grafia corrigida, acentos e inicial maiúscula ("Padaria", "Farmácia").
 - data: calcule a partir da data de hoje informada. "ontem", "anteontem", "sexta", "dia 12" valem. Sem menção a dia, use hoje. Nunca use data no futuro.
 - tipo: "Pagamento" só quando a frase fala em pagar fatura ou conta de cartão; nos demais casos, "Gasto".
 - pago_com: "Alelo" quando a frase fala em Alelo, VA ou vale-alimentação; "Alelo Refeição" para VR, vale-refeição ou Alelo refeição; senão "".

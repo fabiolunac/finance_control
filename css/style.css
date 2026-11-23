@@ -405,6 +405,12 @@ body {
 .aba-mais:hover { transform: translateY(-1px); box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--botao-mais-fundo) 45%, transparent); }
 .aba-mais:active { transform: scale(.94); }
 
+/* Botão do Claude, ao lado do "+": terracota com a estrela clara */
+.aba-claude {
+  --botao-mais-fundo: #d97757;
+  --botao-mais-tinta: #fbf7f1;
+}
+
 /* ---------- Gaveta de novo gasto ---------- */
 
 .gaveta {
@@ -452,7 +458,7 @@ body {
 
 .gaveta .erro { margin: 16px 0 0; }
 
-/* Frase que o Claude transforma nos campos do formulário */
+/* Gaveta do Claude: campo da frase e botão lado a lado */
 .form-frase {
   display: flex;
   gap: 8px;
@@ -460,8 +466,9 @@ body {
 }
 
 .form-frase input { flex: 1 1 auto; min-width: 0; }
-.form-frase .botao-secundario { flex: 0 0 auto; padding: 10px 16px; }
-.form-frase[hidden] { display: none; }
+.form-frase button { flex: 0 0 auto; }
+
+.claude-dica { margin: 0; font-size: 0.85rem; color: var(--tinta-muda); }
 
 /* Formulário da gaveta: valor grande em cima, tipo em dois botões */
 .form-gasto {

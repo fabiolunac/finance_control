@@ -132,9 +132,6 @@ const botaoContinuarGasto = document.getElementById('botao-continuar-gasto');
 const loteGastos = document.getElementById('lote-gastos');
 const erroAdicionar = document.getElementById('erro-adicionar');
 const gavetaAdicionar = document.getElementById('gaveta-adicionar');
-const formFrase = document.getElementById('form-frase');
-const campoFrase = document.getElementById('campo-frase');
-const botaoFrase = document.getElementById('botao-frase');
 const botaoAdicionar = document.getElementById('botao-adicionar');
 const botaoFecharGaveta = document.getElementById('botao-fechar-gaveta');
 
@@ -2558,9 +2555,6 @@ function abrirGaveta(gasto = null, doLote = false) {
     formGasto.elements.energetico.value = '';
   }
 
-  formFrase.hidden = Boolean(gasto);
-  campoFrase.value = '';
-
   pagoComManual = false;
   aplicarPagoCom();
   renderizarLote();
@@ -2685,52 +2679,94 @@ async function salvarGasto(evento) {
 
 formGasto.addEventListener('submit', salvarGasto);
 
-// ---------- Gasto por frase ----------
-// "R$ 3 na padaria hoje": o servidor pergunta ao Claude e devolve os campos.
-// Só preenche o formulário; o gasto entra quando você toca em Adicionar.
+// ---------- Lançar com o Claude ----------
+// "padaria R$3 hoje": o servidor pergunta ao Claude (server/interpretar.py),
+// que corrige a grafia do local e devolve valor e data no formato certo.
+// O gasto é gravado na hora; o aviso tem "Desfazer".
 
-async function preencherPorFrase(evento) {
+const botaoClaude = document.getElementById('botao-claude');
+const gavetaClaude = document.getElementById('gaveta-claude');
+const formClaude = document.getElementById('form-claude');
+const campoClaude = document.getElementById('campo-claude');
+const botaoLancarClaude = document.getElementById('botao-lancar-claude');
+const erroClaude = document.getElementById('erro-claude');
+
+function abrirGavetaClaude() {
+  erroClaude.hidden = true;
+  campoClaude.value = '';
+  gavetaClaude.showModal();
+  campoClaude.focus();
+}
+
+// Banco quando a frase não diz: o da última vez nesse local, senão o último usado
+function bancoPara(local) {
+  const anteriores = todosGastos.filter((g) => g.tipo === 'Gasto' && g.banco && mesmoLocal(g.Local, local));
+  return anteriores.length ? maisRecente(anteriores).banco : lerUltimoBanco();
+}
+
+async function lancarComClaude(evento) {
   evento.preventDefault();
-  const texto = campoFrase.value.trim();
+  const texto = campoClaude.value.trim();
   if (!texto) return;
 
-  erroAdicionar.hidden = true;
-  botaoFrase.disabled = true;
-  botaoFrase.textContent = 'Lendo…';
+  erroClaude.hidden = true;
+  botaoLancarClaude.disabled = true;
+  botaoLancarClaude.textContent = 'Lendo…';
   try {
     const resposta = await requisitar('POST', '/api/interpretar',
       { texto, hoje: formatarIso(new Date()) }, 'Não consegui interpretar a frase.');
     const campos = await resposta.json();
 
-    campoValor.value = campos.Valor.toFixed(2).replace('.', ',');
-    campoData.value = campos.Data;
-    formGasto.elements.tipo.value = campos.tipo;
-    campoLocal.value = campos.Local;
-    // Deixa o local puxar o "pago com" da última vez, como quando se digita
-    pagoComManual = false;
-    campoLocal.dispatchEvent(new Event('input'));
-    // O que a frase disse explicitamente vence o histórico
-    if (campos.pagocom) {
-      formGasto.elements.pagocom.value = campos.pagocom;
-      pagoComManual = true;
-    } else if (campos.banco) {
-      formGasto.elements.pagocom.value = '';
-      campoBanco.value = campos.banco;
-      pagoComManual = true;
+    const banco = campos.pagocom || campos.banco || bancoPara(campos.Local);
+    if (!banco) {
+      throw new Error('Não sei de qual banco saiu. Escreva junto, por exemplo "padaria R$3 hoje no Nubank".');
     }
-    aplicarPagoCom();
-    campoFrase.value = '';
-    botaoSalvarGasto.focus();
+
+    const gasto = {
+      Data: campos.Data,
+      Local: campos.Local,
+      Valor: campos.Valor,
+      tipo: campos.tipo,
+      banco,
+      Energetico: null,
+    };
+    botaoLancarClaude.textContent = 'Gravando…';
+    const gravado = await requisitar('POST', '/api/gastos', gasto, 'Erro ao gravar no servidor.');
+    const rowid = (await gravado.json()).rowid ?? null;
+    salvarUltimoBanco(banco);
+
+    gavetaClaude.close();
+    mostrarNotificacao(
+      `Adicionado: ${gasto.Local} · ${formatarMoeda(gasto.Valor)} · ${rotuloDia(gasto.Data)}`,
+      'Desfazer',
+      () => {
+        const criado = acharGastoCriado(gasto, rowid);
+        if (criado) removerGasto(criado);
+        // Tocou antes de a lista recarregar: apaga direto pelo rowid
+        else if (rowid != null) {
+          requisitar('DELETE', `/api/gastos/${rowid}`, null, 'Erro ao desfazer.')
+            .then(carregar)
+            .catch((e) => mostrarErro(e.message));
+        }
+      },
+      6000,
+    );
+    await carregar();
   } catch (e) {
-    erroAdicionar.textContent = e.message || 'Não consegui interpretar a frase.';
-    erroAdicionar.hidden = false;
+    erroClaude.textContent = e.message || 'Não consegui interpretar a frase.';
+    erroClaude.hidden = false;
   } finally {
-    botaoFrase.disabled = false;
-    botaoFrase.textContent = 'Preencher';
+    botaoLancarClaude.disabled = false;
+    botaoLancarClaude.textContent = 'Lançar';
   }
 }
 
-formFrase.addEventListener('submit', preencherPorFrase);
+formClaude.addEventListener('submit', lancarComClaude);
+botaoClaude.addEventListener('click', abrirGavetaClaude);
+document.getElementById('botao-fechar-claude').addEventListener('click', () => gavetaClaude.close());
+gavetaClaude.addEventListener('click', (evento) => {
+  if (evento.target === gavetaClaude) gavetaClaude.close();
+});
 
 botaoExcluirGasto.addEventListener('click', () => {
   const gasto = gastoEditando;
@@ -4896,6 +4932,7 @@ function aplicarModulo(modulo, abrir) {
     aba.hidden = aba.dataset.modulo !== modulo.id;
   });
   botaoAdicionar.hidden = !modulo.aoAdicionar;
+  botaoClaude.hidden = modulo.id !== 'financas';
   renderizarMenuModulos();
   aplicarOcultacao();
   if (abrir) selecionarAba(modulo.abaInicial);
