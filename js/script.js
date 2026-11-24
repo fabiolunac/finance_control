@@ -2704,10 +2704,20 @@ function bancoPara(local) {
   return anteriores.length ? maisRecente(anteriores).banco : lerUltimoBanco();
 }
 
+// Desligado enquanto a ANTHROPIC_API_KEY não está no Render: o botão e a
+// gaveta aparecem, mas "Lançar" só avisa. Pra ligar, troque para true.
+const CLAUDE_LIGADO = false;
+
 async function lancarComClaude(evento) {
   evento.preventDefault();
   const texto = campoClaude.value.trim();
   if (!texto) return;
+
+  if (!CLAUDE_LIGADO) {
+    erroClaude.textContent = 'Ainda não está ligado. Por enquanto, lance pelo +.';
+    erroClaude.hidden = false;
+    return;
+  }
 
   erroClaude.hidden = true;
   botaoLancarClaude.disabled = true;
