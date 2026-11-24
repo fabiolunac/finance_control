@@ -288,6 +288,39 @@ body {
 .badge-online  { background: var(--sucesso-suave); color: var(--sucesso); border-color: color-mix(in srgb, var(--sucesso) 20%, transparent); }
 .badge-offline { background: var(--realce); color: var(--tinta-fraca); border-color: var(--borda); }
 
+/* Faixa no topo enquanto a tela mostra os dados guardados e o servidor acorda */
+.aviso-servidor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  background: var(--acento-suave);
+  color: var(--acento-claro);
+  border-bottom: 1px solid var(--borda);
+}
+
+.aviso-servidor-ponto {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulsar-aviso 1.2s ease-in-out infinite;
+}
+
+.aviso-servidor.aviso-servidor-falhou { background: var(--erro-suave); color: var(--erro); }
+.aviso-servidor.aviso-servidor-falhou .aviso-servidor-ponto { animation: none; }
+
+@keyframes pulsar-aviso { 50% { opacity: .25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso-servidor-ponto { animation: none; }
+}
+
 /* Parâmetros: botão de engrenagem no canto do topo */
 .botao-topo {
   display: flex;

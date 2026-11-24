@@ -132,6 +132,8 @@ const botaoContinuarGasto = document.getElementById('botao-continuar-gasto');
 const loteGastos = document.getElementById('lote-gastos');
 const erroAdicionar = document.getElementById('erro-adicionar');
 const gavetaAdicionar = document.getElementById('gaveta-adicionar');
+const avisoServidor = document.getElementById('aviso-servidor');
+const avisoServidorTexto = document.getElementById('aviso-servidor-texto');
 const botaoAdicionar = document.getElementById('botao-adicionar');
 const botaoFecharGaveta = document.getElementById('botao-fechar-gaveta');
 
@@ -225,14 +227,82 @@ function mostrarErro(mensagem) {
 
 let carregouUmaVez = false;
 
+// ----- Últimos dados guardados no aparelho
+// O servidor dorme quando fica sem uso e leva até um minuto pra acordar. Pra
+// não esperar só pra olhar, a abertura mostra o que veio da última vez e a
+// faixa no topo avisa até os dados novos chegarem.
+
+const CACHE_CHAVE = 'cacheDados';
+let mostrandoCache = false; // a tela está com dados guardados, não com os do servidor
+
+function lerCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_CHAVE)) || {}; } catch (e) { return {}; }
+}
+
+function guardarNoCache(parte, dados) {
+  const cache = lerCache();
+  cache[parte] = dados;
+  if (parte === 'gastos') cache.quando = new Date().toISOString();
+  // Sem espaço (ou modo privado): só não guarda, o app segue normal
+  try { localStorage.setItem(CACHE_CHAVE, JSON.stringify(cache)); } catch (e) {}
+}
+
+// "hoje 14:32", "ontem 09:10" ou "21/11 18:05"
+function rotuloQuando(iso) {
+  const quando = new Date(iso);
+  const hora = quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dia = formatarIso(quando);
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
+  if (dia === formatarIso(new Date())) return `hoje ${hora}`;
+  if (dia === formatarIso(ontem)) return `ontem ${hora}`;
+  return `${quando.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${hora}`;
+}
+
+function mostrarAvisoServidor(texto, falhou = false) {
+  avisoServidorTexto.textContent = texto;
+  avisoServidor.classList.toggle('aviso-servidor-falhou', falhou);
+  avisoServidor.hidden = false;
+}
+
+// Na abertura: desenha a tela com os dados guardados, se houver
+function restaurarCache() {
+  // O servidor já respondeu (rede rápida): nada a restaurar
+  if (carregouUmaVez) return;
+  // Sem código de acesso salvo, não mostra os dados de ninguém
+  let temToken = false;
+  try { temToken = Boolean(localStorage.getItem('apiToken')); } catch (e) {}
+  const cache = lerCache();
+  if (!temToken || !Array.isArray(cache.gastos) || !cache.quando) return;
+  try {
+    if (cache.renda) aplicarRenda(cache.renda);
+    if (cache.fatura) aplicarFatura(cache.fatura);
+    todosGastos = cache.gastos;
+    carregouUmaVez = true;
+    mostrandoCache = true;
+    renderizarTudo();
+    document.body.classList.remove('carregando');
+    mostrarAvisoServidor(`Servidor carregando · dados de ${rotuloQuando(cache.quando)}`);
+  } catch (e) {
+    // Cache de uma versão antiga do app que não encaixa: descarta e espera o servidor
+    try { localStorage.removeItem(CACHE_CHAVE); } catch (e2) {}
+    todosGastos = [];
+    carregouUmaVez = false;
+    mostrandoCache = false;
+  }
+}
+
 async function carregar() {
   erro.hidden = true;
   botaoAtualizar.classList.add('girando');
   if (!carregouUmaVez) document.body.classList.add('carregando');
+  if (mostrandoCache) mostrarAvisoServidor(`Servidor carregando · dados de ${rotuloQuando(lerCache().quando)}`);
 
-  // O servidor dorme quando fica sem uso e demora pra acordar; avisa se passar de 4 s
+  // O servidor dorme quando fica sem uso e demora pra acordar; avisa se passar de 4 s.
+  // Com os dados guardados na tela, a faixa do topo já avisa.
   let avisouLentidao = false;
   const timerLentidao = setTimeout(() => {
+    if (mostrandoCache) return;
     avisouLentidao = true;
     mostrarNotificacao('Acordando o servidor, pode levar até um minuto…', null, null, 60000);
   }, 4000);
@@ -248,6 +318,9 @@ async function carregar() {
 
     if (resposta.status === 401) {
       localStorage.removeItem('apiToken');
+      try { localStorage.removeItem(CACHE_CHAVE); } catch (e) {}
+      mostrandoCache = false;
+      avisoServidor.hidden = true;
       throw new Error('Código de acesso inválido. Recarregue a página.');
     }
     if (!resposta.ok) {
@@ -255,14 +328,22 @@ async function carregar() {
     }
 
     const { gastos } = await resposta.json();
+    guardarNoCache('gastos', gastos);
     // Gastos com remoção aguardando o "Desfazer" continuam fora da tela
     todosGastos = gastos.filter((g) => !gastosRemovendo.has(g.rowid));
     carregouUmaVez = true;
     await Promise.all([rendaPromessa, faturaPromessa]);
+    mostrandoCache = false;
+    avisoServidor.hidden = true;
     renderizarTudo();
   } catch (e) {
-    erro.textContent = e.message;
-    erro.hidden = false;
+    if (mostrandoCache) {
+      // Continua mostrando os dados guardados; a faixa diz que não atualizou
+      mostrarAvisoServidor(`Sem resposta do servidor · dados de ${rotuloQuando(lerCache().quando)} · toque em atualizar`, true);
+    } else {
+      erro.textContent = e.message;
+      erro.hidden = false;
+    }
   } finally {
     clearTimeout(timerLentidao);
     if (avisouLentidao) esconderNotificacao();
@@ -1466,10 +1547,15 @@ function salarioDoMes(mes) {
 async function carregarRenda() {
   try {
     const resposta = await requisitar('GET', '/api/renda', null, 'Erro ao carregar o salário.');
-    renda = await resposta.json();
+    aplicarRenda(await resposta.json());
+    guardarNoCache('renda', renda);
   } catch (e) {
     return;
   }
+}
+
+function aplicarRenda(dados) {
+  renda = dados;
   rendaSalario.value = renda.Salario ? String(renda.Salario).replace('.', ',') : '';
   // Servidor antigo só manda "Vale": tudo conta como alimentação
   if (renda.ValeAlimentacao == null) renda.ValeAlimentacao = renda.Vale || 0;
@@ -3497,15 +3583,21 @@ async function carregarFatura() {
   try {
     const resposta = await requisitar('GET', '/api/fatura', null, 'Erro ao carregar a fatura.');
     const dados = await resposta.json();
-    cartoes = dados.cartoes;
-    compras = dados.compras.filter((c) => !comprasRemovendo.has(c.id));
-    faturasPagas = dados.pagas;
-    if (!mesFatura) mesFatura = proximaFaturaAVencer();
-    renderizarFatura();
-    renderizarCartoes();
+    aplicarFatura(dados);
+    guardarNoCache('fatura', dados);
   } catch (e) {
-    mostrarErro(e.message);
+    // Com os dados guardados na tela, a faixa do topo já diz que o servidor não respondeu
+    if (!mostrandoCache) mostrarErro(e.message);
   }
+}
+
+function aplicarFatura(dados) {
+  cartoes = dados.cartoes;
+  compras = dados.compras.filter((c) => !comprasRemovendo.has(c.id));
+  faturasPagas = dados.pagas;
+  if (!mesFatura) mesFatura = proximaFaturaAVencer();
+  renderizarFatura();
+  renderizarCartoes();
 }
 
 // ----- Contas de meses e parcelas
@@ -4993,6 +5085,8 @@ document.addEventListener('keydown', (evento) => {
 // Só depois de todos os scripts: os outros módulos precisam ter se cadastrado
 // antes de restaurar o último módulo aberto
 document.addEventListener('DOMContentLoaded', () => {
+  // Aqui e não no início do arquivo: a tela guardada pode precisar dos outros scripts
+  restaurarCache();
   let salvo = null;
   try { salvo = localStorage.getItem('modulo'); } catch (e) {}
   const modulo = MODULOS.find((m) => m.id === salvo) || MODULOS[0];
