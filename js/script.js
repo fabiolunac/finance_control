@@ -2679,6 +2679,105 @@ async function salvarGasto(evento) {
 
 formGasto.addEventListener('submit', salvarGasto);
 
+// ---------- Lançar com o Claude ----------
+// "padaria R$3 hoje": o servidor pergunta ao Claude (server/interpretar.py),
+// que corrige a grafia do local e devolve valor e data no formato certo.
+// O gasto é gravado na hora; o aviso tem "Desfazer".
+
+const botaoClaude = document.getElementById('botao-claude');
+const gavetaClaude = document.getElementById('gaveta-claude');
+const formClaude = document.getElementById('form-claude');
+const campoClaude = document.getElementById('campo-claude');
+const botaoLancarClaude = document.getElementById('botao-lancar-claude');
+const erroClaude = document.getElementById('erro-claude');
+
+function abrirGavetaClaude() {
+  erroClaude.hidden = true;
+  campoClaude.value = '';
+  gavetaClaude.showModal();
+  campoClaude.focus();
+}
+
+// Banco quando a frase não diz: o da última vez nesse local, senão o último usado
+function bancoPara(local) {
+  const anteriores = todosGastos.filter((g) => g.tipo === 'Gasto' && g.banco && mesmoLocal(g.Local, local));
+  return anteriores.length ? maisRecente(anteriores).banco : lerUltimoBanco();
+}
+
+// Desligado enquanto a ANTHROPIC_API_KEY não está no Render: o botão e a
+// gaveta aparecem, mas "Lançar" só avisa. Pra ligar, troque para true.
+const CLAUDE_LIGADO = false;
+
+async function lancarComClaude(evento) {
+  evento.preventDefault();
+  const texto = campoClaude.value.trim();
+  if (!texto) return;
+
+  if (!CLAUDE_LIGADO) {
+    erroClaude.textContent = 'Ainda não está ligado. Por enquanto, lance pelo +.';
+    erroClaude.hidden = false;
+    return;
+  }
+
+  erroClaude.hidden = true;
+  botaoLancarClaude.disabled = true;
+  botaoLancarClaude.textContent = 'Lendo…';
+  try {
+    const resposta = await requisitar('POST', '/api/interpretar',
+      { texto, hoje: formatarIso(new Date()) }, 'Não consegui interpretar a frase.');
+    const campos = await resposta.json();
+
+    const banco = campos.pagocom || campos.banco || bancoPara(campos.Local);
+    if (!banco) {
+      throw new Error('Não sei de qual banco saiu. Escreva junto, por exemplo "padaria R$3 hoje no Nubank".');
+    }
+
+    const gasto = {
+      Data: campos.Data,
+      Local: campos.Local,
+      Valor: campos.Valor,
+      tipo: campos.tipo,
+      banco,
+      Energetico: null,
+    };
+    botaoLancarClaude.textContent = 'Gravando…';
+    const gravado = await requisitar('POST', '/api/gastos', gasto, 'Erro ao gravar no servidor.');
+    const rowid = (await gravado.json()).rowid ?? null;
+    salvarUltimoBanco(banco);
+
+    gavetaClaude.close();
+    mostrarNotificacao(
+      `Adicionado: ${gasto.Local} · ${formatarMoeda(gasto.Valor)} · ${rotuloDia(gasto.Data)}`,
+      'Desfazer',
+      () => {
+        const criado = acharGastoCriado(gasto, rowid);
+        if (criado) removerGasto(criado);
+        // Tocou antes de a lista recarregar: apaga direto pelo rowid
+        else if (rowid != null) {
+          requisitar('DELETE', `/api/gastos/${rowid}`, null, 'Erro ao desfazer.')
+            .then(carregar)
+            .catch((e) => mostrarErro(e.message));
+        }
+      },
+      6000,
+    );
+    await carregar();
+  } catch (e) {
+    erroClaude.textContent = e.message || 'Não consegui interpretar a frase.';
+    erroClaude.hidden = false;
+  } finally {
+    botaoLancarClaude.disabled = false;
+    botaoLancarClaude.textContent = 'Lançar';
+  }
+}
+
+formClaude.addEventListener('submit', lancarComClaude);
+botaoClaude.addEventListener('click', abrirGavetaClaude);
+document.getElementById('botao-fechar-claude').addEventListener('click', () => gavetaClaude.close());
+gavetaClaude.addEventListener('click', (evento) => {
+  if (evento.target === gavetaClaude) gavetaClaude.close();
+});
+
 botaoExcluirGasto.addEventListener('click', () => {
   const gasto = gastoEditando;
   if (editandoDoLote) {
@@ -4843,6 +4942,7 @@ function aplicarModulo(modulo, abrir) {
     aba.hidden = aba.dataset.modulo !== modulo.id;
   });
   botaoAdicionar.hidden = !modulo.aoAdicionar;
+  botaoClaude.hidden = modulo.id !== 'financas';
   renderizarMenuModulos();
   aplicarOcultacao();
   if (abrir) selecionarAba(modulo.abaInicial);

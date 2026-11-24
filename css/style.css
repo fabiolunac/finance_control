@@ -405,6 +405,12 @@ body {
 .aba-mais:hover { transform: translateY(-1px); box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--botao-mais-fundo) 45%, transparent); }
 .aba-mais:active { transform: scale(.94); }
 
+/* Botão do Claude, ao lado do "+": terracota com a estrela clara */
+.aba-claude {
+  --botao-mais-fundo: #d97757;
+  --botao-mais-tinta: #fbf7f1;
+}
+
 /* ---------- Gaveta de novo gasto ---------- */
 
 .gaveta {
@@ -451,6 +457,18 @@ body {
 .gaveta-cabecalho .titulo-grafico { margin-bottom: 0; }
 
 .gaveta .erro { margin: 16px 0 0; }
+
+/* Gaveta do Claude: campo da frase e botão lado a lado */
+.form-frase {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-frase input { flex: 1 1 auto; min-width: 0; }
+.form-frase button { flex: 0 0 auto; }
+
+.claude-dica { margin: 0; font-size: 0.85rem; color: var(--tinta-muda); }
 
 /* Formulário da gaveta: valor grande em cima, tipo em dois botões */
 .form-gasto {
@@ -969,6 +987,7 @@ body {
 .novo-gasto input,
 .novo-gasto select,
 .form-gasto input:not([type="radio"]),
+.form-frase input,
 .pendente input,
 .fatura-pagar input {
   font: inherit;
@@ -987,12 +1006,14 @@ body {
 
 .novo-gasto input::placeholder,
 .form-gasto input::placeholder,
+.form-frase input::placeholder,
 .pendente input::placeholder,
 .fatura-pagar input::placeholder { color: var(--tinta-muda); }
 
 .novo-gasto input:focus,
 .novo-gasto select:focus,
 .form-gasto input:not([type="radio"]):focus,
+.form-frase input:focus,
 .pendente input:focus,
 .fatura-pagar input:focus {
   border-color: var(--acento);
