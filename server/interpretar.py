@@ -17,7 +17,8 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-MODELO = "claude-sonnet-5-5"
+# Haiku: o menor e mais barato; basta pra separar local, valor e data
+MODELO = "claude-haiku-5-5"
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 # Quantos nomes de local mandar como referência (os mais usados primeiro)
@@ -105,11 +106,11 @@ def criar_rotas(conectar, checar_token):
         )
 
         try:
-            resposta = claude.beta.messages.create(
+            # O Haiku não tem troca automática de modelo em caso de recusa;
+            # recusa vira a mensagem "não consegui entender" lá embaixo
+            resposta = claude.messages.create(
                 model=MODELO,
                 max_tokens=2000,
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
                 output_config={"effort": "low", "format": {"type": "json_schema", "schema": ESQUEMA}},
                 system=SISTEMA,
                 messages=[{"role": "user", "content": mensagem}],
