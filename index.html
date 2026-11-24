@@ -34,6 +34,12 @@
 <body>
 
   <header class="topo">
+    <!-- Na abertura a tela mostra os últimos dados guardados no aparelho; esta faixa avisa
+         enquanto o servidor não responde (ver restaurarCache no script) -->
+    <div id="aviso-servidor" class="aviso-servidor" role="status" hidden>
+      <span class="aviso-servidor-ponto" aria-hidden="true"></span>
+      <span id="aviso-servidor-texto"></span>
+    </div>
     <div class="topo-inner">
       <span class="marca-ponto" aria-hidden="true"></span>
       <h1 class="sr-only">Controle Pessoal</h1>
