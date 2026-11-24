@@ -2592,7 +2592,30 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
   color: var(--tinta-sobre-acento);
 }
 
-.combustivel-resumo { margin-bottom: 16px; }
+.comb-cartoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Meia largura: uma coluna só, mesmo no desktop, e o número encolhe no celular */
+.cartao-resumo.comb-cartao {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
+  margin-bottom: 0;
+  padding: 18px;
+}
+
+.comb-cartao .resumo-valor {
+  margin-top: 4px;
+  font-size: clamp(1.3rem, 6.2vw, 2.2rem);
+  white-space: nowrap;
+}
+
+.comb-cartao-botao { justify-self: start; margin-top: 12px; }
+
 .comb-manutencao { margin-bottom: 16px; }
 
 .comb-manutencao-cabecalho {
@@ -2643,11 +2666,6 @@ body.carregando :is(.cartao-resumo, .visao-grade .cartao-grafico, .metricas-extr
 
 .comb-homenagem-numeros dd { margin: 0; font-family: var(--fonte-mono); font-size: 1.05rem; color: var(--tinta); }
 .comb-homenagem-numeros dt { font-size: .78rem; color: var(--tinta-muda); }
-
-.cartao-resumo.comb-odometro {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
 
 /* Valor em cima e o que o abastecimento rendeu embaixo, à direita */
 .abast-direita {

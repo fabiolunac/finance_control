@@ -93,12 +93,12 @@
         <span class="aba-rotulo">Investimentos</span>
       </button>
       <button id="aba-combustivel" data-modulo="combustivel" class="aba" type="button" hidden>
-        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
-        <span class="aba-rotulo">Abastecimentos</span>
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.3 17a9 9 0 1 1 17.4 0"/><line x1="12" y1="15" x2="16" y2="9"/><circle cx="12" cy="15" r="1.5"/></svg>
+        <span class="aba-rotulo">Veículo</span>
       </button>
-      <button id="aba-comb-calendario" data-modulo="combustivel" class="aba" type="button" hidden>
-        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
-        <span class="aba-rotulo">Calendário</span>
+      <button id="aba-comb-registros" data-modulo="combustivel" class="aba" type="button" hidden>
+        <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><line x1="2" y1="21" x2="16" y2="21"/><line x1="6" y1="8" x2="12" y2="8"/><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8.5L19 6"/></svg>
+        <span class="aba-rotulo">Registros</span>
       </button>
       <button id="aba-dieta-comida" data-modulo="dieta" class="aba" type="button" hidden>
         <svg class="aba-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a3 3 0 0 0 6 0V2"/><line x1="6" y1="2" x2="6" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
@@ -458,7 +458,8 @@
     <!-- ========== Módulo Combustível (combustivel.js) ========== -->
     <section id="secao-combustivel" hidden>
 
-      <!-- Um botão por veículo, só quando há mais de um: cada um é visto separado -->
+      <!-- Um botão por veículo, só quando há mais de um: cada um é visto separado.
+           Um seletor em cada sub-aba; os dois mostram a mesma escolha -->
       <div class="seletor-veiculo" role="group" aria-label="Veículo" hidden></div>
 
       <!-- Veículo vendido: despedida com o que ele rodou registrado aqui -->
@@ -469,45 +470,22 @@
         <dl class="comb-homenagem-numeros" id="comb-homenagem-numeros"></dl>
       </div>
 
-      <div class="cartao-resumo combustivel-resumo">
-        <div>
+      <!-- Os dois números do veículo escolhido, lado a lado -->
+      <div class="comb-cartoes">
+        <div class="cartao-resumo comb-cartao">
           <span class="metrica-rotulo" id="comb-media-rotulo">Consumo médio</span>
           <span class="resumo-valor" id="comb-media-km"></span>
           <span class="resumo-sub" id="comb-media-sub"></span>
         </div>
-      </div>
 
-      <!-- Odômetro do veículo escolhido: última leitura + parciais registrados depois -->
-      <div id="comb-odometro-cartao" class="cartao-resumo comb-odometro" hidden>
-        <div>
+        <!-- Odômetro: última leitura + parciais registrados depois -->
+        <div id="comb-odometro-cartao" class="cartao-resumo comb-cartao" hidden>
           <span class="metrica-rotulo" id="comb-odometro-rotulo">Odômetro</span>
           <span class="resumo-valor" id="comb-odometro-km"></span>
           <span class="resumo-sub" id="comb-odometro-sub"></span>
+          <button id="botao-odometro" class="botao-chip comb-cartao-botao" type="button">Atualizar</button>
         </div>
-        <button id="botao-odometro" class="botao-chip" type="button">Atualizar</button>
       </div>
-
-      <!-- Manutenções do veículo escolhido: quanto falta pelo odômetro -->
-      <div id="comb-manutencao-cartao" class="cartao-grafico comb-manutencao" hidden>
-        <div class="comb-manutencao-cabecalho">
-          <h2 class="titulo-grafico">Manutenção</h2>
-          <button id="botao-nova-manutencao" class="botao-chip" type="button">+ Adicionar</button>
-        </div>
-        <div id="comb-manutencoes"></div>
-        <p id="comb-manutencao-vazio" class="vazio-pequeno" hidden>Cadastre a troca de óleo, os pneus e o que mais tiver prazo em km ou em meses.</p>
-      </div>
-
-      <div class="cartao-grafico">
-        <h2 class="titulo-grafico">Abastecimentos</h2>
-        <div id="lista-abastecimentos"></div>
-        <p id="abastecimentos-vazio" class="vazio" hidden>Nenhum abastecimento ainda. Toque no + pra registrar o primeiro.</p>
-      </div>
-
-    </section>
-
-    <section id="secao-comb-calendario" hidden>
-
-      <div class="seletor-veiculo" role="group" aria-label="Veículo" hidden></div>
 
       <div class="fatura-navegacao">
         <button id="comb-cal-anterior" class="botao-topo" type="button" aria-label="Mês anterior">
@@ -526,6 +504,28 @@
         <div id="comb-calendario" class="calendario"></div>
         <p class="calendario-legenda">dia com abastecimento · toque pra ver</p>
         <div id="comb-cal-detalhe" class="calendario-detalhe" hidden></div>
+      </div>
+
+    </section>
+
+    <section id="secao-comb-registros" hidden>
+
+      <div class="seletor-veiculo" role="group" aria-label="Veículo" hidden></div>
+
+      <!-- Manutenções do veículo escolhido: quanto falta pelo odômetro -->
+      <div id="comb-manutencao-cartao" class="cartao-grafico comb-manutencao" hidden>
+        <div class="comb-manutencao-cabecalho">
+          <h2 class="titulo-grafico">Manutenção</h2>
+          <button id="botao-nova-manutencao" class="botao-chip" type="button">+ Adicionar</button>
+        </div>
+        <div id="comb-manutencoes"></div>
+        <p id="comb-manutencao-vazio" class="vazio-pequeno" hidden>Cadastre a troca de óleo, os pneus e o que mais tiver prazo em km ou em meses.</p>
+      </div>
+
+      <div class="cartao-grafico">
+        <h2 class="titulo-grafico">Abastecimentos</h2>
+        <div id="lista-abastecimentos"></div>
+        <p id="abastecimentos-vazio" class="vazio" hidden>Nenhum abastecimento ainda. Toque no + pra registrar o primeiro.</p>
       </div>
 
     </section>

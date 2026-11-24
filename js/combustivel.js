@@ -14,8 +14,10 @@
 const abaCombustivel = document.getElementById('aba-combustivel');
 const secaoCombustivel = document.getElementById('secao-combustivel');
 
-const abaCombCalendario = document.getElementById('aba-comb-calendario');
-const secaoCombCalendario = document.getElementById('secao-comb-calendario');
+// Veículo: consumo médio e odômetro lado a lado, calendário embaixo.
+// Registros: manutenções e a lista de abastecimentos.
+const abaCombRegistros = document.getElementById('aba-comb-registros');
+const secaoCombRegistros = document.getElementById('secao-comb-registros');
 // Um seletor de veículo em cada sub-aba; os dois mostram a mesma escolha
 const seletoresVeiculo = document.querySelectorAll('.seletor-veiculo');
 const combMediaRotulo = document.getElementById('comb-media-rotulo');
@@ -254,8 +256,8 @@ function preencherSeletorVeiculos(seletor, veiculos) {
 // Média só dos abastecimentos já fechados (que têm o km do seguinte) e que contam no consumo
 function renderizarResumoCombustivel(lista, rendimentos) {
   const fechados = lista.filter((a) => rendimentos.get(a.id).km > 0 && !rendimentos.get(a.id).fora);
-  const doVeiculo = veiculoFiltro ? ` · ${veiculoFiltro}` : '';
-  combMediaRotulo.textContent = `Consumo médio${doVeiculo}`;
+  // O seletor já diz qual veículo: o rótulo fica curto pra caber no cartão de meia largura
+  combMediaRotulo.textContent = 'Consumo médio';
   if (!fechados.length) {
     combMediaKm.textContent = '—';
     let aviso = lista.length ? 'Aparece depois do segundo abastecimento do mesmo veículo' : '';
@@ -277,7 +279,7 @@ function renderizarResumoCombustivel(lista, rendimentos) {
       `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
     return;
   }
-  combMediaRotulo.textContent = `Cada abastecimento rende${doVeiculo}`;
+  combMediaRotulo.textContent = 'Cada abastecimento rende';
   combMediaKm.textContent = formatarKm(kmTotal / fechados.length);
   combMediaSub.textContent = `${formatarMoeda(valorTotal / kmTotal)}/km · ${textoFechados}`;
 }
@@ -337,7 +339,7 @@ function renderizarOdometro() {
   combOdometroCartao.hidden = !veiculoFiltro;
   if (!veiculoFiltro) return;
   const atual = odometroAtual(veiculoFiltro);
-  combOdometroRotulo.textContent = `Odômetro · ${veiculoFiltro}`;
+  combOdometroRotulo.textContent = 'Odômetro';
   combOdometroKm.textContent = atual ? formatarKm(atual.km) : '—';
   if (!atual) combOdometroSub.textContent = 'Ainda não informado';
   else if (atual.ultimo) combOdometroSub.textContent = `Atualizado pelo abastecimento de ${formatarData(atual.ultimo.Data).slice(0, 5)}`;
@@ -1086,7 +1088,7 @@ function removerAbastecimento(abastecimento) {
 // ---------- Cadastro no núcleo ----------
 
 registrarAba(abaCombustivel, secaoCombustivel, carregarAbastecimentos);
-registrarAba(abaCombCalendario, secaoCombCalendario, carregarAbastecimentos);
+registrarAba(abaCombRegistros, secaoCombRegistros, carregarAbastecimentos);
 
 registrarModulo({
   id: 'combustivel',
